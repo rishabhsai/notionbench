@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "id": "investigate-views-001-view-config-report",
+  "seed": 20260811,
+  "root": { "title": "NotionBench · investigate-views-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "product",
+      "title": "Product",
+      "icon": "🚀",
+      "blocks": [{ "type": "paragraph", "text": "Roadmap and everything hanging off it." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "roadmap",
+      "title": "Product Roadmap",
+      "parent": "product",
+      "dataSource": { "name": "Product Roadmap" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Backlog", "color": "gray" },
+            { "name": "In progress", "color": "yellow" },
+            { "name": "Shipped", "color": "green" }
+          ]
+        },
+        "Owner": {
+          "type": "select",
+          "options": [
+            { "name": "Ada", "color": "blue" },
+            { "name": "Bruno", "color": "orange" },
+            { "name": "Chen", "color": "purple" }
+          ]
+        },
+        "Quarter": {
+          "type": "select",
+          "options": [
+            { "name": "Q3", "color": "brown" },
+            { "name": "Q4", "color": "pink" }
+          ]
+        },
+        "Ship date": { "type": "date" }
+      },
+      "views": [
+        { "key": "view.board", "name": "By status", "type": "board", "groupBy": "Status" },
+        {
+          "key": "view.shipping",
+          "name": "Shipping this quarter",
+          "type": "table",
+          "filter": { "property": "Status", "equals": "In progress" },
+          "sorts": [{ "property": "Ship date", "direction": "ascending" }]
+        },
+        { "key": "view.calendar", "name": "Launch calendar", "type": "calendar" },
+        { "key": "view.owners", "name": "Who owns what", "type": "board", "groupBy": "Owner" },
+        {
+          "key": "view.q4",
+          "name": "Q4 only",
+          "type": "gallery",
+          "filter": { "property": "Quarter", "equals": "Q4" }
+        }
+      ],
+      "rows": {
+        "count": 12,
+        "keyPrefix": "item",
+        "properties": {
+          "Name": { "template": "Initiative {i:2}" },
+          "Status": { "cycle": ["Backlog", "In progress", "Shipped"] },
+          "Owner": { "cycle": ["Ada", "Bruno", "Chen"] },
+          "Quarter": { "cycle": ["Q3", "Q4"] },
+          "Ship date": { "dateSeq": { "start": "2026-08-03", "stepDays": 7 } }
+        }
+      }
+    }
+  ]
+}
