@@ -30,6 +30,7 @@ Grouped by product area, stage (build / investigate / resolve / operate), and ag
 - **k=3 independent trials** per task for v1 (extending to 5 via checkpoint/resume); we report avg@k with Wilson intervals *and* pass^k (reliability) — no "retry then grade."
 - **Docs-provided by default**: agents get the AGENTS.md/skills Notion ships in its templates — the condition real developers actually run. (A docs-withheld ablation is supported by the harness for future experiments.)
 - **QC per task (CI)**: the oracle solution must pass, a null agent must fail, and a plausibly-wrong solution must fail.
+- **Every task in long form** — what it asks for, what the verifier checks, what the trial starts from: [docs/TASKS.md](docs/TASKS.md) (generated; regenerate with `node scripts/gen-task-docs.mjs`).
 
 ## Repository layout
 

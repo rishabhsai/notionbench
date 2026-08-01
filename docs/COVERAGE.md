@@ -1,5 +1,7 @@
 # Task suite v1 — 38 tasks, 4 stages, full surface coverage
 
+This file is the matrix — one line per task. For the long form of any row (the plain-English ask, the subscores its verifier reports, what the fixture provisions, the foil's failure mode), see [TASKS.md](TASKS.md), generated from `evals/` by `node scripts/gen-task-docs.mjs`.
+
 Naming follows `<stage>-<area>-<nnn>-<slug>` (Supabase Evals convention).
 Stages: **build** (create something new, 16), **investigate** (diagnose from real state/logs, 8), **resolve** (fix something broken, 10), **operate** (run the platform correctly, 4).
 Runtime: `offline` tasks need no Notion account (pure build / `exec --local` / intents comparison); `live` tasks run against a leased workspace fixture.
