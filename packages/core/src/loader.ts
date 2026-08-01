@@ -24,6 +24,9 @@ export const FIXTURE_DIR = "fixture"
 export const SOLUTION_DIR = "solution"
 export const WRONG_DIR = "wrong"
 
+/** Dir names that mark `wrong/` as one solution's content, not variant dirs. */
+const CONTENT_DIR_NAMES = new Set(["src", "data", "live", "dist", "node_modules"])
+
 export class TaskLoadError extends Error {
   constructor(
     message: string,
@@ -123,8 +126,17 @@ export async function loadTask(dir: string, opts: LoadTaskOptions = {}): Promise
 
   let wrongDirs: string[] = []
   if (await isDir(wrongDir)) {
+    // `wrong/` is a SINGLE wrong solution when it directly contains any file
+    // (e.g. wrong/answer.json) or a content dir like `src/` — the shape every
+    // authored task actually uses. It is a MULTI-VARIANT dir (each subdir =
+    // one wrong solution) only when it consists purely of subdirectories none
+    // of which is a content dir.
+    const entries = await fs.readdir(wrongDir, { withFileTypes: true })
+    const hasTopLevelFile = entries.some((e) => e.isFile())
     const nested = await subdirs(wrongDir)
-    wrongDirs = nested.length > 0 ? nested : [wrongDir]
+    const hasContentDir = nested.some((d) => CONTENT_DIR_NAMES.has(path.basename(d)))
+    wrongDirs =
+      hasTopLevelFile || hasContentDir || nested.length === 0 ? [wrongDir] : nested
   }
 
   return {

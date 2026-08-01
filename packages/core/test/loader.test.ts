@@ -126,3 +126,34 @@ describe("loadTasks", () => {
     await expect(loadTasks(root, { checkIdMatchesDir: false })).rejects.toThrow(/duplicate task id/)
   })
 })
+
+describe("wrongDirs resolution", () => {
+  it("treats wrong/ with a src subdir as a single wrong solution", async () => {
+    const dir = await writeTask("build-nac-901-single-wrong")
+    await fs.mkdir(path.join(dir, "wrong", "src"), { recursive: true })
+    await fs.writeFile(path.join(dir, "wrong", "src", "index.ts"), "export {}\n")
+    const task = await loadTask(dir, { root })
+    expect(task.paths.wrongDirs).toEqual([path.join(dir, "wrong")])
+  })
+
+  it("treats wrong/ with a top-level file as a single wrong solution", async () => {
+    const dir = await writeTask("build-nac-902-file-wrong")
+    await fs.mkdir(path.join(dir, "wrong", "notes"), { recursive: true })
+    await fs.writeFile(path.join(dir, "wrong", "answer.json"), "{}\n")
+    const task = await loadTask(dir, { root })
+    expect(task.paths.wrongDirs).toEqual([path.join(dir, "wrong")])
+  })
+
+  it("treats wrong/ with only non-content subdirs as multi-variant", async () => {
+    const dir = await writeTask("build-nac-903-variants")
+    for (const v of ["missing-color", "off-by-one"]) {
+      await fs.mkdir(path.join(dir, "wrong", v, "src"), { recursive: true })
+      await fs.writeFile(path.join(dir, "wrong", v, "src", "index.ts"), "export {}\n")
+    }
+    const task = await loadTask(dir, { root })
+    expect(task.paths.wrongDirs.map((d) => path.basename(d)).sort()).toEqual([
+      "missing-color",
+      "off-by-one",
+    ])
+  })
+})
