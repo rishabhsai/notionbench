@@ -827,6 +827,196 @@ describe("inline vs separate view spellings", () => {
   })
 })
 
+describe("derived view groupBy.type", () => {
+  /**
+   * A board view grouped by Status. `groupBy` is spliced in verbatim so a test
+   * can omit `type`, state it correctly, or state it wrongly.
+   */
+  function board(groupBy: unknown, opts: { dataSource?: string; property?: string } = {}): Intent[] {
+    return [
+      { type: "teamspace", resourceId: "ts", name: "T", accessLevel: "open" },
+      {
+        type: "database",
+        resourceId: "db",
+        name: "Tasks",
+        parent: { type: "resourceId", resourceId: "ts" },
+        dataSources: [
+          {
+            resourceId: "ds",
+            name: "Tasks",
+            properties: [
+              { resourceId: "p-name", name: "Name", type: "title" },
+              {
+                resourceId: "p-status",
+                name: "Status",
+                type: "select",
+                options: [{ name: "Todo", color: "gray" }],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: "view",
+        databaseResourceId: "db",
+        view: {
+          resourceId: "v",
+          name: "By Status",
+          type: "board",
+          dataSourceResourceId: opts.dataSource ?? "ds",
+          groupBy,
+        },
+      },
+    ]
+  }
+
+  const grouped = (extra: Record<string, unknown> = {}) => ({ property: "p-status", ...extra })
+
+  /** The canonicalized `groupBy` object of the document's only view. */
+  function canonicalGroupBy(intents: Intent[], opts = {}): any {
+    const doc = canonicalize(intents, opts)
+    const view = doc.intents.find((i: any) => i.type === "view") as any
+    return view.view.groupBy
+  }
+
+  it("treats an omitted type as the grouped property's declared type", () => {
+    const result = diffIntents(board(grouped({ type: "select" })), board(grouped()))
+    expect(result.differences).toEqual([])
+    expect(result.equal).toBe(true)
+    expect(diffIntents(board(grouped()), board(grouped({ type: "select" }))).equal).toBe(true)
+  })
+
+  it("treats two documents that both omit it as equal", () => {
+    expect(diffIntents(board(grouped()), board(grouped())).equal).toBe(true)
+    // the derived value really is written into the canonical document
+    expect(canonicalGroupBy(board(grouped())).type).toBe("select")
+    expect(canonicalGroupBy(board(grouped()))).toEqual(
+      canonicalGroupBy(board(grouped({ type: "select" }))),
+    )
+  })
+
+  it("still reports a type that disagrees with the grouped property", () => {
+    const result = diffIntents(board(grouped({ type: "select" })), board(grouped({ type: "date" })))
+    expect(result.equal).toBe(false)
+    const rendered = result.differences.map((d) => `[${d.kind}] ${d.path}: ${d.message}`)
+    expect(rendered.some((line) => line.includes("groupBy.type"))).toBe(true)
+    expect(rendered.some((line) => line.includes('"select"') && line.includes('"date"'))).toBe(true)
+    // an omitted type is not "anything goes" — it derives to select, not date
+    expect(diffIntents(board(grouped()), board(grouped({ type: "date" }))).equal).toBe(false)
+  })
+
+  it("still reports a groupBy pointing at a different property", () => {
+    const result = diffIntents(board(grouped()), board({ property: "p-name" }))
+    expect(result.equal).toBe(false)
+    expect(result.differences.length).toBeGreaterThan(0)
+  })
+
+  it("leaves an unresolvable reference alone instead of guessing", () => {
+    // property not declared on the data source the view points at
+    const dangling = () => board({ property: "p-ghost" })
+    expect(diffIntents(dangling(), dangling()).equal).toBe(true)
+    expect(canonicalGroupBy(dangling())).not.toHaveProperty("type")
+
+    // view pointing at a data source this document does not declare
+    const elsewhere = () => board(grouped(), { dataSource: "ds-other" })
+    expect(diffIntents(elsewhere(), elsewhere()).equal).toBe(true)
+    expect(canonicalGroupBy(elsewhere())).not.toHaveProperty("type")
+
+    // ...and an unresolved omission is not silently equal to a stated type
+    expect(diffIntents(elsewhere(), board(grouped({ type: "select" }))).equal).toBe(false)
+  })
+
+  it("does not resolve across data sources", () => {
+    const twoSources = (dataSource: string): Intent[] => [
+      { type: "teamspace", resourceId: "ts", name: "T", accessLevel: "open" },
+      {
+        type: "database",
+        resourceId: "db",
+        name: "Tasks",
+        parent: { type: "resourceId", resourceId: "ts" },
+        dataSources: [
+          {
+            resourceId: "ds-a",
+            name: "A",
+            properties: [{ resourceId: "p-a", name: "Name", type: "title" }],
+          },
+          {
+            resourceId: "ds-b",
+            name: "B",
+            properties: [{ resourceId: "p-b", name: "Stage", type: "select" }],
+          },
+        ],
+      },
+      {
+        type: "view",
+        databaseResourceId: "db",
+        // groups by a property that lives on ds-b while targeting `dataSource`
+        view: {
+          resourceId: "v",
+          type: "board",
+          dataSourceResourceId: dataSource,
+          groupBy: { property: "p-b" },
+        },
+      },
+    ]
+    // resolvable through ds-b, so it fills
+    expect(canonicalGroupBy(twoSources("ds-b")).type).toBe("select")
+    // not resolvable through ds-a: left absent rather than borrowed from ds-b
+    expect(canonicalGroupBy(twoSources("ds-a"))).not.toHaveProperty("type")
+    expect(diffIntents(twoSources("ds-a"), twoSources("ds-a")).equal).toBe(true)
+    expect(diffIntents(twoSources("ds-a"), twoSources("ds-b")).equal).toBe(false)
+  })
+
+  it("fills a lifted inline view just like a separate one", () => {
+    const inline = (groupBy: unknown): Intent[] => {
+      const intents = board(groupBy)
+      const view = (intents[2] as any).view
+      ;(intents[1] as any).views = [view]
+      return [intents[0], intents[1]]
+    }
+    // inline + omitted vs separate + explicit: both spellings, both normalizations
+    expect(diffIntents(board(grouped({ type: "select" })), inline(grouped())).equal).toBe(true)
+    expect(diffIntents(inline(grouped()), inline(grouped({ type: "select" }))).equal).toBe(true)
+    // ...and a wrong explicit type inline is still caught
+    expect(diffIntents(board(grouped({ type: "select" })), inline(grouped({ type: "date" }))).equal).toBe(
+      false,
+    )
+    // works with view lifting turned off too
+    expect(
+      diffIntents(inline(grouped()), inline(grouped({ type: "select" })), {
+        normalizeInlineViews: false,
+      }).equal,
+    ).toBe(true)
+  })
+
+  it("leaves views without a groupBy alone", () => {
+    expect(diffIntents(workspace(), clone(workspace())).equal).toBe(true)
+    expect(canonicalize(workspace()).json).not.toContain("groupBy")
+  })
+
+  it("can be opted out of, to require the field verbatim", () => {
+    const strict = diffIntents(board(grouped({ type: "select" })), board(grouped()), {
+      normalizeGroupByType: false,
+    })
+    expect(strict.equal).toBe(false)
+    expect(strict.differences.some((d) => d.kind === "missing" && d.path.includes("groupBy.type"))).toBe(
+      true,
+    )
+    // the two flags are independent
+    expect(
+      diffIntents(board(grouped({ type: "select" })), board(grouped()), { normalizeInlineViews: false })
+        .equal,
+    ).toBe(true)
+  })
+
+  it("does not mutate the caller's intents", () => {
+    const input = board(grouped())
+    const before = JSON.stringify(input)
+    canonicalize(input)
+    expect(JSON.stringify(input)).toBe(before)
+  })
+})
+
 describe("intent parsing helpers", () => {
   it("parses a built intents.json", () => {
     const intents = parseIntents(JSON.stringify(templateProbe))
