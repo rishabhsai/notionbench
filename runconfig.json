@@ -139,5 +139,9 @@
         "cacheReadPerMTok": 0.5
       }
     }
-  ]
+  ],
+  "notion": {
+    "parentPageId": "3af6ab85753b808daa60d1dd1b0c40a0",
+    "apiBase": "https://api.notion.com"
+  }
 }
