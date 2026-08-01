@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "id": "build-workers-004-webhook-db-write",
+  "seed": 20260816,
+  "root": { "title": "NotionBench · build-workers-004", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "oncall",
+      "title": "On-call",
+      "icon": "🚨",
+      "blocks": [{ "type": "paragraph", "text": "Incident tracking, such as it is." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "incidents",
+      "title": "Incidents",
+      "parent": "oncall",
+      "dataSource": { "name": "Incidents" },
+      "properties": {
+        "Title": { "type": "title" },
+        "Incident ID": { "type": "rich_text" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Open", "color": "red" },
+            { "name": "Acknowledged", "color": "yellow" },
+            { "name": "Resolved", "color": "green" }
+          ]
+        },
+        "Notes": { "type": "rich_text" }
+      },
+      "rows": [
+        {
+          "key": "inc1041",
+          "properties": {
+            "Title": "Checkout latency spike",
+            "Incident ID": "INC-1041",
+            "Status": "Open",
+            "Notes": ""
+          }
+        },
+        {
+          "key": "inc1042",
+          "properties": {
+            "Title": "Search index stale",
+            "Incident ID": "INC-1042",
+            "Status": "Open",
+            "Notes": ""
+          }
+        },
+        {
+          "key": "inc1043",
+          "properties": {
+            "Title": "Webhook retries backing up",
+            "Incident ID": "INC-1043",
+            "Status": "Acknowledged",
+            "Notes": "Paging the platform rota."
+          }
+        }
+      ]
+    }
+  ]
+}

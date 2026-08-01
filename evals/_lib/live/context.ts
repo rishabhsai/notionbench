@@ -30,6 +30,16 @@ import { readWorkspacePointer } from "./provision.ts"
 export interface LiveContext {
   client: NotionClient
   apiBase: string
+  /**
+   * The bearer token, resolved.
+   *
+   * Most verifiers never touch it — `client` is already authenticated. The
+   * Workers tasks do: they have to hand `NOTION_API_TOKEN` and
+   * `NOTION_API_BASE_URL` to a child process so the worker's own
+   * `context.notion` points at this trial's fixture rather than at the real
+   * service.
+   */
+  token: string
   rootId: string
   idMap: Record<string, string>
   /** How each field was resolved — always echoed into diagnostics. */
@@ -102,6 +112,7 @@ export async function resolveLiveContext(opts: ResolveOptions): Promise<LiveCont
   return {
     client: new NotionClient({ auth: token, baseUrl: apiBase, ...opts.clientOptions }),
     apiBase,
+    token,
     rootId,
     idMap,
     source: { root: rootSource, token: tokenSource, idMap: idMapSource },
