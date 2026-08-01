@@ -43,6 +43,49 @@
  *
  * ## Normalization choices (documented on purpose)
  *
+ * - **Inline and separate views are the same thing** (disable with
+ *   `normalizeInlineViews: false`). Notion-as-Code offers two spellings for
+ *   attaching a view to a database: inline, `notion.database({views:[schema]})`,
+ *   which compiles into the database intent's `views?: ViewSchema[]`; and
+ *   separate, `db.addView(schema)`, which compiles into a standalone
+ *   `{type:"view", databaseResourceId, view}` intent. The SDK itself documents
+ *   them as one operation — the separate intent exists only "to allow streaming
+ *   output without needing to buffer views until the database is finalized" —
+ *   so grading must not care which one the author reached for.
+ *
+ *   Canonicalization therefore **lifts inline views out** (inline -> separate):
+ *   every `views` entry on a `database` intent becomes a synthetic
+ *   `{type:"view", databaseResourceId:<that database's resourceId>, view}`
+ *   intent appended to the flat array, and the now-redundant `views` key is
+ *   dropped (including when it was an empty array, which means the same thing
+ *   as its absence).
+ *
+ *   *Why this direction and not folding separate views back in.* (a) It is
+ *   total: a `view` intent may name a `databaseResourceId` that no database in
+ *   the document declares, and folding has nowhere to put such a view, whereas
+ *   lifting never fails. (b) It only ever *adds* to the reference graph —
+ *   `databaseResourceId` is an ordinary `*ResourceId` key, so the containment
+ *   edge an inline view relies on is re-expressed as a real reference edge that
+ *   colour refinement already knows how to follow; folding would instead delete
+ *   that edge from authored separate views. (c) The existing array-order policy
+ *   already covers the lifted paths (`$view.view.sorts`, `$view.view.columns`,
+ *   `$view.view.properties`), and the lifted intents land in the top-level
+ *   array, which is already sorted order-insensitively.
+ *
+ *   *Ordering.* Views of one database compare as an **unordered set**. This is
+ *   not a new relaxation: `$database.views` was already an unordered array
+ *   under the policy below, and separate `view` intents were already unordered
+ *   because the top-level intent array is. Making it anything else is not even
+ *   well defined across the two spellings — the separate form lets views be
+ *   interleaved with arbitrary other intents, so there is no position an inline
+ *   view could be said to occupy. Order *inside* a view (`sorts` precedence,
+ *   board `columns`, displayed `properties`) is untouched and still significant.
+ *
+ *   Normalization runs before symbol discovery, so synthetic view intents are
+ *   indistinguishable from authored ones everywhere downstream: their
+ *   `dataSourceResourceId`, `groupBy.property`, filter/sort `propertyId`s and
+ *   `defaultTemplate` are labelled, refined and rewritten exactly the same way,
+ *   and pinned ids keep working unchanged.
  * - **Object keys** are always sorted.
  * - **Sibling order is preserved only where it is semantic.** Ordered arrays:
  *   `sorts` (sort precedence), board `columns` (group order), view
@@ -104,6 +147,14 @@ export interface CanonicalizeOptions {
    * (`[["x"]]` / `"x"` / `5`, relation id vs array of ids). Default true.
    */
   normalizePropertyValues?: boolean
+  /**
+   * Treat a view declared inline on a `database` intent (`views[]`) and the
+   * same view attached through a standalone `view` intent (`addView`) as the
+   * same thing, by lifting inline views into synthetic `view` intents.
+   * Default true. Set to false only when a task deliberately asserts one
+   * spelling over the other.
+   */
+  normalizeInlineViews?: boolean
 }
 
 export interface CanonicalDocument {
@@ -231,7 +282,9 @@ export function isOrderedArray(path: string): boolean {
     if (path.endsWith(suffix)) return true
   }
   if (path.endsWith(".properties")) {
-    // view column display order (`$database.views[].properties`, `$view.view.properties`)
+    // View column display order. `$view.view.properties` is what inline views
+    // look like once `liftInlineViews` has run; `$database.views[].properties`
+    // only survives under `normalizeInlineViews: false`.
     if (path.includes(".views[].") || path.startsWith("$view.view.")) return true
   }
   return false
@@ -392,6 +445,52 @@ function compareStrings(a: string, b: string): number {
 
 function intentPath(intent: Intent): string {
   return `$${typeof intent.type === "string" ? intent.type : "unknown"}`
+}
+
+// ---------------------------------------------------------------------------
+// Spelling normalization: inline views -> standalone view intents
+// ---------------------------------------------------------------------------
+
+/**
+ * Rewrite `database.views[]` into standalone `{type:"view",
+ * databaseResourceId, view}` intents so that the two equivalent spellings of
+ * "attach this view to this database" converge. See the module docblock for
+ * why the normalization runs in this direction.
+ *
+ * Runs *before* symbol discovery, so the synthetic intents are ordinary
+ * intents to everything downstream — including `databaseResourceId`, which is
+ * picked up as a reference by the usual `*ResourceId` rule.
+ *
+ * Defensive: a `database` whose `views` is not an array, or that has no string
+ * `resourceId` to point the synthetic intent at, is passed through untouched
+ * rather than mangled (unknown shapes still participate in equality).
+ */
+function liftInlineViews(intents: Intent[]): Intent[] {
+  let lifted = false
+  const out: Intent[] = []
+  for (const intent of intents) {
+    const obj = intent as unknown as JsonObject
+    const views = obj["views"]
+    const databaseResourceId = obj["resourceId"]
+    if (
+      obj["type"] !== "database" ||
+      !Array.isArray(views) ||
+      typeof databaseResourceId !== "string"
+    ) {
+      out.push(intent)
+      continue
+    }
+    lifted = true
+    const rest: JsonObject = {}
+    for (const key of Object.keys(obj)) {
+      if (key !== "views") rest[key] = obj[key]
+    }
+    out.push(rest as unknown as Intent)
+    for (const view of views) {
+      out.push({ type: "view", databaseResourceId, view } as unknown as Intent)
+    }
+  }
+  return lifted ? out : intents
 }
 
 // ---------------------------------------------------------------------------
@@ -632,7 +731,8 @@ function assignLabels(
  * See the module docblock for the exact normalization rules.
  */
 export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): CanonicalDocument {
-  const list = assertIntents(intents)
+  const parsed = assertIntents(intents)
+  const list = (opts.normalizeInlineViews ?? true) ? liftInlineViews(parsed) : parsed
   const normalizeValues = opts.normalizePropertyValues ?? true
   const declared = collectDeclared(list)
   const occurrences = collectOccurrences(list, declared, normalizeValues)
