@@ -1,0 +1,7460 @@
+{
+ "schemaVersion": 1,
+ "run": "run-2026-07-29-v1",
+ "startedAt": "2026-07-29T06:00:00Z",
+ "generatedAt": "2026-07-31T09:47:12Z",
+ "mode": "live",
+ "totals": {
+  "cells": 798,
+  "done": 532,
+  "failed": 7
+ },
+ "configs": [
+  {
+   "id": "opencode-kimi-k3",
+   "label": "OpenCode × Kimi K3",
+   "harness": "OpenCode",
+   "model": "Kimi K3",
+   "status": "done",
+   "progress": {
+    "done": 114,
+    "total": 114
+   },
+   "tokens": {
+    "input": 15016731,
+    "output": 1942985
+   },
+   "apiEquivCostUsd": 13.87
+  },
+  {
+   "id": "claude-code-opus-5-high",
+   "label": "Claude Code × Opus 5 (high)",
+   "harness": "Claude Code",
+   "model": "Opus 5 (high)",
+   "status": "done",
+   "progress": {
+    "done": 114,
+    "total": 114
+   },
+   "tokens": {
+    "input": 14206043,
+    "output": 2407701
+   },
+   "apiEquivCostUsd": 393.67
+  },
+  {
+   "id": "codex-gpt56-sol-xhigh",
+   "label": "Codex × GPT-5.6 Sol (xhigh)",
+   "harness": "Codex",
+   "model": "GPT-5.6 Sol (xhigh)",
+   "status": "done",
+   "progress": {
+    "done": 114,
+    "total": 114
+   },
+   "tokens": {
+    "input": 15383287,
+    "output": 5540870
+   },
+   "apiEquivCostUsd": 74.64
+  },
+  {
+   "id": "claude-code-sonnet-5-high",
+   "label": "Claude Code × Sonnet 5 (high)",
+   "harness": "Claude Code",
+   "model": "Sonnet 5 (high)",
+   "status": "running",
+   "progress": {
+    "done": 61,
+    "total": 114
+   },
+   "currentTask": "workers/retry-storm",
+   "tokens": {
+    "input": 9043339,
+    "output": 1172089
+   },
+   "apiEquivCostUsd": 44.71,
+   "window": {
+    "used": 2950000,
+    "limit": 5000000,
+    "resetsAt": "2026-07-31T11:00:00Z"
+   }
+  },
+  {
+   "id": "codex-gpt56-luna-high",
+   "label": "Codex × GPT-5.6 Luna (high)",
+   "harness": "Codex",
+   "model": "GPT-5.6 Luna (high)",
+   "status": "pending",
+   "progress": {
+    "done": 0,
+    "total": 114
+   },
+   "tokens": {
+    "input": 0,
+    "output": 0
+   },
+   "apiEquivCostUsd": 0
+  },
+  {
+   "id": "claude-code-fable-5",
+   "label": "Claude Code × Fable 5",
+   "harness": "Claude Code",
+   "model": "Fable 5",
+   "status": "blocked",
+   "progress": {
+    "done": 42,
+    "total": 114
+   },
+   "tokens": {
+    "input": 6007194,
+    "output": 710674
+   },
+   "apiEquivCostUsd": 19.12
+  },
+  {
+   "id": "codex-gpt56-sol-medium",
+   "label": "Codex × GPT-5.6 Sol (medium)",
+   "harness": "Codex",
+   "model": "GPT-5.6 Sol (medium)",
+   "status": "cooldown",
+   "cooldownUntil": "2026-07-31T10:12:00Z",
+   "progress": {
+    "done": 87,
+    "total": 114
+   },
+   "tokens": {
+    "input": 12854547,
+    "output": 1009968
+   },
+   "apiEquivCostUsd": 26.17,
+   "window": {
+    "used": 5000000,
+    "limit": 5000000,
+    "resetsAt": "2026-07-31T10:12:00Z"
+   }
+  }
+ ],
+ "results": [
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.6,
+     "wallTimeS": 98,
+     "tokens": {
+      "input": 200014,
+      "output": 21289
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.6,
+     "wallTimeS": 385,
+     "tokens": {
+      "input": 216773,
+      "output": 17579
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.8,
+     "wallTimeS": 432,
+     "tokens": {
+      "input": 54555,
+      "output": 14433
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 770,
+     "tokens": {
+      "input": 168994,
+      "output": 15089
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 414,
+     "tokens": {
+      "input": 111304,
+      "output": 3037
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 174,
+     "tokens": {
+      "input": 121758,
+      "output": 8787
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 660,
+     "tokens": {
+      "input": 118232,
+      "output": 23128
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 496,
+     "tokens": {
+      "input": 185593,
+      "output": 27354
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 371,
+     "tokens": {
+      "input": 133056,
+      "output": 14291
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 403,
+     "tokens": {
+      "input": 97343,
+      "output": 12881
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 99,
+     "tokens": {
+      "input": 47014,
+      "output": 16711
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 313,
+     "tokens": {
+      "input": 108960,
+      "output": 20907
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 148,
+     "tokens": {
+      "input": 199634,
+      "output": 21595
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 994,
+     "tokens": {
+      "input": 198215,
+      "output": 22933
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 654,
+     "tokens": {
+      "input": 192621,
+      "output": 26800
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 683,
+     "tokens": {
+      "input": 189272,
+      "output": 7752
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 720,
+     "tokens": {
+      "input": 147226,
+      "output": 25481
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 714,
+     "tokens": {
+      "input": 89779,
+      "output": 24682
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 205,
+     "tokens": {
+      "input": 173807,
+      "output": 19718
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 460,
+     "tokens": {
+      "input": 94329,
+      "output": 18233
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 457,
+     "tokens": {
+      "input": 104596,
+      "output": 24296
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 433,
+     "tokens": {
+      "input": 159292,
+      "output": 16960
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 244,
+     "tokens": {
+      "input": 98544,
+      "output": 18693
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 575,
+     "tokens": {
+      "input": 83742,
+      "output": 11367
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 735,
+     "tokens": {
+      "input": 112137,
+      "output": 14103
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 134,
+     "tokens": {
+      "input": 98303,
+      "output": 5525
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 117,
+     "tokens": {
+      "input": 136446,
+      "output": 5059
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 553,
+     "tokens": {
+      "input": 153604,
+      "output": 18431
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 720,
+     "tokens": {
+      "input": 96533,
+      "output": 8165
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 470,
+     "tokens": {
+      "input": 57254,
+      "output": 22386
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 448,
+     "tokens": {
+      "input": 219070,
+      "output": 13399
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.17,
+     "wallTimeS": 838,
+     "tokens": {
+      "input": 88519,
+      "output": 26445
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 478,
+     "tokens": {
+      "input": 128628,
+      "output": 16346
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 267,
+     "tokens": {
+      "input": 78393,
+      "output": 21257
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 319,
+     "tokens": {
+      "input": 117376,
+      "output": 8703
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 172,
+     "tokens": {
+      "input": 212892,
+      "output": 26525
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 100,
+     "tokens": {
+      "input": 106968,
+      "output": 6572
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 537,
+     "tokens": {
+      "input": 66047,
+      "output": 15330
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 336,
+     "tokens": {
+      "input": 166162,
+      "output": 8603
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 691,
+     "tokens": {
+      "input": 76080,
+      "output": 20969
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 529,
+     "tokens": {
+      "input": 162569,
+      "output": 17710
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 426,
+     "tokens": {
+      "input": 49148,
+      "output": 13377
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/payload-diff",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 343,
+     "tokens": {
+      "input": 164884,
+      "output": 27491
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 734,
+     "tokens": {
+      "input": 73087,
+      "output": 15623
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 479,
+     "tokens": {
+      "input": 34369,
+      "output": 5996
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/retry-storm",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.29,
+     "wallTimeS": 441,
+     "tokens": {
+      "input": 153287,
+      "output": 33110
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 158,
+     "tokens": {
+      "input": 48180,
+      "output": 5529
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 728,
+     "tokens": {
+      "input": 147103,
+      "output": 8519
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/schema-drift",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 175,
+     "tokens": {
+      "input": 150769,
+      "output": 22327
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 657,
+     "tokens": {
+      "input": 30527,
+      "output": 24974
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 333,
+     "tokens": {
+      "input": 184022,
+      "output": 3160
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/secret-rotate",
+   "family": "workers",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 759,
+     "tokens": {
+      "input": 180899,
+      "output": 28289
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 227,
+     "tokens": {
+      "input": 237960,
+      "output": 29761
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 443,
+     "tokens": {
+      "input": 217367,
+      "output": 24291
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cron-monitor",
+   "family": "workers",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 646,
+     "tokens": {
+      "input": 133580,
+      "output": 27211
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 686,
+     "tokens": {
+      "input": 184255,
+      "output": 25014
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 583,
+     "tokens": {
+      "input": 180567,
+      "output": 25878
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/log-tail",
+   "family": "workers",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 437,
+     "tokens": {
+      "input": 204319,
+      "output": 14603
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 623,
+     "tokens": {
+      "input": 174508,
+      "output": 6279
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 419,
+     "tokens": {
+      "input": 85177,
+      "output": 24803
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/crm-model",
+   "family": "nac",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 706,
+     "tokens": {
+      "input": 124471,
+      "output": 26195
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 729,
+     "tokens": {
+      "input": 54847,
+      "output": 7237
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 380,
+     "tokens": {
+      "input": 82277,
+      "output": 12188
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/wiki-perms",
+   "family": "nac",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 672,
+     "tokens": {
+      "input": 122476,
+      "output": 5043
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 320,
+     "tokens": {
+      "input": 111004,
+      "output": 17653
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 503,
+     "tokens": {
+      "input": 208798,
+      "output": 3438
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/sprint-board",
+   "family": "nac",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 609,
+     "tokens": {
+      "input": 123868,
+      "output": 3977
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 446,
+     "tokens": {
+      "input": 82352,
+      "output": 15718
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 468,
+     "tokens": {
+      "input": 263618,
+      "output": 31155
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/drift-report",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 476,
+     "tokens": {
+      "input": 181424,
+      "output": 16151
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 477,
+     "tokens": {
+      "input": 66129,
+      "output": 15738
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 734,
+     "tokens": {
+      "input": 56843,
+      "output": 12890
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/intent-lint",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 387,
+     "tokens": {
+      "input": 150629,
+      "output": 14505
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 710,
+     "tokens": {
+      "input": 60567,
+      "output": 3978
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 699,
+     "tokens": {
+      "input": 80889,
+      "output": 6713
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/merge-divergence",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 254,
+     "tokens": {
+      "input": 162407,
+      "output": 9167
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 216,
+     "tokens": {
+      "input": 156507,
+      "output": 22535
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 161,
+     "tokens": {
+      "input": 151785,
+      "output": 12130
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/rollback-partial",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 400,
+     "tokens": {
+      "input": 137950,
+      "output": 9813
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 569,
+     "tokens": {
+      "input": 218037,
+      "output": 15293
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 297,
+     "tokens": {
+      "input": 103952,
+      "output": 14172
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/apply-ci",
+   "family": "nac",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 263,
+     "tokens": {
+      "input": 66265,
+      "output": 25257
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 425,
+     "tokens": {
+      "input": 169636,
+      "output": 12117
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 132,
+     "tokens": {
+      "input": 150908,
+      "output": 10487
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/env-promote",
+   "family": "nac",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 696,
+     "tokens": {
+      "input": 31836,
+      "output": 26834
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.13,
+     "wallTimeS": 439,
+     "tokens": {
+      "input": 181311,
+      "output": 21017
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.13,
+     "wallTimeS": 284,
+     "tokens": {
+      "input": 240911,
+      "output": 15424
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/seed-fixtures",
+   "family": "nac",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 190,
+     "tokens": {
+      "input": 208067,
+      "output": 14391
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 634,
+     "tokens": {
+      "input": 100236,
+      "output": 24320
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 385,
+     "tokens": {
+      "input": 177139,
+      "output": 28139
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/token-broker",
+   "family": "ops",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 115,
+     "tokens": {
+      "input": 110757,
+      "output": 17083
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.17,
+     "wallTimeS": 611,
+     "tokens": {
+      "input": 126995,
+      "output": 30927
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 455,
+     "tokens": {
+      "input": 155088,
+      "output": 17537
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/usage-ledger",
+   "family": "ops",
+   "stage": "build",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 237,
+     "tokens": {
+      "input": 138762,
+      "output": 21257
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 218,
+     "tokens": {
+      "input": 70051,
+      "output": 20028
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 530,
+     "tokens": {
+      "input": 151764,
+      "output": 7975
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/quota-forensics",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 577,
+     "tokens": {
+      "input": 187925,
+      "output": 23568
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 637,
+     "tokens": {
+      "input": 41994,
+      "output": 17791
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 765,
+     "tokens": {
+      "input": 31475,
+      "output": 14706
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/audit-trace",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 622,
+     "tokens": {
+      "input": 77892,
+      "output": 15824
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 539,
+     "tokens": {
+      "input": 144756,
+      "output": 22700
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 410,
+     "tokens": {
+      "input": 129013,
+      "output": 10750
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/key-leak",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.2,
+     "wallTimeS": 294,
+     "tokens": {
+      "input": 189230,
+      "output": 4847
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 1007,
+     "tokens": {
+      "input": 106486,
+      "output": 17970
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 556,
+     "tokens": {
+      "input": 70194,
+      "output": 23737
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/limit-breach",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 132,
+     "tokens": {
+      "input": 69506,
+      "output": 24668
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 589,
+     "tokens": {
+      "input": 175209,
+      "output": 26817
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 220,
+     "tokens": {
+      "input": 200971,
+      "output": 18851
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/alert-route",
+   "family": "ops",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.25,
+     "wallTimeS": 148,
+     "tokens": {
+      "input": 142333,
+      "output": 14612
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 581,
+     "tokens": {
+      "input": 187207,
+      "output": 7116
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 512,
+     "tokens": {
+      "input": 93192,
+      "output": 16580
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/safe-teardown",
+   "family": "ops",
+   "stage": "operate",
+   "config": "opencode-kimi-k3",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 644,
+     "tokens": {
+      "input": 101967,
+      "output": 18055
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 103,
+     "tokens": {
+      "input": 67082,
+      "output": 16297
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 371,
+     "tokens": {
+      "input": 214101,
+      "output": 23855
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 290,
+     "tokens": {
+      "input": 84129,
+      "output": 9699
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 647,
+     "tokens": {
+      "input": 165804,
+      "output": 18269
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 682,
+     "tokens": {
+      "input": 171972,
+      "output": 31529
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 653,
+     "tokens": {
+      "input": 135509,
+      "output": 25258
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 400,
+     "tokens": {
+      "input": 152216,
+      "output": 4627
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 369,
+     "tokens": {
+      "input": 97203,
+      "output": 32127
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 440,
+     "tokens": {
+      "input": 146871,
+      "output": 13353
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 270,
+     "tokens": {
+      "input": 178804,
+      "output": 5489
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 436,
+     "tokens": {
+      "input": 176597,
+      "output": 16610
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 162,
+     "tokens": {
+      "input": 149337,
+      "output": 20838
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 348,
+     "tokens": {
+      "input": 180994,
+      "output": 8928
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 455,
+     "tokens": {
+      "input": 132455,
+      "output": 26221
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.11,
+     "wallTimeS": 321,
+     "tokens": {
+      "input": 82653,
+      "output": 31619
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 185,
+     "tokens": {
+      "input": 138115,
+      "output": 12110
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 124,
+     "tokens": {
+      "input": 45780,
+      "output": 30625
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 147,
+     "tokens": {
+      "input": 128396,
+      "output": 30383
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 822,
+     "tokens": {
+      "input": 130922,
+      "output": 13266
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.38,
+     "wallTimeS": 1188,
+     "tokens": {
+      "input": 185096,
+      "output": 12914
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 795,
+     "tokens": {
+      "input": 52839,
+      "output": 32915
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 122,
+     "tokens": {
+      "input": 204807,
+      "output": 13518
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 702,
+     "tokens": {
+      "input": 63320,
+      "output": 28153
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 717,
+     "tokens": {
+      "input": 45041,
+      "output": 32432
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 211,
+     "tokens": {
+      "input": 203430,
+      "output": 28068
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 529,
+     "tokens": {
+      "input": 101652,
+      "output": 26938
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 719,
+     "tokens": {
+      "input": 78530,
+      "output": 8134
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 258,
+     "tokens": {
+      "input": 159202,
+      "output": 34140
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 226,
+     "tokens": {
+      "input": 62531,
+      "output": 8521
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 247,
+     "tokens": {
+      "input": 91468,
+      "output": 24423
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 541,
+     "tokens": {
+      "input": 58598,
+      "output": 15288
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 847,
+     "tokens": {
+      "input": 212383,
+      "output": 25960
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 724,
+     "tokens": {
+      "input": 35576,
+      "output": 29221
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 976,
+     "tokens": {
+      "input": 59157,
+      "output": 5545
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 586,
+     "tokens": {
+      "input": 143335,
+      "output": 18266
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 142,
+     "tokens": {
+      "input": 104133,
+      "output": 14671
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 844,
+     "tokens": {
+      "input": 125530,
+      "output": 14699
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 589,
+     "tokens": {
+      "input": 100954,
+      "output": 16183
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 332,
+     "tokens": {
+      "input": 124819,
+      "output": 41681
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 670,
+     "tokens": {
+      "input": 93482,
+      "output": 20916
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 115,
+     "tokens": {
+      "input": 164479,
+      "output": 34257
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 279,
+     "tokens": {
+      "input": 128036,
+      "output": 15146
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 224,
+     "tokens": {
+      "input": 39058,
+      "output": 8530
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.1,
+     "wallTimeS": 900,
+     "tokens": {
+      "input": 249402,
+      "output": 14209
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/payload-diff",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 241,
+     "tokens": {
+      "input": 59466,
+      "output": 8681
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 785,
+     "tokens": {
+      "input": 162286,
+      "output": 17334
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 566,
+     "tokens": {
+      "input": 165112,
+      "output": 11035
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/retry-storm",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 431,
+     "tokens": {
+      "input": 179626,
+      "output": 23843
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1182,
+     "tokens": {
+      "input": 50892,
+      "output": 17754
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 262,
+     "tokens": {
+      "input": 36371,
+      "output": 9562
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/schema-drift",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 880,
+     "tokens": {
+      "input": 132721,
+      "output": 13474
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 89,
+     "tokens": {
+      "input": 51654,
+      "output": 25611
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 635,
+     "tokens": {
+      "input": 36871,
+      "output": 6878
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/secret-rotate",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 249,
+     "tokens": {
+      "input": 106108,
+      "output": 30747
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 132,
+     "tokens": {
+      "input": 133774,
+      "output": 11142
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1210,
+     "tokens": {
+      "input": 262068,
+      "output": 28572
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cron-monitor",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 656,
+     "tokens": {
+      "input": 35174,
+      "output": 11600
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 405,
+     "tokens": {
+      "input": 77364,
+      "output": 25041
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 126,
+     "tokens": {
+      "input": 120806,
+      "output": 6050
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/log-tail",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.63,
+     "wallTimeS": 1230,
+     "tokens": {
+      "input": 206799,
+      "output": 26414
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.13,
+     "wallTimeS": 168,
+     "tokens": {
+      "input": 223928,
+      "output": 36380
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 604,
+     "tokens": {
+      "input": 68580,
+      "output": 19078
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/crm-model",
+   "family": "nac",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 579,
+     "tokens": {
+      "input": 167085,
+      "output": 18604
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 712,
+     "tokens": {
+      "input": 79664,
+      "output": 31480
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 380,
+     "tokens": {
+      "input": 170869,
+      "output": 6507
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/wiki-perms",
+   "family": "nac",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 583,
+     "tokens": {
+      "input": 86910,
+      "output": 30552
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 730,
+     "tokens": {
+      "input": 174846,
+      "output": 33169
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 858,
+     "tokens": {
+      "input": 181561,
+      "output": 13628
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/sprint-board",
+   "family": "nac",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 335,
+     "tokens": {
+      "input": 85745,
+      "output": 27944
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 769,
+     "tokens": {
+      "input": 203244,
+      "output": 20634
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 301,
+     "tokens": {
+      "input": 130380,
+      "output": 13067
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/drift-report",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 157,
+     "tokens": {
+      "input": 57996,
+      "output": 44411
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 289,
+     "tokens": {
+      "input": 263599,
+      "output": 19765
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 682,
+     "tokens": {
+      "input": 78985,
+      "output": 28722
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/intent-lint",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 180,
+     "tokens": {
+      "input": 104373,
+      "output": 12318
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 251,
+     "tokens": {
+      "input": 79851,
+      "output": 6428
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 525,
+     "tokens": {
+      "input": 56381,
+      "output": 14495
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/merge-divergence",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 450,
+     "tokens": {
+      "input": 200836,
+      "output": 26243
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 833,
+     "tokens": {
+      "input": 151508,
+      "output": 17343
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 478,
+     "tokens": {
+      "input": 211511,
+      "output": 18859
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/rollback-partial",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 491,
+     "tokens": {
+      "input": 182987,
+      "output": 25764
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 355,
+     "tokens": {
+      "input": 40655,
+      "output": 6482
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 271,
+     "tokens": {
+      "input": 49375,
+      "output": 33277
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/apply-ci",
+   "family": "nac",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 882,
+     "tokens": {
+      "input": 197980,
+      "output": 23880
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 708,
+     "tokens": {
+      "input": 81632,
+      "output": 5442
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 303,
+     "tokens": {
+      "input": 79474,
+      "output": 26237
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/env-promote",
+   "family": "nac",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 526,
+     "tokens": {
+      "input": 197640,
+      "output": 28325
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 885,
+     "tokens": {
+      "input": 207883,
+      "output": 32378
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 712,
+     "tokens": {
+      "input": 161555,
+      "output": 13194
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/seed-fixtures",
+   "family": "nac",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 275,
+     "tokens": {
+      "input": 126687,
+      "output": 28887
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 371,
+     "tokens": {
+      "input": 131069,
+      "output": 34681
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 87,
+     "tokens": {
+      "input": 176838,
+      "output": 21686
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/token-broker",
+   "family": "ops",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 1055,
+     "tokens": {
+      "input": 75865,
+      "output": 12376
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1046,
+     "tokens": {
+      "input": 230472,
+      "output": 29547
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 307,
+     "tokens": {
+      "input": 44114,
+      "output": 34448
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/usage-ledger",
+   "family": "ops",
+   "stage": "build",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 485,
+     "tokens": {
+      "input": 94239,
+      "output": 33704
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 396,
+     "tokens": {
+      "input": 36160,
+      "output": 24710
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 721,
+     "tokens": {
+      "input": 144732,
+      "output": 5873
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/quota-forensics",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 754,
+     "tokens": {
+      "input": 44700,
+      "output": 17061
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 150,
+     "tokens": {
+      "input": 144475,
+      "output": 28936
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 381,
+     "tokens": {
+      "input": 128650,
+      "output": 4490
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/audit-trace",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 316,
+     "tokens": {
+      "input": 68751,
+      "output": 26342
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 591,
+     "tokens": {
+      "input": 148939,
+      "output": 21118
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 839,
+     "tokens": {
+      "input": 95838,
+      "output": 30517
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/key-leak",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 582,
+     "tokens": {
+      "input": 153437,
+      "output": 22995
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 262,
+     "tokens": {
+      "input": 155730,
+      "output": 38224
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1223,
+     "tokens": {
+      "input": 199204,
+      "output": 10828
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/limit-breach",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 260,
+     "tokens": {
+      "input": 102344,
+      "output": 25562
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 733,
+     "tokens": {
+      "input": 148456,
+      "output": 17244
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 1085,
+     "tokens": {
+      "input": 89143,
+      "output": 45022
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/alert-route",
+   "family": "ops",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 736,
+     "tokens": {
+      "input": 92736,
+      "output": 10404
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.25,
+     "wallTimeS": 983,
+     "tokens": {
+      "input": 59693,
+      "output": 41100
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 859,
+     "tokens": {
+      "input": 62565,
+      "output": 27256
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/safe-teardown",
+   "family": "ops",
+   "stage": "operate",
+   "config": "claude-code-opus-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 578,
+     "tokens": {
+      "input": 145383,
+      "output": 6170
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 180,
+     "tokens": {
+      "input": 216076,
+      "output": 30754
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.44,
+     "wallTimeS": 337,
+     "tokens": {
+      "input": 111007,
+      "output": 13743
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 685,
+     "tokens": {
+      "input": 212006,
+      "output": 67453
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 623,
+     "tokens": {
+      "input": 246923,
+      "output": 28219
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 775,
+     "tokens": {
+      "input": 46881,
+      "output": 76290
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 199,
+     "tokens": {
+      "input": 92189,
+      "output": 57088
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 479,
+     "tokens": {
+      "input": 186270,
+      "output": 20506
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 858,
+     "tokens": {
+      "input": 43535,
+      "output": 44682
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 428,
+     "tokens": {
+      "input": 47487,
+      "output": 44905
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.5,
+     "wallTimeS": 2156,
+     "tokens": {
+      "input": 180545,
+      "output": 35434
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 382,
+     "tokens": {
+      "input": 83628,
+      "output": 74231
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 329,
+     "tokens": {
+      "input": 67211,
+      "output": 8218
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 397,
+     "tokens": {
+      "input": 98763,
+      "output": 94720
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1127,
+     "tokens": {
+      "input": 196037,
+      "output": 70739
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.11,
+     "wallTimeS": 1761,
+     "tokens": {
+      "input": 139401,
+      "output": 95391
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 586,
+     "tokens": {
+      "input": 129431,
+      "output": 73632
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1331,
+     "tokens": {
+      "input": 162948,
+      "output": 68213
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1882,
+     "tokens": {
+      "input": 34097,
+      "output": 34386
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.63,
+     "wallTimeS": 2309,
+     "tokens": {
+      "input": 62363,
+      "output": 37024
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1698,
+     "tokens": {
+      "input": 47976,
+      "output": 49644
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 902,
+     "tokens": {
+      "input": 247123,
+      "output": 51019
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1213,
+     "tokens": {
+      "input": 214430,
+      "output": 49608
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 225,
+     "tokens": {
+      "input": 103200,
+      "output": 28769
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 782,
+     "tokens": {
+      "input": 60196,
+      "output": 74940
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 589,
+     "tokens": {
+      "input": 209681,
+      "output": 66837
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 976,
+     "tokens": {
+      "input": 117129,
+      "output": 41035
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1186,
+     "tokens": {
+      "input": 180550,
+      "output": 33900
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1754,
+     "tokens": {
+      "input": 90454,
+      "output": 67269
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 597,
+     "tokens": {
+      "input": 235175,
+      "output": 45399
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 901,
+     "tokens": {
+      "input": 53045,
+      "output": 53090
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 2039,
+     "tokens": {
+      "input": 140581,
+      "output": 11217
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 432,
+     "tokens": {
+      "input": 113826,
+      "output": 50592
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 613,
+     "tokens": {
+      "input": 129674,
+      "output": 32097
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 159,
+     "tokens": {
+      "input": 180509,
+      "output": 31550
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1833,
+     "tokens": {
+      "input": 115102,
+      "output": 52377
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 655,
+     "tokens": {
+      "input": 200686,
+      "output": 48664
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1761,
+     "tokens": {
+      "input": 80906,
+      "output": 11802
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 299,
+     "tokens": {
+      "input": 174951,
+      "output": 35819
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 501,
+     "tokens": {
+      "input": 156810,
+      "output": 31188
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.6,
+     "wallTimeS": 825,
+     "tokens": {
+      "input": 51558,
+      "output": 86964
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 436,
+     "tokens": {
+      "input": 152357,
+      "output": 51862
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 429,
+     "tokens": {
+      "input": 187182,
+      "output": 27380
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1770,
+     "tokens": {
+      "input": 73158,
+      "output": 79038
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1337,
+     "tokens": {
+      "input": 106070,
+      "output": 30381
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/payload-diff",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 862,
+     "tokens": {
+      "input": 68566,
+      "output": 55564
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 787,
+     "tokens": {
+      "input": 77068,
+      "output": 40065
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 867,
+     "tokens": {
+      "input": 102662,
+      "output": 14511
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/retry-storm",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1743,
+     "tokens": {
+      "input": 121146,
+      "output": 59154
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1676,
+     "tokens": {
+      "input": 47941,
+      "output": 65208
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1316,
+     "tokens": {
+      "input": 180930,
+      "output": 57710
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/schema-drift",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 612,
+     "tokens": {
+      "input": 128986,
+      "output": 65357
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1567,
+     "tokens": {
+      "input": 164756,
+      "output": 38133
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.1,
+     "wallTimeS": 1415,
+     "tokens": {
+      "input": 208111,
+      "output": 69668
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/secret-rotate",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1256,
+     "tokens": {
+      "input": 45675,
+      "output": 65411
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 312,
+     "tokens": {
+      "input": 166044,
+      "output": 25833
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 2268,
+     "tokens": {
+      "input": 158516,
+      "output": 53761
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cron-monitor",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 835,
+     "tokens": {
+      "input": 173549,
+      "output": 43254
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1684,
+     "tokens": {
+      "input": 130234,
+      "output": 62213
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 2009,
+     "tokens": {
+      "input": 66548,
+      "output": 44126
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/log-tail",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.13,
+     "wallTimeS": 1709,
+     "tokens": {
+      "input": 169422,
+      "output": 93470
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 960,
+     "tokens": {
+      "input": 171812,
+      "output": 30663
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1862,
+     "tokens": {
+      "input": 173711,
+      "output": 12785
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/crm-model",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1891,
+     "tokens": {
+      "input": 164488,
+      "output": 45234
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1025,
+     "tokens": {
+      "input": 44949,
+      "output": 62841
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1406,
+     "tokens": {
+      "input": 56364,
+      "output": 42119
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/wiki-perms",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1830,
+     "tokens": {
+      "input": 106225,
+      "output": 38018
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1677,
+     "tokens": {
+      "input": 114333,
+      "output": 67337
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 138,
+     "tokens": {
+      "input": 129993,
+      "output": 12171
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/sprint-board",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1142,
+     "tokens": {
+      "input": 123792,
+      "output": 60522
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1960,
+     "tokens": {
+      "input": 72725,
+      "output": 47038
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 577,
+     "tokens": {
+      "input": 206904,
+      "output": 35037
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/drift-report",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.56,
+     "wallTimeS": 822,
+     "tokens": {
+      "input": 246187,
+      "output": 85552
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 159,
+     "tokens": {
+      "input": 139854,
+      "output": 30019
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1904,
+     "tokens": {
+      "input": 80277,
+      "output": 38218
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/intent-lint",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 150,
+     "tokens": {
+      "input": 152714,
+      "output": 61949
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1418,
+     "tokens": {
+      "input": 70444,
+      "output": 63574
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1282,
+     "tokens": {
+      "input": 136397,
+      "output": 63787
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/merge-divergence",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 120,
+     "tokens": {
+      "input": 72869,
+      "output": 13633
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.17,
+     "wallTimeS": 1264,
+     "tokens": {
+      "input": 135350,
+      "output": 90478
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1921,
+     "tokens": {
+      "input": 270513,
+      "output": 95286
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/rollback-partial",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 977,
+     "tokens": {
+      "input": 105363,
+      "output": 8903
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1331,
+     "tokens": {
+      "input": 172182,
+      "output": 72255
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1461,
+     "tokens": {
+      "input": 138592,
+      "output": 29464
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/apply-ci",
+   "family": "nac",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 836,
+     "tokens": {
+      "input": 128043,
+      "output": 32824
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1320,
+     "tokens": {
+      "input": 151776,
+      "output": 69461
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 133,
+     "tokens": {
+      "input": 190613,
+      "output": 34658
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/env-promote",
+   "family": "nac",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1258,
+     "tokens": {
+      "input": 197645,
+      "output": 68611
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1529,
+     "tokens": {
+      "input": 73627,
+      "output": 30146
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1687,
+     "tokens": {
+      "input": 203558,
+      "output": 38635
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/seed-fixtures",
+   "family": "nac",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1719,
+     "tokens": {
+      "input": 120724,
+      "output": 68698
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1473,
+     "tokens": {
+      "input": 45943,
+      "output": 37613
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1818,
+     "tokens": {
+      "input": 94844,
+      "output": 22059
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/token-broker",
+   "family": "ops",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1859,
+     "tokens": {
+      "input": 216813,
+      "output": 47439
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1161,
+     "tokens": {
+      "input": 73618,
+      "output": 14419
+     },
+     "toolErrors": 2
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1540,
+     "tokens": {
+      "input": 173506,
+      "output": 69950
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/usage-ledger",
+   "family": "ops",
+   "stage": "build",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1361,
+     "tokens": {
+      "input": 134520,
+      "output": 54273
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 736,
+     "tokens": {
+      "input": 167633,
+      "output": 63766
+     },
+     "toolErrors": 2
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1579,
+     "tokens": {
+      "input": 190761,
+      "output": 13974
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/quota-forensics",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1871,
+     "tokens": {
+      "input": 105503,
+      "output": 40024
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1079,
+     "tokens": {
+      "input": 126938,
+      "output": 24675
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 104,
+     "tokens": {
+      "input": 100947,
+      "output": 28145
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/audit-trace",
+   "family": "ops",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 449,
+     "tokens": {
+      "input": 262922,
+      "output": 53280
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 627,
+     "tokens": {
+      "input": 64341,
+      "output": 70734
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1346,
+     "tokens": {
+      "input": 106240,
+      "output": 26805
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/key-leak",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1012,
+     "tokens": {
+      "input": 196924,
+      "output": 10178
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.2,
+     "wallTimeS": 2061,
+     "tokens": {
+      "input": 206777,
+      "output": 47195
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1883,
+     "tokens": {
+      "input": 168869,
+      "output": 73060
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/limit-breach",
+   "family": "ops",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1312,
+     "tokens": {
+      "input": 85744,
+      "output": 50134
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1464,
+     "tokens": {
+      "input": 213191,
+      "output": 40004
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1715,
+     "tokens": {
+      "input": 197800,
+      "output": 16578
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "ops/alert-route",
+   "family": "ops",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.25,
+     "wallTimeS": 1518,
+     "tokens": {
+      "input": 63591,
+      "output": 51954
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 1025,
+     "tokens": {
+      "input": 207715,
+      "output": 64547
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 2245,
+     "tokens": {
+      "input": 114236,
+      "output": 78681
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "ops/safe-teardown",
+   "family": "ops",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-xhigh",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 907,
+     "tokens": {
+      "input": 119435,
+      "output": 37247
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1623,
+     "tokens": {
+      "input": 86763,
+      "output": 64821
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1646,
+     "tokens": {
+      "input": 243491,
+      "output": 62389
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 673,
+     "tokens": {
+      "input": 44680,
+      "output": 21208
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 790,
+     "tokens": {
+      "input": 184788,
+      "output": 17103
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1022,
+     "tokens": {
+      "input": 102104,
+      "output": 30987
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 1073,
+     "tokens": {
+      "input": 247075,
+      "output": 7010
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 791,
+     "tokens": {
+      "input": 37134,
+      "output": 26341
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 597,
+     "tokens": {
+      "input": 198838,
+      "output": 30883
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 728,
+     "tokens": {
+      "input": 59304,
+      "output": 16764
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 113,
+     "tokens": {
+      "input": 149701,
+      "output": 11119
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 720,
+     "tokens": {
+      "input": 59722,
+      "output": 18395
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 399,
+     "tokens": {
+      "input": 267302,
+      "output": 35959
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 1038,
+     "tokens": {
+      "input": 222348,
+      "output": 11449
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 519,
+     "tokens": {
+      "input": 36550,
+      "output": 21246
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 838,
+     "tokens": {
+      "input": 203772,
+      "output": 30226
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 490,
+     "tokens": {
+      "input": 122577,
+      "output": 28357
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 151,
+     "tokens": {
+      "input": 75817,
+      "output": 14750
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 459,
+     "tokens": {
+      "input": 68401,
+      "output": 8697
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 258,
+     "tokens": {
+      "input": 230152,
+      "output": 24822
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 170,
+     "tokens": {
+      "input": 96680,
+      "output": 3476
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 608,
+     "tokens": {
+      "input": 144702,
+      "output": 31822
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 660,
+     "tokens": {
+      "input": 206341,
+      "output": 19233
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 225,
+     "tokens": {
+      "input": 133991,
+      "output": 16536
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 155,
+     "tokens": {
+      "input": 136835,
+      "output": 17619
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 552,
+     "tokens": {
+      "input": 219567,
+      "output": 13836
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 213,
+     "tokens": {
+      "input": 180266,
+      "output": 4643
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.29,
+     "wallTimeS": 107,
+     "tokens": {
+      "input": 59821,
+      "output": 40519
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.29,
+     "wallTimeS": 608,
+     "tokens": {
+      "input": 221000,
+      "output": 40660
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 367,
+     "tokens": {
+      "input": 144759,
+      "output": 28900
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 662,
+     "tokens": {
+      "input": 178877,
+      "output": 12583
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 738,
+     "tokens": {
+      "input": 196730,
+      "output": 12150
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 567,
+     "tokens": {
+      "input": 216356,
+      "output": 17124
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 409,
+     "tokens": {
+      "input": 191567,
+      "output": 28873
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 528,
+     "tokens": {
+      "input": 91949,
+      "output": 5506
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 647,
+     "tokens": {
+      "input": 168343,
+      "output": 4333
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 96,
+     "tokens": {
+      "input": 108924,
+      "output": 11320
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 569,
+     "tokens": {
+      "input": 255818,
+      "output": 31686
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 421,
+     "tokens": {
+      "input": 182214,
+      "output": 10952
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 919,
+     "tokens": {
+      "input": 174950,
+      "output": 9910
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.3,
+     "wallTimeS": 383,
+     "tokens": {
+      "input": 143038,
+      "output": 19238
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.5,
+     "wallTimeS": 938,
+     "tokens": {
+      "input": 160872,
+      "output": 26047
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 392,
+     "tokens": {
+      "input": 146079,
+      "output": 27186
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 778,
+     "tokens": {
+      "input": 112666,
+      "output": 5645
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 148,
+     "tokens": {
+      "input": 36662,
+      "output": 14630
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/payload-diff",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 82,
+     "tokens": {
+      "input": 178516,
+      "output": 26001
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 458,
+     "tokens": {
+      "input": 129093,
+      "output": 30813
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 658,
+     "tokens": {
+      "input": 191303,
+      "output": 31783
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/retry-storm",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.29,
+     "wallTimeS": 717,
+     "tokens": {
+      "input": 144499,
+      "output": 9420
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 539,
+     "tokens": {
+      "input": 186363,
+      "output": 25658
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 675,
+     "tokens": {
+      "input": 160169,
+      "output": 17925
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/schema-drift",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 789,
+     "tokens": {
+      "input": 64860,
+      "output": 14609
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 316,
+     "tokens": {
+      "input": 181850,
+      "output": 31360
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 186,
+     "tokens": {
+      "input": 248805,
+      "output": 9948
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/secret-rotate",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 690,
+     "tokens": {
+      "input": 204464,
+      "output": 21784
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 296,
+     "tokens": {
+      "input": 60948,
+      "output": 3586
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 326,
+     "tokens": {
+      "input": 137502,
+      "output": 5183
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cron-monitor",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 252,
+     "tokens": {
+      "input": 173320,
+      "output": 8066
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 148,
+     "tokens": {
+      "input": 42862,
+      "output": 22260
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 572,
+     "tokens": {
+      "input": 102365,
+      "output": 14745
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/log-tail",
+   "family": "workers",
+   "stage": "operate",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 384,
+     "tokens": {
+      "input": 135069,
+      "output": 3311
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 140,
+     "tokens": {
+      "input": 212937,
+      "output": 31401
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 542,
+     "tokens": {
+      "input": 78771,
+      "output": 22798
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/crm-model",
+   "family": "nac",
+   "stage": "build",
+   "config": "claude-code-sonnet-5-high",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 679,
+     "tokens": {
+      "input": 190371,
+      "output": 31695
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 291,
+     "tokens": {
+      "input": 153625,
+      "output": 5159
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 247,
+     "tokens": {
+      "input": 111480,
+      "output": 14900
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 404,
+     "tokens": {
+      "input": 48819,
+      "output": 11258
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 731,
+     "tokens": {
+      "input": 84373,
+      "output": 20155
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 480,
+     "tokens": {
+      "input": 200326,
+      "output": 28977
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 295,
+     "tokens": {
+      "input": 125950,
+      "output": 17542
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.17,
+     "wallTimeS": 119,
+     "tokens": {
+      "input": 235787,
+      "output": 12151
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 391,
+     "tokens": {
+      "input": 176995,
+      "output": 11951
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 720,
+     "tokens": {
+      "input": 259909,
+      "output": 19924
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 508,
+     "tokens": {
+      "input": 107826,
+      "output": 21174
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 707,
+     "tokens": {
+      "input": 100943,
+      "output": 25211
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 920,
+     "tokens": {
+      "input": 175475,
+      "output": 21895
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 672,
+     "tokens": {
+      "input": 80237,
+      "output": 3202
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 339,
+     "tokens": {
+      "input": 65322,
+      "output": 8191
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 550,
+     "tokens": {
+      "input": 69111,
+      "output": 19435
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 930,
+     "tokens": {
+      "input": 38880,
+      "output": 26133
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 458,
+     "tokens": {
+      "input": 148602,
+      "output": 25662
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 83,
+     "tokens": {
+      "input": 121319,
+      "output": 3378
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 193,
+     "tokens": {
+      "input": 137812,
+      "output": 22695
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 713,
+     "tokens": {
+      "input": 230949,
+      "output": 32227
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 271,
+     "tokens": {
+      "input": 214281,
+      "output": 20588
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 600,
+     "tokens": {
+      "input": 168944,
+      "output": 4883
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 499,
+     "tokens": {
+      "input": 156443,
+      "output": 19588
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 562,
+     "tokens": {
+      "input": 132915,
+      "output": 14708
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 361,
+     "tokens": {
+      "input": 154500,
+      "output": 9385
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 415,
+     "tokens": {
+      "input": 143350,
+      "output": 20185
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 262,
+     "tokens": {
+      "input": 214898,
+      "output": 25051
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 175,
+     "tokens": {
+      "input": 43824,
+      "output": 22115
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 248,
+     "tokens": {
+      "input": 212460,
+      "output": 28775
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.25,
+     "wallTimeS": 738,
+     "tokens": {
+      "input": 246631,
+      "output": 20395
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 548,
+     "tokens": {
+      "input": 93715,
+      "output": 5094
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 201,
+     "tokens": {
+      "input": 40494,
+      "output": 3451
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 160,
+     "tokens": {
+      "input": 152620,
+      "output": 14639
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 421,
+     "tokens": {
+      "input": 186104,
+      "output": 18072
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 174,
+     "tokens": {
+      "input": 184498,
+      "output": 20685
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 283,
+     "tokens": {
+      "input": 215124,
+      "output": 24404
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 527,
+     "tokens": {
+      "input": 52942,
+      "output": 10836
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 418,
+     "tokens": {
+      "input": 123157,
+      "output": 3534
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 486,
+     "tokens": {
+      "input": 155245,
+      "output": 16911
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "claude-code-fable-5",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 350,
+     "tokens": {
+      "input": 82660,
+      "output": 15080
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 88,
+     "tokens": {
+      "input": 197356,
+      "output": 7584
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.5,
+     "wallTimeS": 661,
+     "tokens": {
+      "input": 161293,
+      "output": 33491
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/md-tree-import",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 447,
+     "tokens": {
+      "input": 170189,
+      "output": 9452
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 306,
+     "tokens": {
+      "input": 183070,
+      "output": 9464
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 83,
+     "tokens": {
+      "input": 137469,
+      "output": 5405
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/db-scaffold",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 521,
+     "tokens": {
+      "input": 212126,
+      "output": 16633
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 206,
+     "tokens": {
+      "input": 74285,
+      "output": 18973
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 372,
+     "tokens": {
+      "input": 232745,
+      "output": 21563
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/blocks-append",
+   "family": "cli",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 396,
+     "tokens": {
+      "input": 194972,
+      "output": 8763
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 646,
+     "tokens": {
+      "input": 106691,
+      "output": 9701
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 194,
+     "tokens": {
+      "input": 262303,
+      "output": 7011
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/query-plan-debug",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 354,
+     "tokens": {
+      "input": 210153,
+      "output": 18541
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 494,
+     "tokens": {
+      "input": 111217,
+      "output": 5424
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 307,
+     "tokens": {
+      "input": 214565,
+      "output": 2435
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/perm-audit",
+   "family": "cli",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 686,
+     "tokens": {
+      "input": 191647,
+      "output": 8222
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 237,
+     "tokens": {
+      "input": 130616,
+      "output": 2802
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.22,
+     "wallTimeS": 385,
+     "tokens": {
+      "input": 189383,
+      "output": 20197
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/sync-conflict",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 141,
+     "tokens": {
+      "input": 81054,
+      "output": 22909
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.5,
+     "wallTimeS": 272,
+     "tokens": {
+      "input": 122702,
+      "output": 13400
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 452,
+     "tokens": {
+      "input": 109031,
+      "output": 18442
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/rate-retry",
+   "family": "cli",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.86,
+     "wallTimeS": 107,
+     "tokens": {
+      "input": 143623,
+      "output": 6894
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 491,
+     "tokens": {
+      "input": 215745,
+      "output": 7041
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 355,
+     "tokens": {
+      "input": 197577,
+      "output": 20142
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/backup-cron",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 225,
+     "tokens": {
+      "input": 179099,
+      "output": 3091
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 527,
+     "tokens": {
+      "input": 101002,
+      "output": 11825
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.1,
+     "wallTimeS": 399,
+     "tokens": {
+      "input": 176208,
+      "output": 11681
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "cli/bulk-archive",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 392,
+     "tokens": {
+      "input": 100468,
+      "output": 22283
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 210,
+     "tokens": {
+      "input": 84552,
+      "output": 13661
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 565,
+     "tokens": {
+      "input": 131068,
+      "output": 11667
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "cli/export-filter",
+   "family": "cli",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 562,
+     "tokens": {
+      "input": 219270,
+      "output": 8823
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 678,
+     "tokens": {
+      "input": 256923,
+      "output": 6256
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 412,
+     "tokens": {
+      "input": 162803,
+      "output": 2425
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/form-intake",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.67,
+     "wallTimeS": 438,
+     "tokens": {
+      "input": 53609,
+      "output": 21213
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.33,
+     "wallTimeS": 134,
+     "tokens": {
+      "input": 134883,
+      "output": 5859
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.5,
+     "wallTimeS": 545,
+     "tokens": {
+      "input": 153161,
+      "output": 3757
+     },
+     "toolErrors": 2
+    }
+   ]
+  },
+  {
+   "taskId": "workers/slack-digest",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 565,
+     "tokens": {
+      "input": 101207,
+      "output": 13297
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 114,
+     "tokens": {
+      "input": 118940,
+      "output": 9550
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 85,
+     "tokens": {
+      "input": 193819,
+      "output": 7554
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/webhook-relay",
+   "family": "workers",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 421,
+     "tokens": {
+      "input": 158081,
+      "output": 9790
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 291,
+     "tokens": {
+      "input": 43706,
+      "output": 15715
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.2,
+     "wallTimeS": 208,
+     "tokens": {
+      "input": 121711,
+      "output": 3979
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cold-start-trace",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 678,
+     "tokens": {
+      "input": 149569,
+      "output": 8043
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 203,
+     "tokens": {
+      "input": 128064,
+      "output": 11897
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.1,
+     "wallTimeS": 453,
+     "tokens": {
+      "input": 170868,
+      "output": 12630
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/payload-diff",
+   "family": "workers",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 249,
+     "tokens": {
+      "input": 144459,
+      "output": 8057
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 158,
+     "tokens": {
+      "input": 98738,
+      "output": 3305
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.14,
+     "wallTimeS": 85,
+     "tokens": {
+      "input": 57212,
+      "output": 7781
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/retry-storm",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 539,
+     "tokens": {
+      "input": 111421,
+      "output": 10097
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 512,
+     "tokens": {
+      "input": 95756,
+      "output": 3129
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.43,
+     "wallTimeS": 128,
+     "tokens": {
+      "input": 167686,
+      "output": 12909
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/schema-drift",
+   "family": "workers",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 412,
+     "tokens": {
+      "input": 37494,
+      "output": 11370
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 301,
+     "tokens": {
+      "input": 100427,
+      "output": 12961
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 220,
+     "tokens": {
+      "input": 60387,
+      "output": 18966
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "workers/secret-rotate",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 458,
+     "tokens": {
+      "input": 38393,
+      "output": 19317
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.57,
+     "wallTimeS": 558,
+     "tokens": {
+      "input": 217945,
+      "output": 7507
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.29,
+     "wallTimeS": 696,
+     "tokens": {
+      "input": 269923,
+      "output": 3311
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/cron-monitor",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 538,
+     "tokens": {
+      "input": 192796,
+      "output": 12002
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.2,
+     "wallTimeS": 561,
+     "tokens": {
+      "input": 142982,
+      "output": 15722
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 120,
+     "tokens": {
+      "input": 113207,
+      "output": 9585
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "workers/log-tail",
+   "family": "workers",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 222,
+     "tokens": {
+      "input": 100550,
+      "output": 21922
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 762,
+     "tokens": {
+      "input": 116106,
+      "output": 19246
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 482,
+     "tokens": {
+      "input": 95551,
+      "output": 10999
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/crm-model",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 210,
+     "tokens": {
+      "input": 211794,
+      "output": 7819
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 154,
+     "tokens": {
+      "input": 69638,
+      "output": 16317
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 546,
+     "tokens": {
+      "input": 149104,
+      "output": 16936
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/wiki-perms",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 648,
+     "tokens": {
+      "input": 208893,
+      "output": 17373
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 516,
+     "tokens": {
+      "input": 212685,
+      "output": 9783
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 193,
+     "tokens": {
+      "input": 126204,
+      "output": 17987
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/sprint-board",
+   "family": "nac",
+   "stage": "build",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 287,
+     "tokens": {
+      "input": 269635,
+      "output": 16437
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 272,
+     "tokens": {
+      "input": 124901,
+      "output": 7654
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 240,
+     "tokens": {
+      "input": 114444,
+      "output": 11094
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/drift-report",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 248,
+     "tokens": {
+      "input": 210756,
+      "output": 3127
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 381,
+     "tokens": {
+      "input": 57632,
+      "output": 24615
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.11,
+     "wallTimeS": 552,
+     "tokens": {
+      "input": 177847,
+      "output": 16901
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/intent-lint",
+   "family": "nac",
+   "stage": "investigate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.6,
+     "wallTimeS": 138,
+     "tokens": {
+      "input": 194593,
+      "output": 7963
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 160,
+     "tokens": {
+      "input": 80571,
+      "output": 19693
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 435,
+     "tokens": {
+      "input": 192676,
+      "output": 5527
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/merge-divergence",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 248,
+     "tokens": {
+      "input": 215812,
+      "output": 6007
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 198,
+     "tokens": {
+      "input": 187516,
+      "output": 13326
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.17,
+     "wallTimeS": 351,
+     "tokens": {
+      "input": 154156,
+      "output": 17008
+     },
+     "toolErrors": 1
+    }
+   ]
+  },
+  {
+   "taskId": "nac/rollback-partial",
+   "family": "nac",
+   "stage": "resolve",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 631,
+     "tokens": {
+      "input": 130759,
+      "output": 18920
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 469,
+     "tokens": {
+      "input": 41322,
+      "output": 18369
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0.11,
+     "wallTimeS": 106,
+     "tokens": {
+      "input": 59606,
+      "output": 11501
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/apply-ci",
+   "family": "nac",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0.2,
+     "wallTimeS": 367,
+     "tokens": {
+      "input": 194787,
+      "output": 4138
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0.4,
+     "wallTimeS": 738,
+     "tokens": {
+      "input": 114188,
+      "output": 16838
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 496,
+     "tokens": {
+      "input": 269276,
+      "output": 12859
+     },
+     "toolErrors": 0
+    }
+   ]
+  },
+  {
+   "taskId": "nac/env-promote",
+   "family": "nac",
+   "stage": "operate",
+   "config": "codex-gpt56-sol-medium",
+   "trials": [
+    {
+     "trial": 1,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 302,
+     "tokens": {
+      "input": 129247,
+      "output": 7755
+     },
+     "toolErrors": 1
+    },
+    {
+     "trial": 2,
+     "solved": false,
+     "score": 0,
+     "wallTimeS": 415,
+     "tokens": {
+      "input": 247482,
+      "output": 3679
+     },
+     "toolErrors": 0
+    },
+    {
+     "trial": 3,
+     "solved": true,
+     "score": 1,
+     "wallTimeS": 314,
+     "tokens": {
+      "input": 117816,
+      "output": 3746
+     },
+     "toolErrors": 1
+    }
+   ]
+  }
+ ],
+ "failures": [
+  {
+   "at": "2026-07-31T09:41:55Z",
+   "taskId": "workers/retry-storm",
+   "config": "claude-code-sonnet-5-high",
+   "trial": 2,
+   "diagnostic": "exec-local: assertion failed — expected 3 delivery attempts with backoff [1s,4s,16s], observed [1s,1s,1s]; verifier exit 1"
+  },
+  {
+   "at": "2026-07-31T09:36:10Z",
+   "taskId": "nac/merge-divergence",
+   "config": "claude-code-fable-5",
+   "trial": 1,
+   "diagnostic": "runner: agent CLI exited 401 (integration token expired mid-trial); config moved to blocked — manual re-auth required"
+  },
+  {
+   "at": "2026-07-31T09:28:44Z",
+   "taskId": "ops/key-leak",
+   "config": "codex-gpt56-sol-medium",
+   "trial": 3,
+   "diagnostic": "live-state: leaked key still valid after remediation window; assert revoked==true failed"
+  },
+  {
+   "at": "2026-07-31T09:15:02Z",
+   "taskId": "cli/sync-conflict",
+   "config": "codex-gpt56-sol-medium",
+   "trial": 2,
+   "diagnostic": "intents: canonical diff — extra intent update_page(archived=true) not in oracle set"
+  },
+  {
+   "at": "2026-07-31T08:58:31Z",
+   "taskId": "workers/schema-drift",
+   "config": "claude-code-sonnet-5-high",
+   "trial": 1,
+   "diagnostic": "typecheck: TS2339 property 'select' does not exist on type 'PartialDatabaseObjectResponse' (workers/handler.ts:47)"
+  },
+  {
+   "at": "2026-07-31T08:44:19Z",
+   "taskId": "ops/quota-forensics",
+   "config": "claude-code-fable-5",
+   "trial": 3,
+   "diagnostic": "exec-local: timeout after 900s — agent loop stuck retrying ntn workers logs --follow"
+  }
+ ]
+}
