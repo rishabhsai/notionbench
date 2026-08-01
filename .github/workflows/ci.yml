@@ -70,3 +70,14 @@ jobs:
         env:
           NOTIONBENCH_QC_DIR: ${{ runner.temp }}/notionbench-qc
         run: pnpm --filter @notionbench/evals run qc
+
+      # `runtime: live` tasks are skipped by the gate above — their starting
+      # state is a Notion workspace, not a directory — so without this step they
+      # would be the one part of the suite nothing checks. Same contract
+      # (oracle=1, wrong=0, null=0) against `evals/_lib/live/fake-notion.ts`: an
+      # in-process server on port 0 that provisioning, the oracle scripts and the
+      # verifiers all talk to. It also asserts teardown really trashed the
+      # fixture root. Still no network, no token, no wall clock — the whole gate
+      # is a couple of seconds.
+      - name: Live task QC gate (fake Notion, no network)
+        run: pnpm --filter @notionbench/evals run qc:live

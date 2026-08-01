@@ -12,6 +12,22 @@
   "maxAttempts": 3,
   "resultsRoot": "results",
   "evalsRoot": "evals",
+  "_notion_comment": [
+    "Live fixtures. Only consulted when `runtime: live` tasks are in the grid; an",
+    "offline run ignores this block entirely. Shape:",
+    "  \"notion\": { \"parentPageId\": \"<page id>\", \"apiBase\": \"https://api.notion.com\" }",
+    "parentPageId is the page you shared with your Notion integration once. Every",
+    "per-trial fixture root is created under it and archived after that trial is",
+    "scored. Never use the workspace root: a workspace-level page cannot be archived",
+    "through the API, so a run would leak one un-deletable page per trial.",
+    "NOTION_PARENT_PAGE_ID and NOTION_API_BASE in the environment override these.",
+    "The integration TOKEN is deliberately absent and will stay absent — this file",
+    "gets checked in and pasted into issues. Set NOTION_API_TOKEN, or",
+    "NOTIONBENCH_NOTION_TOKENS=tok1,tok2 for a pool sized to --concurrency.",
+    "Left empty here so a copied config fails with `notionbench run`'s explicit",
+    "'set NOTION_PARENT_PAGE_ID' message rather than a 404 from a placeholder id."
+  ],
+  "notion": {},
   "rateWindow": {
     "cooldownMs": 1800000,
     "patterns": [

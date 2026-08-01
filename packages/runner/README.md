@@ -26,12 +26,96 @@ notionbench tasks --tasks '*nac*'
    then **checkpoint** the cell as done. A crash in between costs a re-run of one
    cell, never a cell that claims a verdict nothing recorded.
 
+For a `runtime: live` task that ships a `fixture/spec.json` the sequence grows a
+step on each end — **provision → spawn → score → checkpoint → teardown** — see
+[Live tasks](#live-tasks-a-real-notion-workspace) below.
+
 `rate_limited` and `spawn_error` trials are *not* scored — the agent never got its
 turn, and verifying the untouched fixture would write a spurious 0. `timeout` and
 `failed` trials **are** scored: the agent had its wall clock, and whether the
 workspace solves the task is the verifier's call, not the runner's. A verifier that
 crashes or hangs yields `scored: false` — an absence of measurement, kept distinct
 from a zero all the way into the report.
+
+## Live tasks: a real Notion workspace
+
+Most tasks are offline — their starting state is a directory. A `runtime: live`
+task's starting state is a *Notion workspace*, so its trials are bracketed by two
+extra steps:
+
+```
+provision  create fixture/spec.json's pages, databases and rows under a fresh
+           per-trial root page; drop notionbench.json (the root id, nothing more)
+           into the trial workspace so the agent can find its sandbox
+  spawn    …
+  score    EVAL.ts receives ctx {apiBase, rootId, idMap, token}
+teardown   archive the root page — its whole subtree goes with it
+```
+
+The provisioning itself is `evals/_lib/live/provision.ts`; the runner only calls
+it. `src/live.ts` locates that library (following `--evals`, overridable with
+`NOTIONBENCH_LIVE_LIB`) and imports it lazily — an all-offline run never loads it.
+
+### Setup
+
+```bash
+export NOTION_API_TOKEN=ntn_…                        # your integration token
+export NOTION_PARENT_PAGE_ID=<page id>               # a page shared with it
+notionbench run --tasks 'build-cli-*' --dry-run      # see what it would create
+```
+
+| | where | notes |
+|---|---|---|
+| token | `NOTION_API_TOKEN`, or `NOTIONBENCH_NOTION_TOKENS=a,b` for a pool | **env only.** Never in runconfig.json; one token is leased per live trial and held for its whole duration |
+| parent page | `NOTION_PARENT_PAGE_ID`, or `"notion": {"parentPageId": …}` | env wins |
+| API base | `NOTION_API_BASE`, or `"notion": {"apiBase": …}` | env wins; defaults to `https://api.notion.com`. A configured value is also exported into the agent's child env, since a config file is not inherited the way the environment is |
+
+**Fixture roots are never created at the workspace level.** A workspace-level
+page cannot be archived through the public API, so a run that created one would
+leak an un-deletable page per trial. Everything hangs off the shared parent page,
+which is why one is mandatory.
+
+### Failing fast
+
+If live tasks are in the grid and the token or the parent page is missing,
+`notionbench run` **refuses to start** — before a run directory exists — and says
+which is missing and how to set it. Discovering that at cell 300 of a multi-day
+grid is the expensive way to learn it. `--dry-run` prints the same diagnosis under
+a `live fixtures` section instead of failing, along with how many fixtures the
+grid would create, under which page, and against which API base.
+
+### Teardown, orphans and `--no-teardown`
+
+Teardown runs after the verdict is already durable and is **never fatal**: losing
+a multi-day run because a cleanup call returned 500 would be absurd. A failed
+teardown — or `--no-teardown`, which keeps fixtures for debugging — appends an
+ORPHAN line to `results/<runId>/run.log`:
+
+```
+2026-07-31T…Z  ORPHAN live fixture retained  <runId> <cell>  root=<page id>  reason=…
+               reap: PATCH https://api.notion.com/v1/pages/<id> {"in_trash":true} (or open … and delete it)
+```
+
+That line is what an orphan reaper (or a human) needs: `grep ORPHAN
+results/<runId>/run.log`. The run also prints a count at the end. Successful
+provisions and teardowns are logged to the same file, so `run.log` is a complete
+account of what the run did to the workspace.
+
+### Verifiers
+
+A live `EVAL.ts` resolves its workspace through `resolveLiveContext`
+(`evals/_lib/live/context.ts`): ctx first, then `NOTION_API_BASE` /
+`NOTION_API_TOKEN` / `NOTIONBENCH_ROOT_ID` / `NOTIONBENCH_ID_MAP`, then the trial
+workspace's `notionbench.json`. The runner passes ctx, which is the only channel
+that carries the **id map** — the fallbacks can recover the root page and nothing
+else. A verifier that only needs the root still grades correctly if ctx is ever
+missing, which is the difference between "one cell is unscored" and "the run is
+silently zeroed".
+
+Live tasks are gated in CI by `pnpm --filter @notionbench/evals run qc:live`,
+which provisions each spec into an **in-process fake Notion**
+(`evals/_lib/live/fake-notion.ts`, port 0) and asserts oracle=1 / wrong=0 /
+null=0 plus that teardown really trashed the root. No network, no token.
 
 ## Reporting
 
@@ -207,6 +291,22 @@ Copy `runconfig.example.json` to `runconfig.json` at the repo root. The built-in
 roster lives in `src/config.ts`; `tera` and `luna` are present but **disabled**,
 with TODOs, because their headless invocation is unverified and no adapter is
 registered — scheduling them throws rather than silently reporting null usage.
+
+The optional `notion` block configures live fixtures:
+
+```json
+{
+  "notion": {
+    "parentPageId": "1f0e…",
+    "apiBase": "https://api.notion.com"
+  }
+}
+```
+
+Both fields are overridden by `NOTION_PARENT_PAGE_ID` / `NOTION_API_BASE`, both
+are validated at load (a bad `apiBase` is a config error, not a run-time 404), and
+a `token` key is **rejected** — runconfig.json is checked in, so the integration
+token stays in the environment. See [Live tasks](#live-tasks-a-real-notion-workspace).
 
 ## Testing
 

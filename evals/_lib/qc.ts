@@ -18,6 +18,11 @@
  *
  * Dependencies are installed once per task into a warm cache and symlinked into
  * each trial, so the three variants of a task share one `npm install`.
+ *
+ * `runtime: live` tasks are skipped here and gated by `_lib/live/qc-live.ts`
+ * (`pnpm --filter @notionbench/evals run qc:live`) instead: their state lives in
+ * a Notion workspace rather than a directory, so the same three-variant contract
+ * needs a provisioned fixture and an API to inspect. Both gates run in CI.
  */
 import { promises as fs } from "node:fs"
 import * as os from "node:os"
@@ -71,6 +76,24 @@ async function findTasks(): Promise<string[]> {
  */
 async function isQcable(taskDir: string): Promise<boolean> {
   return exists(path.join(taskDir, "solution"))
+}
+
+/**
+ * A `runtime: live` task also has no `solution/` — its oracle is `live/*.mjs`
+ * and its starting state is a Notion workspace, not a directory — so this gate
+ * skips it too. Saying "still being authored" about a finished, gated task
+ * would be a lie that hides a real gate, hence the separate message: live tasks
+ * are covered by `qc:live` (`_lib/live/qc-live.ts`), which runs the identical
+ * oracle=1 / wrong=0 / null=0 contract against an in-process fake Notion.
+ */
+async function isLiveTask(taskDir: string): Promise<boolean> {
+  if (await exists(path.join(taskDir, "fixture", "spec.json"))) return true
+  try {
+    const prompt = await fs.readFile(path.join(taskDir, "PROMPT.md"), "utf8")
+    return /^runtime:\s*live\s*$/m.test(prompt.split(/^---\s*$/m)[1] ?? "")
+  } catch {
+    return false
+  }
 }
 
 const qcRoot = process.env.NOTIONBENCH_QC_DIR ?? path.join(os.tmpdir(), "notionbench-qc")
@@ -171,11 +194,21 @@ async function main(): Promise<void> {
 
   const checks: Check[] = []
   const skipped: string[] = []
+  /** Live tasks: skipped here, but gated — reported separately from "unfinished". */
+  const live: string[] = []
   for (const taskDir of tasks) {
     console.log(`\n── ${path.basename(taskDir)}`)
     if (!(await isQcable(taskDir))) {
-      skipped.push(path.basename(taskDir))
-      console.log("   SKIP  no solution/ — task is still being authored")
+      if (await isLiveTask(taskDir)) {
+        live.push(path.basename(taskDir))
+        console.log(
+          "   SKIP  runtime: live — graded against a real workspace by" +
+            " `pnpm --filter @notionbench/evals run qc:live`",
+        )
+      } else {
+        skipped.push(path.basename(taskDir))
+        console.log("   SKIP  no solution/ — task is still being authored")
+      }
       continue
     }
     for (const variant of args.variants) {
@@ -204,6 +237,7 @@ async function main(): Promise<void> {
   console.log(
     `\n${checks.length - failed.length}/${checks.length} checks green` +
       (skipped.length > 0 ? `, ${skipped.length} task(s) skipped: ${skipped.join(", ")}` : "") +
+      (live.length > 0 ? `, ${live.length} live task(s) deferred to qc:live: ${live.join(", ")}` : "") +
       (args.keep ? ` (trials kept under ${qcRoot})` : ""),
   )
   if (failed.length > 0) {
@@ -214,7 +248,11 @@ async function main(): Promise<void> {
   // A gate that passes because it checked nothing is worse than no gate: fail
   // loudly if a selection matched no runnable task.
   if (checks.length === 0) {
-    console.log("  no QC-able task ran — refusing to report a green gate")
+    console.log(
+      live.length > 0 && skipped.length === 0
+        ? "  every selected task is live — run `pnpm --filter @notionbench/evals run qc:live` instead"
+        : "  no QC-able task ran — refusing to report a green gate",
+    )
     process.exitCode = 1
   }
 }
