@@ -17,10 +17,12 @@
  * cell appends a second row. `dedupeByCell` picks the last row per cell when
  * that matters, which keeps replay honest (the history stays on disk).
  */
-import { appendFile, mkdir, open, readFile } from "node:fs/promises"
+import { appendFile, mkdir, open, readFile, rename, writeFile } from "node:fs/promises"
 import * as path from "node:path"
 
 export const RESULTS_FILENAME = "results.jsonl"
+/** Rows retired by `supersedeResults`. Append-only; never read by the report. */
+export const SUPERSEDED_FILENAME = "results.superseded.jsonl"
 export const TRIAL_RECORD_VERSION = 1
 
 /** Whether Notion's own AGENTS.md / skills docs were present in the workspace. */
@@ -182,6 +184,80 @@ function validate(value: unknown): string | undefined {
     return `score out of range: ${JSON.stringify(r.score)}`
   }
   return undefined
+}
+
+export function supersededPath(runDir: string): string {
+  return path.join(runDir, SUPERSEDED_FILENAME)
+}
+
+export interface SupersedeOutcome {
+  /** Rows moved out of results.jsonl. */
+  moved: number
+  /** Rows left in place. */
+  kept: number
+  /** Where the moved rows went. */
+  archivePath: string
+}
+
+/**
+ * Retire rows from `results.jsonl` into `results.superseded.jsonl`.
+ *
+ * This is the one operation that rewrites the append-only file, and it exists
+ * for exactly one reason: a task was found to be *invalid* — a wrong verifier, a
+ * broken fixture — so its verdicts do not measure what they claim to, and the
+ * task is about to be re-run. Leaving the old rows behind would mean the report
+ * silently averaged verdicts produced by two different verifiers under one task
+ * id; `dedupeByCell` only saves you when every retired cell is actually re-run,
+ * and a re-run that is interrupted (which, on a multi-day grid, is the normal
+ * case) would leave a mixture.
+ *
+ * Nothing is deleted. The retired rows are appended verbatim to
+ * `results.superseded.jsonl`, which the report never reads, so the history stays
+ * on disk and the decision stays auditable. Lines that could not be parsed are
+ * always *kept* — a torn final line is not something to throw away on a
+ * predicate it could not be tested against.
+ *
+ * The rewrite is temp-then-rename, so a crash mid-operation leaves the original
+ * file intact.
+ */
+export async function supersedeResults(
+  runDir: string,
+  predicate: (record: TrialRecord) => boolean,
+): Promise<SupersedeOutcome> {
+  const source = resultsPath(runDir)
+  const archivePath = supersededPath(runDir)
+  let raw: string
+  try {
+    raw = await readFile(source, "utf8")
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return { moved: 0, kept: 0, archivePath }
+    throw err
+  }
+
+  const kept: string[] = []
+  const moved: string[] = []
+  for (const line of raw.split("\n")) {
+    const text = line.trim()
+    if (text.length === 0) continue
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text)
+    } catch {
+      kept.push(text)
+      continue
+    }
+    if (validate(parsed) === undefined && predicate(parsed as TrialRecord)) moved.push(text)
+    else kept.push(text)
+  }
+
+  if (moved.length === 0) return { moved: 0, kept: kept.length, archivePath }
+
+  await mkdir(runDir, { recursive: true })
+  await appendFile(archivePath, `${moved.join("\n")}\n`, "utf8")
+  const tmp = `${source}.tmp-${process.pid}-${Date.now()}`
+  await writeFile(tmp, kept.length > 0 ? `${kept.join("\n")}\n` : "", "utf8")
+  await rename(tmp, source)
+  return { moved: moved.length, kept: kept.length, archivePath }
 }
 
 /**

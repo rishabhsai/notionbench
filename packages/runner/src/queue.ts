@@ -129,6 +129,22 @@ export interface SchedulerOptions {
    * `notionbench serve` can report `cooldown` / `blocked`.
    */
   onRateWindowChange?: (state: RateWindowState) => void;
+  /**
+   * Execution order, as a comparable number per cell (see order.ts).
+   *
+   * When supplied, the pending queue is kept sorted by rank: `enqueue` inserts
+   * in rank order, and a cell that is requeued — a retry, or a cell abandoned to
+   * a rate window — goes back to *its own place in the order* rather than to the
+   * front or the back. That is what makes a task-block a soft barrier: the
+   * straggler's cell keeps the low rank of the block it belongs to, so it is the
+   * first thing its config picks up when the window reopens, while every other
+   * config walked on without it.
+   *
+   * Omitted (the historical behaviour, and what every scheduler test that does
+   * not name it exercises): insertion order, retries to the back, rate-limited
+   * cells to the front.
+   */
+  rank?: (cell: CellCoords) => number;
 }
 
 export interface SchedulerEvent {
@@ -143,6 +159,8 @@ interface CellRecord extends QueueCell {
   state: 'pending' | 'running' | 'settled';
   settledAs?: 'done' | 'failed';
   rateLimitedAttempts: number;
+  /** Position in the execution order. Undefined when no ranker was supplied. */
+  rank?: number;
 }
 
 export class Scheduler {
@@ -160,6 +178,7 @@ export class Scheduler {
   private readonly blocked = new Set<string>();
   private readonly listeners: Array<(e: SchedulerEvent) => void> = [];
   private readonly onRateWindowChange?: (state: RateWindowState) => void;
+  private readonly rank?: (cell: CellCoords) => number;
 
   constructor(opts: SchedulerOptions = {}) {
     this.concurrency = Math.max(1, opts.concurrency ?? 2);
@@ -167,6 +186,7 @@ export class Scheduler {
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? 3);
     this.maxRateLimitedAttempts = Math.max(1, opts.maxRateLimitedAttempts ?? DEFAULT_MAX_RATE_LIMITED_ATTEMPTS);
     this.onRateWindowChange = opts.onRateWindowChange;
+    this.rank = opts.rank;
   }
 
   /** The rate-window facts an out-of-process reader needs. */
@@ -205,9 +225,37 @@ export class Scheduler {
         attempts: c.attempts ?? 0,
         rateLimitedAttempts: 0,
         state: 'pending',
+        rank: this.rank?.(c),
       });
-      this.pendingKeys.push(key);
+      this.enqueuePending(key, 'back');
     }
+  }
+
+  /**
+   * Put a pending key into the queue.
+   *
+   * With a ranker the queue is *sorted by rank* and `hint` is ignored — a cell
+   * always occupies its place in the declared execution order, whether it is
+   * arriving for the first time, being retried, or coming back from a rate
+   * window. Without one, the historical positions are kept: new work and retries
+   * to the back, rate-limited cells to the front.
+   */
+  private enqueuePending(key: string, hint: 'front' | 'back'): void {
+    const rec = this.records.get(key)!;
+    if (rec.rank === undefined) {
+      if (hint === 'front') this.pendingKeys.unshift(key);
+      else this.pendingKeys.push(key);
+      return;
+    }
+    const rank = rec.rank;
+    let lo = 0;
+    let hi = this.pendingKeys.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if ((this.records.get(this.pendingKeys[mid]!)!.rank ?? 0) <= rank) lo = mid + 1;
+      else hi = mid;
+    }
+    this.pendingKeys.splice(lo, 0, key);
   }
 
   /** Pause a config directly (e.g. an out-of-band 429 seen by a fixture provisioner). */
@@ -300,11 +348,14 @@ export class Scheduler {
         this.publishRateWindow(now);
         return;
       }
-      // Not the model's fault: refund the attempt, requeue at the FRONT of the
-      // queue so this cell is retried first once the window reopens, and pause the
-      // whole config so its remaining cells don't burn the window down further.
+      // Not the model's fault: refund the attempt, requeue so this cell is
+      // retried first once the window reopens — at the FRONT without a ranker, at
+      // its own place in the execution order with one (which is ahead of
+      // everything else that config has left, since it belongs to the earliest
+      // block that config has not finished) — and pause the whole config so its
+      // remaining cells don't burn the window down further.
       rec.state = 'pending';
-      this.pendingKeys.unshift(key);
+      this.enqueuePending(key, 'front');
       const until = now + (outcome.cooldownMs ?? this.cooldownMs);
       this.pauseConfig(rec.configId, until, now);
       this.emit({ type: 'rate-limited', cell: toCell(rec), detail: outcome.detail, untilMs: until });
@@ -321,8 +372,11 @@ export class Scheduler {
     rec.state = 'pending';
     // The cell actually got to run, so the rate-limit streak is broken.
     rec.rateLimitedAttempts = 0;
-    // Back of the queue: give the rest of the grid a turn before retrying.
-    this.pendingKeys.push(key);
+    // Back of the queue: give the rest of the grid a turn before retrying. With a
+    // ranker, "the rest of the grid" is already ahead of it in rank order, so the
+    // cell simply keeps its place — a retry must not push a task's first-trial
+    // evidence behind the whole of trial 3.
+    this.enqueuePending(key, 'back');
     this.emit({ type: 'retry', cell: toCell(rec), detail: outcome.detail });
   }
 

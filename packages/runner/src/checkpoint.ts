@@ -228,6 +228,48 @@ export class Checkpoint {
     return removed;
   }
 
+  /**
+   * Put cells back to `pending` as though they had never run.
+   *
+   * The invalidation half of `--redo <taskId>`: a task whose verifier was wrong
+   * has verdicts that do not measure what they claim to, so its cells are not
+   * "done" in any sense worth keeping. Attempts are reset (the previous attempts
+   * were spent against a broken task, and charging them would let a re-run
+   * exhaust its budget before it started) and the mirrored verdict is cleared,
+   * so `notionbench status` cannot keep reporting a score that has been retired
+   * from results.jsonl.
+   *
+   * Returns the keys actually reset. `results.jsonl` is handled separately by
+   * `supersedeResults` — this touches only the progress file.
+   */
+  async resetCells(keys: string[], reason: string): Promise<string[]> {
+    const reset: string[] = [];
+    for (const key of keys) {
+      const cell = this.state.cells[key];
+      if (!cell) continue;
+      cell.status = 'pending';
+      cell.attempts = 0;
+      cell.rateLimitedAttempts = 0;
+      cell.lastTrialStatus = undefined;
+      cell.lastError = undefined;
+      cell.startedAt = undefined;
+      cell.finishedAt = undefined;
+      cell.durationMs = undefined;
+      cell.usage = undefined;
+      cell.toolCalls = undefined;
+      cell.toolErrors = undefined;
+      cell.apiEquivalentCostUsd = undefined;
+      cell.trialDir = undefined;
+      cell.score = undefined;
+      cell.scored = undefined;
+      cell.scoreError = undefined;
+      pushHistory(cell, 'redo', reason);
+      reset.push(key);
+    }
+    if (reset.length > 0) await this.save();
+    return reset;
+  }
+
   get meta(): RunMeta {
     return this.state.meta;
   }

@@ -33,6 +33,7 @@ import { dedupeByCell, readResults, type TrialRecord } from '@notionbench/scorin
 import { STATE_VERSION, type CellState, type RunStateFile } from './checkpoint.js';
 import { V1_ROSTER, loadRunConfig, type AgentConfig } from './config.js';
 import { readRateWindowState, type RateWindowState } from './queue.js';
+import { readAlertFile, type AlertFile } from './watchdog.js';
 
 /** Bumped only when the wire shape changes incompatibly; web/js/schema.js pins it. */
 export const STATUS_SCHEMA_VERSION = 1;
@@ -89,6 +90,27 @@ export interface StatusFailure {
   diagnostic: string;
 }
 
+/**
+ * One watchdog alert, flattened for the wire (watchdog.ts `WatchdogAlert`).
+ *
+ * ADDITIVE EXTENSION at schemaVersion 1. The page's adapter
+ * (web/js/schema.js) is tolerant by contract — it reads the keys it knows and
+ * ignores the rest — so a dashboard that predates this field renders exactly as
+ * it did before, while a newer one can show "this run was halted, and why". The
+ * existing keys are untouched; `serve.test.ts` feeds the payload through the
+ * page's own adapter to keep that honest.
+ */
+export interface StatusAlert {
+  level: 'halt' | 'warn';
+  kind: string;
+  taskId?: string;
+  configIds: string[];
+  evidence: string;
+  at: string;
+  /** True for the alert that actually stopped the run. */
+  halted: boolean;
+}
+
 export interface StatusPayload {
   schemaVersion: number;
   run: string;
@@ -100,6 +122,11 @@ export interface StatusPayload {
   configs: StatusConfig[];
   results: StatusResult[];
   failures: StatusFailure[];
+  /**
+   * Active watchdog alerts, newest concern first. Always present (possibly
+   * empty) so a consumer never has to distinguish "no alerts" from "old runner".
+   */
+  alerts: StatusAlert[];
 }
 
 // ---------------------------------------------------------------------------
@@ -112,6 +139,8 @@ export interface StatusInput {
   rateWindow: RateWindowState;
   /** The runconfig roster, purely for human labels. Missing ids fall back to the id. */
   roster: AgentConfig[];
+  /** `results/<runId>/ALERT.json`, when the watchdog wrote one. */
+  alerts?: AlertFile;
 }
 
 /**
@@ -195,7 +224,33 @@ export function buildStatus(input: StatusInput, now: number = Date.now()): Statu
     configs,
     results,
     failures,
+    alerts: buildAlerts(input.alerts),
   };
+}
+
+/**
+ * ALERT.json -> the wire shape. Halting alerts first, then halt-level, then
+ * warnings: the dashboard shows the top of this list and "the run stopped" is
+ * the only thing worth interrupting someone for.
+ */
+function buildAlerts(file: AlertFile | undefined): StatusAlert[] {
+  if (!file || !Array.isArray(file.alerts)) return [];
+  return [...file.alerts]
+    .map((a) => ({
+      level: a.level === 'halt' ? ('halt' as const) : ('warn' as const),
+      kind: String(a.kind),
+      ...(a.taskId ? { taskId: a.taskId } : {}),
+      configIds: Array.isArray(a.configIds) ? a.configIds.map(String) : [],
+      evidence: String(a.evidence ?? ''),
+      at: String(a.at ?? ''),
+      halted: a.halted === true,
+    }))
+    .sort(
+      (a, b) =>
+        Number(b.halted) - Number(a.halted) ||
+        Number(b.level === 'halt') - Number(a.level === 'halt') ||
+        (a.at < b.at ? 1 : a.at > b.at ? -1 : 0),
+    );
 }
 
 /**
@@ -421,14 +476,16 @@ export class StatusSource {
   }
 
   async status(now: number = Date.now()): Promise<StatusPayload> {
-    const [state, records, roster, rateWindow] = await Promise.all([
+    const [state, records, roster, rateWindow, alerts] = await Promise.all([
       this.state.get(),
       this.results.get(),
       this.roster.get(),
       // Small, rewritten only on a rate-window transition: read every time.
       readRateWindowState(this.runDir),
+      // Written at most once per run, and absent on a healthy one.
+      readAlertFile(this.runDir),
     ]);
-    return buildStatus({ state, records, roster, rateWindow }, now);
+    return buildStatus({ state, records, roster, rateWindow, alerts }, now);
   }
 }
 

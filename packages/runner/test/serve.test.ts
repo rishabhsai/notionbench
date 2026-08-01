@@ -405,6 +405,99 @@ describe('/api/status schema conformance', () => {
     expect(status.failures.filter((f) => f.config === 'cfg-running')).toHaveLength(1);
   });
 
+  /**
+   * `alerts` is an ADDITIVE extension at schemaVersion 1. Two things have to
+   * stay true: a run with no ALERT.json still serves the exact contract it did
+   * before (an empty array, never a missing key), and the page's own adapter
+   * carries the field through without falling back.
+   */
+  it('serves an empty alerts array for a run the watchdog never flagged', async () => {
+    const base = await start();
+    const body = (await (await getStatus(base)).json()) as Record<string, any>;
+    expect(body.alerts).toEqual([]);
+    // Every pre-existing key is untouched.
+    expect(Object.keys(body).sort()).toEqual([
+      'alerts', 'configs', 'failures', 'generatedAt', 'mode', 'results', 'run', 'schemaVersion',
+      'startedAt', 'totals',
+    ]);
+  });
+
+  it('surfaces ALERT.json, halting alert first, through the page adapter', async () => {
+    await writeFile(
+      path.join(fx.dir, 'ALERT.json'),
+      JSON.stringify({
+        version: 1,
+        runId: '20260731-060000',
+        at: '2026-07-31T10:00:00.000Z',
+        halted: true,
+        halting: {
+          level: 'halt',
+          kind: 'cross-config-identical-failure',
+          taskId: 'build-nac-004',
+          configIds: ['cfg-running', 'cfg-done', 'cfg-blocked'],
+          evidence: '3 of 5 config(s) failed build-nac-004 with the same diagnostic: "unexpected field \\"views\\""',
+          detail: [],
+          at: '2026-07-31T10:00:00.000Z',
+          halted: true,
+        },
+        alerts: [
+          {
+            level: 'warn',
+            kind: 'total-task-failure',
+            taskId: 'build-cli-001',
+            configIds: ['cfg-running'],
+            evidence: 'SUSPECT: all 5 config(s) scored 0',
+            detail: [],
+            at: '2026-07-31T09:00:00.000Z',
+            halted: false,
+          },
+          {
+            level: 'halt',
+            kind: 'cross-config-identical-failure',
+            taskId: 'build-nac-004',
+            configIds: ['cfg-running', 'cfg-done', 'cfg-blocked'],
+            evidence: '3 of 5 config(s) failed build-nac-004 with the same diagnostic',
+            detail: [],
+            at: '2026-07-31T10:00:00.000Z',
+            halted: true,
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    const base = await start();
+    const body = (await (await getStatus(base)).json()) as Record<string, any>;
+    expect(body.alerts).toHaveLength(2);
+    // The alert that stopped the run sorts first — it is the only one worth
+    // interrupting someone for.
+    expect(body.alerts[0]).toMatchObject({
+      level: 'halt',
+      kind: 'cross-config-identical-failure',
+      taskId: 'build-nac-004',
+      halted: true,
+    });
+    expect(body.alerts[0].configIds).toEqual(['cfg-running', 'cfg-done', 'cfg-blocked']);
+    expect(body.alerts[1].level).toBe('warn');
+    // …and the rest of the contract is unaffected.
+    expect(body.schemaVersion).toBe(1);
+    expect(body.totals).toEqual({ cells: 8, done: 3, failed: 1 });
+
+    const adapted = loadPageSchema().adapt(body) as Record<string, any>;
+    expect(adapted.alerts).toHaveLength(2);
+    expect(adapted.alerts[0].halted).toBe(true);
+    expect(adapted.alerts[0].taskId).toBe('build-nac-004');
+    expect(adapted.configs).toHaveLength(5); // no fallback path taken
+  });
+
+  it('ignores a torn ALERT.json rather than failing the status request', async () => {
+    await writeFile(path.join(fx.dir, 'ALERT.json'), '{"alerts":[', 'utf8');
+    const base = await start();
+    const res = await getStatus(base);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as Record<string, any>).alerts).toEqual([]);
+  });
+
   it('reports mode "final" once nothing is pending or running', () => {
     const state = stateFile();
     for (const c of Object.values(state.cells)) c.status = 'done';

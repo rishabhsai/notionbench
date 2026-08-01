@@ -37,7 +37,16 @@
  *     }>;
  *     failures: Array<{ at: string; taskId: string; config: string;
  *                       trial: number; diagnostic: string }>;
+ *     alerts?: Array<{               // EXTENSION: run watchdog (results/<run>/ALERT.json)
+ *       level: "halt" | "warn"; kind: string; taskId?: string;
+ *       configIds: string[]; evidence: string; at: string; halted: boolean;
+ *     }>;
  *   }
+ *
+ * `alerts` is additive at schemaVersion 1: it appeared with the runner's
+ * deterministic watchdog, which halts a run when several configs fail the same
+ * task with the same diagnostic (a verifier bug, not a model failure). A payload
+ * without it normalizes to an empty array, so nothing downstream has to branch.
  */
 (function () {
   "use strict";
@@ -118,6 +127,17 @@
         trial: f.trial ?? 0,
         diagnostic: String(f.diagnostic ?? ""),
       })),
+      alerts: (raw.alerts || [])
+        .filter((a) => a && a.evidence)
+        .map((a) => ({
+          level: a.level === "halt" ? "halt" : "warn",
+          kind: String(a.kind ?? "unknown"),
+          taskId: a.taskId ?? null,
+          configIds: Array.isArray(a.configIds) ? a.configIds.map(String) : [],
+          evidence: String(a.evidence),
+          at: a.at ?? "",
+          halted: !!a.halted,
+        })),
     };
   }
 
