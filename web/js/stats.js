@@ -1,0 +1,111 @@
+/* stats.js — aggregation + formatting. Pure functions over the adapted model. */
+(function () {
+  "use strict";
+  const NB = (window.NB = window.NB || {});
+
+  /** Half-width of the 95% Wilson score interval for k successes in n trials. */
+  function wilsonHalf(k, n, z = 1.96) {
+    if (!n) return 0;
+    const p = k / n, z2 = z * z;
+    return (z * Math.sqrt((p * (1 - p)) / n + z2 / (4 * n * n))) / (1 + z2 / n);
+  }
+
+  const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  function median(xs) {
+    if (!xs.length) return 0;
+    const s = [...xs].sort((a, b) => a - b);
+    const m = s.length >> 1;
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
+
+  /** Leaderboard rows: one per config, from trial-level results. */
+  function perConfig(data) {
+    return data.configs.map((cfg) => {
+      const rs = data.results.filter((r) => r.config === cfg.id);
+      const trials = rs.flatMap((r) => r.trials);
+      const solved = trials.filter((t) => t.solved).length;
+      const full = rs.filter((r) => r.trials.length === 3);
+      return {
+        cfg,
+        tasks: rs.length,
+        trials: trials.length,
+        avg: mean(trials.map((t) => t.score)),
+        ciHalf: wilsonHalf(solved, trials.length),
+        solveRate: trials.length ? solved / trials.length : 0,
+        pass3: full.length ? full.filter((r) => r.trials.every((t) => t.solved)).length / full.length : 0,
+        toolErrs: mean(trials.map((t) => t.toolErrors)),
+        tokens: cfg.tokens,
+        cost: cfg.apiEquivCostUsd,
+        medWallS: median(trials.map((t) => t.wallTimeS)),
+      };
+    });
+  }
+
+  /** cfgId -> dimValue -> { avg, n } for dim in {"family","stage"}. */
+  function matrix(data, dim) {
+    const out = {};
+    for (const r of data.results) {
+      const row = (out[r.config] = out[r.config] || {});
+      const cell = (row[r[dim]] = row[r[dim]] || { sum: 0, n: 0 });
+      for (const t of r.trials) { cell.sum += t.score; cell.n++; }
+    }
+    for (const row of Object.values(out))
+      for (const c of Object.values(row)) c.avg = c.n ? c.sum / c.n : 0;
+    return out;
+  }
+
+  /** Task-level rows for one config (the "By agent" view). */
+  function taskRows(data, cfgId) {
+    return data.results
+      .filter((r) => r.config === cfgId)
+      .map((r) => ({
+        taskId: r.taskId, family: r.family, stage: r.stage,
+        trials: r.trials,
+        avg: mean(r.trials.map((t) => t.score)),
+        bestS: Math.min(...r.trials.map((t) => t.wallTimeS)),
+      }));
+  }
+
+  /** Live ETA from overall completion rate since startedAt. Null if unknowable. */
+  function etaMs(data, now = Date.now()) {
+    if (!data.startedAt || !data.totals.done) return null;
+    const elapsed = now - Date.parse(data.startedAt);
+    if (elapsed <= 0) return null;
+    const remaining = data.totals.cells - data.totals.done;
+    return remaining * (elapsed / data.totals.done);
+  }
+
+  /* ---------- formatters ---------- */
+  const fmt = {
+    pct: (x, d = 0) => (100 * x).toFixed(d) + "%",
+    score: (x) => x.toFixed(2),
+    money: (x) => "$" + (x >= 100 ? Math.round(x).toLocaleString("en-US") : x.toFixed(2)),
+    tokens(n) {
+      if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+      if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+      if (n >= 1e3) return (n / 1e3).toFixed(0) + "K";
+      return String(n);
+    },
+    dur(s) {
+      s = Math.round(s);
+      if (s < 60) return s + "s";
+      const m = Math.floor(s / 60);
+      if (m < 60) return m + "m " + (s % 60) + "s";
+      return Math.floor(m / 60) + "h " + (m % 60) + "m";
+    },
+    durMs: (ms) => fmt.dur(ms / 1000),
+    time(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return isNaN(d) ? "—" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    },
+    date(iso) {
+      if (!iso) return "—";
+      const d = new Date(iso);
+      return isNaN(d) ? "—" : d.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    },
+  };
+
+  NB.stats = { wilsonHalf, mean, median, perConfig, matrix, taskRows, etaMs };
+  NB.fmt = fmt;
+})();

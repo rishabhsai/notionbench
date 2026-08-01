@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="NotionBench results — how well AI coding agents build on Notion's developer platform.">
+<title>NotionBench — Results</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧪</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="topbar">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <span class="crumb"><span class="crumb-ico" aria-hidden="true">🧪</span>NotionBench</span>
+    <span class="crumb-sep" aria-hidden="true">/</span>
+    <span class="crumb is-current" aria-current="page">Results</span>
+  </nav>
+  <div class="topbar-right">
+    <span id="conn-pill" class="pill pill-warn" hidden>reconnecting…</span>
+    <span id="mode-pill" class="pill"></span>
+  </div>
+</header>
+
+<main id="app" hidden>
+  <div class="page-head">
+    <div class="page-icon" aria-hidden="true">🧪</div>
+    <h1>NotionBench Results</h1>
+    <p id="run-meta" class="page-meta"></p>
+    <p class="lede">How well do AI coding agents build on Notion’s developer platform?
+    Seven agent configs run 38 tasks across the <code>ntn</code> CLI, Workers,
+    Notion-as-Code, and operations — three independent trials each, every cell scored
+    by deterministic verification. No LLM judges.</p>
+  </div>
+
+  <section id="live" hidden aria-label="Live run status">
+    <div class="hero-card">
+      <div class="hero-top">
+        <div class="hero-num"><span id="hero-done">0</span><span class="hero-of"> / <span id="hero-total">0</span> cells</span></div>
+        <div id="hero-eta" class="hero-eta"></div>
+      </div>
+      <div id="hero-meter" class="hero-meter" role="img"></div>
+      <div id="hero-stats" class="hero-stats"></div>
+    </div>
+
+    <h2 class="sec">Agent lanes</h2>
+    <div id="lanes" class="lanes"></div>
+
+    <h2 class="sec">Recent failures</h2>
+    <div id="failures" class="code-feed" aria-live="polite"></div>
+  </section>
+
+  <section aria-label="Results database">
+    <h2 class="sec">Leaderboard</h2>
+    <div class="db-card">
+      <div class="view-tabs" role="tablist" aria-label="Result views" id="tabs"></div>
+      <div class="db-body" id="board"></div>
+    </div>
+  </section>
+
+  <section aria-label="Charts">
+    <div class="charts-grid">
+      <figure class="chart-card">
+        <figcaption class="chart-title">Score vs API-equivalent cost</figcaption>
+        <div id="chart-pareto"></div>
+        <p class="chart-note">avg@3 score against total run cost, log scale — up and left is better. Non-dominated configs sit on the gray Pareto step; exact values are in the leaderboard above.</p>
+      </figure>
+      <figure class="chart-card">
+        <figcaption class="chart-title">avg@3 by product family</figcaption>
+        <div id="chart-family"></div>
+        <p class="chart-note">Same data as the “By product” view, one panel per family.</p>
+      </figure>
+    </div>
+  </section>
+
+  <section id="methodology" aria-label="Methodology">
+    <h2 class="sec">Methodology</h2>
+    <div class="callout">
+      <span class="callout-ico" aria-hidden="true">📐</span>
+      <div>
+        <p><strong>k=3 independent trials</strong> per task × config — no “retry then grade.”
+        We report <strong>avg@3</strong> with a 95% Wilson interval on the solve rate (the ± range),
+        and <strong>pass^3</strong>: the share of tasks solved in <em>all three</em> trials — a reliability
+        measure, not a luck measure.</p>
+        <p>Every cell is scored by <strong>deterministic, programmatic verification</strong> —
+        static typechecks, offline behavioral checks (<code>ntn workers exec --local</code>,
+        canonical-intents comparison for Notion-as-Code), and live workspace-state assertions
+        run host-side, never visible to the agent. <strong>No LLM judges anywhere.</strong></p>
+        <p>Task set, oracles, and QC foils are open —
+        <a href="https://github.com/rishabhsai/notionbench">github.com/rishabhsai/notionbench</a>.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="load" id="loading">Loading results…</div>
+
+<footer class="footer">
+  <span>Built on the platform it measures.</span>
+  <a href="https://github.com/rishabhsai/notionbench">GitHub ↗</a>
+</footer>
+
+<div id="nb-tip" class="tip" role="status" hidden></div>
+
+<script src="js/schema.js"></script>
+<script src="js/stats.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/views.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
