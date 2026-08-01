@@ -1,0 +1,258 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "marketing-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Marketing",
+    "accessLevel": "open",
+    "icon": {
+      "type": "notion_icon",
+      "description": "megaphone",
+      "color": "orange"
+    },
+    "description": "Campaign planning and publishing."
+  },
+  {
+    "type": "database",
+    "resourceId": "content-calendar-db",
+    "name": "Content Calendar",
+    "icon": {
+      "type": "notion_icon",
+      "description": "calendar",
+      "color": "blue"
+    },
+    "description": "Everything we publish, and where it is in the pipeline.",
+    "dataSources": [
+      {
+        "resourceId": "content-calendar-ds",
+        "name": "Content Calendar",
+        "properties": [
+          {
+            "resourceId": "content-title-prop",
+            "name": "Title",
+            "type": "title"
+          },
+          {
+            "resourceId": "content-stage-prop",
+            "name": "Stage",
+            "type": "select",
+            "options": [
+              {
+                "name": "Drafting",
+                "color": "blue"
+              },
+              {
+                "name": "Review",
+                "color": "yellow"
+              },
+              {
+                "name": "Scheduled",
+                "color": "purple"
+              },
+              {
+                "name": "Published",
+                "color": "green"
+              }
+            ]
+          },
+          {
+            "resourceId": "content-owner-prop",
+            "name": "Owner",
+            "type": "text"
+          },
+          {
+            "resourceId": "content-publish-date-prop",
+            "name": "Publish Date",
+            "type": "date"
+          },
+          {
+            "resourceId": "content-notes-prop",
+            "name": "Context",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "marketing-teamspace"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "content-calendar-db",
+    "view": {
+      "resourceId": "content-calendar-board-view",
+      "name": "By Stage",
+      "type": "board",
+      "dataSourceResourceId": "content-calendar-ds",
+      "groupBy": {
+        "property": "content-stage-prop",
+        "type": "select"
+      }
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "q3-launch-announcement",
+    "properties": {
+      "Title": [
+        [
+          "Q3 launch announcement"
+        ]
+      ],
+      "Stage": "Drafting",
+      "Owner": [
+        [
+          "Dana Whitfield"
+        ]
+      ],
+      "Publish Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-11"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Context": [
+        [
+          "Hold until legal signs off on the pricing claim."
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "content-calendar-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "customer-story-helio",
+    "properties": {
+      "Title": [
+        [
+          "Customer story: Helio Labs"
+        ]
+      ],
+      "Stage": "Review",
+      "Owner": [
+        [
+          "Sam Ibarra"
+        ]
+      ],
+      "Publish Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-04"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Context": [
+        [
+          "Quotes approved; screenshots still need a refresh."
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "content-calendar-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "changelog-july",
+    "properties": {
+      "Title": [
+        [
+          "July changelog"
+        ]
+      ],
+      "Stage": "Published",
+      "Owner": [
+        [
+          "Dana Whitfield"
+        ]
+      ],
+      "Publish Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-31"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Context": [
+        [
+          "Cross-posted to the community forum."
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "content-calendar-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "webinar-followup",
+    "properties": {
+      "Title": [
+        [
+          "Webinar follow-up sequence"
+        ]
+      ],
+      "Stage": "Drafting",
+      "Owner": [
+        [
+          "Priya Raman"
+        ]
+      ],
+      "Publish Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-09-02"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Context": [
+        [
+          "Three emails; the third one is still an outline."
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "content-calendar-ds"
+    }
+  }
+]
