@@ -44,6 +44,20 @@ export interface AgentConfig {
     cacheReadPerMTok?: number;
     cacheWritePerMTok?: number;
   };
+  /**
+   * `command-template` harness only: the executable to run. The README commits to
+   * supporting any prompt-in/files-out CLI, not just the claude-code/codex presets.
+   */
+  command?: string;
+  /**
+   * `command-template` harness only: argv with placeholders `{prompt}`,
+   * `{workspace}`, `{model}`, `{effort}`, `{configId}`.
+   */
+  argsTemplate?: string[];
+  /** `command-template` harness only: deliver the prompt on stdin instead of argv. */
+  promptVia?: 'argv' | 'stdin';
+  /** `command-template` harness only: how to ask the CLI for its version. */
+  versionArgs?: string[];
   /** Extra CLI args appended verbatim to the invocation (escape hatch). */
   extraArgs?: string[];
   /** Extra env vars for the child process. */

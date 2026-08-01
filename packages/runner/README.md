@@ -62,6 +62,27 @@ codex exec "<prompt>" \
   hangs).
 - Usage comes from `{"type":"turn.completed","usage":{…}}`.
 
+**Any other CLI** — the README's v1 requirement that any prompt-in/files-out agent
+CLI works — via the `command-template` harness:
+
+```json
+{
+  "id": "opencode-sonnet",
+  "harness": "command-template",
+  "command": "opencode",
+  "argsTemplate": ["run", "--model", "{model}", "--cwd", "{workspace}", "{prompt}"],
+  "model": "anthropic/claude-sonnet-5"
+}
+```
+
+Placeholders: `{prompt}` `{workspace}` `{model}` `{effort}` `{configId}`. Set
+`"promptVia": "stdin"` for CLIs that read the prompt from stdin (the pipe is closed
+straight after writing). The template is refused at config time if it would never
+deliver the prompt. Token accounting for this harness is a **heuristic** — it scans
+JSON lines for usage-shaped objects, records what it picked and why in
+`parseWarnings`, and reports `null` rather than fabricating zeros when a CLI is
+silent. Configs whose token numbers are load-bearing should get a real adapter.
+
 ### The cache-accounting trap
 
 The two harnesses use **opposite conventions** and getting this wrong silently

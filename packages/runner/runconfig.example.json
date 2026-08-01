@@ -68,6 +68,16 @@
       "model": "haiku",
       "enabled": false,
       "note": "Budget config for the cost-Pareto story."
+    },
+    {
+      "id": "opencode-sonnet",
+      "label": "OpenCode × Sonnet 5 (command template)",
+      "harness": "command-template",
+      "command": "opencode",
+      "argsTemplate": ["run", "--model", "{model}", "--cwd", "{workspace}", "{prompt}"],
+      "model": "anthropic/claude-sonnet-5",
+      "enabled": false,
+      "note": "Example of the generic harness: any prompt-in/files-out CLI. Placeholders are {prompt} {workspace} {model} {effort} {configId}; use promptVia:\"stdin\" for CLIs that read the prompt from stdin. Token accounting is heuristic — write a dedicated adapter in src/parsers/ if the numbers must be exact."
     }
   ]
 }

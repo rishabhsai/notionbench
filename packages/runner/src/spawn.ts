@@ -278,9 +278,10 @@ export async function runTrial(opts: RunTrialOptions): Promise<TrialOutcome> {
     child = spawn(invocation.command, invocation.args, {
       cwd: opts.workspaceDir,
       env,
-      // 'ignore' on stdin: codex would otherwise read piped stdin and append it as a
-      // <stdin> block, mutating the prompt under measurement.
-      stdio: ['ignore', 'pipe', 'pipe'],
+      // 'ignore' on stdin for the presets: codex would otherwise read piped stdin
+      // and append it as a <stdin> block, mutating the prompt under measurement.
+      // A command-template config can instead ask for the prompt on stdin.
+      stdio: [invocation.stdin === 'ignore' ? 'ignore' : 'pipe', 'pipe', 'pipe'],
       // Own process group so a timeout kills the CLI's grandchildren (the agent's
       // own `bash` tool calls) rather than orphaning them.
       detached: true,
@@ -297,6 +298,14 @@ export async function runTrial(opts: RunTrialOptions): Promise<TrialOutcome> {
     const c = child;
     c.stdout?.setEncoding('utf8');
     c.stderr?.setEncoding('utf8');
+
+    if (invocation.stdin !== 'ignore' && c.stdin) {
+      // Close immediately after writing so the child never waits for more input.
+      c.stdin.on('error', () => {
+        /* child may exit before draining; not a trial failure */
+      });
+      c.stdin.end(invocation.stdin.write, 'utf8');
+    }
 
     c.stdout?.on('data', (chunk: string) => {
       stdoutBytes += Buffer.byteLength(chunk, 'utf8');

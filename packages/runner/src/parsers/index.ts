@@ -1,17 +1,27 @@
 import type { HarnessId } from '../types.js';
 import { claudeCodeAdapter } from './claude-code.js';
 import { codexAdapter } from './codex.js';
+import { commandTemplateAdapter } from './command-template.js';
 import type { HarnessAdapter } from './types.js';
 
 export * from './types.js';
 export { claudeCodeAdapter, normalizeClaudeUsage } from './claude-code.js';
 export { codexAdapter, normalizeCodexUsage, reconcileCodexUsages } from './codex.js';
+export {
+  CommandTemplateError,
+  commandTemplateAdapter,
+  normalizeLooseUsage,
+} from './command-template.js';
 
 const ADAPTERS = new Map<string, HarnessAdapter>([
   [claudeCodeAdapter.id, claudeCodeAdapter],
   [codexAdapter.id, codexAdapter],
-  // TODO(tera/luna): register adapters once their headless CLIs are confirmed to
-  // exist and `<cli> --help` has been captured. See V1_ROSTER notes in config.ts.
+  // Any other prompt-in/files-out CLI goes through the generic template harness.
+  [commandTemplateAdapter.id, commandTemplateAdapter],
+  // TODO(tera/luna): give these first-class adapters once their headless CLIs are
+  // confirmed to exist and `<cli> --help` has been captured. Until then they can be
+  // driven through `command-template` at the cost of heuristic token accounting.
+  // See V1_ROSTER notes in config.ts.
 ]);
 
 export class UnknownHarnessError extends Error {

@@ -17,8 +17,11 @@ export type DocsCondition = 'with' | 'without';
 
 export const DOCS_CONDITIONS: readonly DocsCondition[] = ['with', 'without'];
 
-/** Agent CLI harness we shell out to. */
-export type HarnessId = 'claude-code' | 'codex' | 'tera' | 'luna';
+/**
+ * Agent CLI harness we shell out to. `command-template` is the generic escape
+ * hatch for any prompt-in/files-out CLI (a README-stated v1 requirement).
+ */
+export type HarnessId = 'claude-code' | 'codex' | 'command-template' | 'tera' | 'luna';
 
 /** Product area a task exercises (docs/COVERAGE.md). */
 export type TaskFamily = 'cli' | 'workers' | 'nac' | 'ops' | 'pages' | 'db' | 'api' | string;

@@ -13,10 +13,12 @@ export interface Invocation {
   args: string[];
   /**
    * What to attach to the child's stdin. Codex reads stdin when it is piped and
-   * appends it as a `<stdin>` block, so it MUST be closed/ignored or the child
-   * blocks on an interactive terminal.
+   * appends it as a `<stdin>` block, so for the presets it MUST be 'ignore' or the
+   * prompt under measurement silently changes. `{write}` exists for
+   * `command-template` configs whose CLI takes the prompt on stdin; the pipe is
+   * closed immediately after writing so the child never waits for more input.
    */
-  stdin: 'ignore';
+  stdin: 'ignore' | { write: string };
   /** Args that make the CLI print its version, recorded into run metadata. */
   versionArgs: string[];
 }
