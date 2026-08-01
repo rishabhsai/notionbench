@@ -17,6 +17,8 @@ An open benchmark that runs coding agents — Claude Code, Codex, and friends �
 | Claude Code × Sonnet 5 (high) | – | – | – | – | – | – |
 | Codex × GPT-5.6 Sol (medium) | – | – | – | – | – | – |
 | Codex × GPT-5.6 Luna (high) | – | – | – | – | – | – |
+| Claude Code × Fable 5 | – | – | – | – | – | – |
+| Codex × GPT-5.6 Sol (xhigh) | – | – | – | – | – | – |
 
 Grouped by product area, stage (build / investigate / resolve / operate), and docs condition.
 
