@@ -23,16 +23,20 @@ import * as path from "node:path"
 import {
   collectResources,
   dataSources,
+  diffIntents,
   pagesUnder,
   propDate,
   propText,
   propertiesOf,
-  type Intent,
+  type IntentRecord,
   type Json,
-} from "../_lib/intents.ts"
+} from "@notionbench/scoring"
 import { buildNacProject } from "../_lib/nac.ts"
 import { readJson } from "../_lib/proc.ts"
 import type { EvalArgs, EvalResult } from "../_lib/types.ts"
+
+/** Cap on the field-level diff appended to the diagnostics when ids drift. */
+const MAX_REPORTED_DIFFS = 12
 
 const NEW_PROPERTY = {
   name: "Priority",
@@ -144,7 +148,18 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
   if (dropped.length === 0 && changes.length === 0) {
     subscores.originals_unchanged = 1
     diagnostics.push("existing resources unchanged")
-  } else for (const c of changes) diagnostics.push(c)
+  } else {
+    for (const c of changes) diagnostics.push(c)
+    // The per-resource check above is the score (it is the one that knows *where*
+    // additions are permitted). `diffIntents` with every baseline id pinned then
+    // explains the damage in field-level terms — labels are compared literally,
+    // so a renamed id shows up as a pinned-id difference rather than as noise.
+    const diff = diffIntents(baseline, intents, {
+      pinnedResourceIds: [...before.keys()],
+      maxDifferences: MAX_REPORTED_DIFFS,
+    })
+    for (const d of diff.differences) diagnostics.push(`  [${d.kind}] ${d.path}: ${d.message}`)
+  }
 
   // ---- 3. the new Priority property ----------------------------------------
   const source =
@@ -152,7 +167,7 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
     dataSources(intents).find((ds) => ds.name === "Sample Projects")
   const props = source ? propertiesOf(source) : []
   const priority = props.find((p) => p.name === NEW_PROPERTY.name)
-  const options = Array.isArray(priority?.options) ? (priority.options as Intent[]) : []
+  const options = Array.isArray(priority?.options) ? (priority.options as IntentRecord[]) : []
   const optionsOk =
     options.length === NEW_PROPERTY.options.length &&
     NEW_PROPERTY.options.every((want) => options.some((o) => o.name === want.name && o.color === want.color))

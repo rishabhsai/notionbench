@@ -1,4 +1,5 @@
 export * from "./intents-types.js"
 export * from "./intents-canonical.js"
+export * from "./intents-select.js"
 export * from "./stats.js"
 export * from "./exec-local.js"

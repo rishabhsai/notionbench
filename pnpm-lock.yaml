@@ -8,6 +8,12 @@ importers:
 
   .: {}
 
+  evals:
+    dependencies:
+      '@notionbench/scoring':
+        specifier: workspace:*
+        version: link:../packages/scoring
+
   packages/core:
     dependencies:
       yaml:

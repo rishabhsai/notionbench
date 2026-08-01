@@ -1,2 +1,7 @@
 packages:
   - "packages/*"
+  # The task suite is a workspace package purely so every `evals/<id>/EVAL.ts`
+  # can `import { diffIntents } from "@notionbench/scoring"` by name. Task
+  # fixtures under evals/<id>/fixture/ are NOT workspace packages — they are
+  # vendored templates installed with npm at scoring time.
+  - "evals"

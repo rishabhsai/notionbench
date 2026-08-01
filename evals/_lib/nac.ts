@@ -7,8 +7,8 @@
  * scored against, so no Notion account is involved.
  */
 import * as path from "node:path"
+import type { Json } from "@notionbench/scoring"
 import { NPM, ensureDeps, exists, head, readJson, run, type RunResult } from "./proc.ts"
-import type { Json } from "./intents.ts"
 
 export interface BuildOutcome {
   ok: boolean

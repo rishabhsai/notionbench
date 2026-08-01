@@ -1,0 +1,14 @@
+{
+  "name": "@notionbench/evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The NotionBench task suite. Each subdirectory is one task: PROMPT.md, EVAL.ts, fixture/, solution/, wrong/.",
+  "license": "MIT",
+  "scripts": {
+    "qc": "node _lib/qc.ts"
+  },
+  "dependencies": {
+    "@notionbench/scoring": "workspace:*"
+  }
+}
