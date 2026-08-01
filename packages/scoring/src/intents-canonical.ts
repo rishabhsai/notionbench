@@ -57,6 +57,12 @@
  *   space `members`, `sharedResources`, and relation value arrays.
  * - **Unknown fields participate in equality.** The walker is generic over
  *   JSON; it never drops keys it does not recognize.
+ * - **Page property values are shape-normalized** (disable with
+ *   `normalizePropertyValues: false`), because the authoring API accepts
+ *   several inputs that compile to different JSON for the same value:
+ *   `[["x"]]` collapses to `"x"`, numbers become strings, and a relation given
+ *   as a bare id becomes a one-element array. Grading should reward the value,
+ *   not the overload the agent happened to pick.
  *
  * ## Reference detection
  *
@@ -65,9 +71,10 @@
  * a `{type:"property"}` view cover), `defaultTemplate`, `calendarBy`,
  * `timelineBy`, `timelineByEnd`, `sharedResources[]`.
  * Heuristic (only rewritten when the string is a *declared* resourceId, so
- * select/status values are never mangled): page property values that are arrays
- * of plain strings (relation targets), `relation_*` filter values, and
- * `{{resource-id}}` mentions inside page `content`.
+ * select/status values, plain text and dangling references are never mangled):
+ * page property values that are strings or arrays of strings (relation
+ * targets), `relation_*` filter values, `{{resource-id}}` mentions inside page
+ * `content`, and `prop("<resource-id>")` tokens inside formula `expression`s.
  */
 import { createHash } from "node:crypto"
 import {
@@ -92,6 +99,11 @@ export interface CanonicalizeOptions {
   maxRounds?: number
   /** Max individualization steps used to break ties (default 16). */
   maxIndividualizations?: number
+  /**
+   * Normalize the interchangeable shapes of page property values
+   * (`[["x"]]` / `"x"` / `5`, relation id vs array of ids). Default true.
+   */
+  normalizePropertyValues?: boolean
 }
 
 export interface CanonicalDocument {
@@ -145,8 +157,9 @@ type FieldKind =
   | "symbol"
   | "symbol-if-declared"
   | "symbols"
-  | "symbols-if-declared"
   | "content"
+  | "expression"
+  | "page-property-value"
   | null
 
 const SINGLE_REF_KEYS = new Set([
@@ -165,6 +178,7 @@ function classifyField(
   parent: JsonObject,
   parentPath: string,
 ): FieldKind {
+  if (parentPath === PAGE_PROPERTIES_PATH) return "page-property-value"
   if (typeof value === "string") {
     if (key === "resourceId" || key.endsWith("ResourceId")) return "symbol"
     if (SINGLE_REF_KEYS.has(key)) return "symbol"
@@ -172,21 +186,14 @@ function classifyField(
     // `cover: { type: "property", property: "<name>" }`.
     if (key === "property" && parent["type"] !== "property") return "symbol"
     if (key === "content") return "content"
+    // formulas reference properties as prop("<resourceId>")
+    if (key === "expression") return "expression"
     // relation filters carry a page resourceId in `value`
     if (key === "value" && parent["propertyType"] === "relation") return "symbol-if-declared"
     return null
   }
-  if (Array.isArray(value)) {
-    if (key === "sharedResources" && value.every((v) => typeof v === "string")) return "symbols"
-    // Page property values: relation targets are arrays of plain strings; text
-    // values are arrays of token *arrays*; file values are arrays of objects.
-    if (
-      parentPath === PAGE_PROPERTIES_PATH &&
-      value.length > 0 &&
-      value.every((v) => typeof v === "string")
-    ) {
-      return "symbols-if-declared"
-    }
+  if (Array.isArray(value) && key === "sharedResources" && value.every((v) => typeof v === "string")) {
+    return "symbols"
   }
   return null
 }
@@ -244,9 +251,12 @@ interface TransformCtx {
   label: (symbol: string) => string
   collect?: (symbol: string, path: string, stack: Frame[]) => void
   stack: Frame[]
+  /** Normalize the interchangeable shapes of page property values. */
+  normalizeValues: boolean
 }
 
 const MENTION_RE = /\{\{([^{}]*)\}\}/g
+const PROP_RE = /prop\((["'])([^"']*)\1\)/g
 
 function transformValue(value: Json, path: string, ctx: TransformCtx): Json {
   if (Array.isArray(value)) {
@@ -275,12 +285,8 @@ function transformField(kind: FieldKind, value: Json, path: string, ctx: Transfo
       return mapSymbol(value as string, path, ctx)
     case "symbol-if-declared":
       return ctx.declared.has(value as string) ? mapSymbol(value as string, path, ctx) : value
-    case "symbols":
-    case "symbols-if-declared": {
-      const gated = kind === "symbols-if-declared"
-      const items = (value as string[]).map((s) =>
-        !gated || ctx.declared.has(s) ? mapSymbol(s, path, ctx) : s,
-      )
+    case "symbols": {
+      const items = (value as string[]).map((s) => mapSymbol(s, path, ctx))
       if (!isOrderedArray(path)) items.sort(compareStrings)
       return items
     }
@@ -290,9 +296,69 @@ function transformField(kind: FieldKind, value: Json, path: string, ctx: Transfo
         if (!ctx.declared.has(id)) return whole
         return `{{${mapSymbol(id, `${path}{{}}`, ctx)}}}`
       })
+    case "expression":
+      return (value as string).replace(PROP_RE, (whole, quote: string, raw: string) => {
+        if (!ctx.declared.has(raw)) return whole
+        return `prop(${quote}${mapSymbol(raw, `${path}prop()`, ctx)}${quote})`
+      })
+    case "page-property-value":
+      return transformPropertyValue(value, path, ctx)
     default:
       return transformValue(value, path, ctx)
   }
+}
+
+/**
+ * Page property values are the one place where the same value has several
+ * equally valid emitted shapes, because the authoring API accepts several input
+ * shapes for one property (`notion.text("x")` -> `[["x"]]`, but a bare `"x"` or
+ * `5` is accepted too, and a relation takes an id or an array of ids). They are
+ * normalized so that a task is graded on the value, not on which overload the
+ * agent used:
+ *
+ * - `[["x"]]` (a single plain text token) collapses to `"x"`
+ * - numbers become their string form
+ * - a bare string that is a *declared* resourceId becomes a one-element
+ *   relation array (select/status values, which are never declared ids, are
+ *   left alone)
+ * - arrays of plain strings are relation targets: mapped to labels and sorted
+ */
+function transformPropertyValue(value: Json, path: string, ctx: TransformCtx): Json {
+  if (!ctx.normalizeValues) {
+    if (typeof value === "string") {
+      return ctx.declared.has(value) ? mapSymbol(value, path, ctx) : value
+    }
+    if (isStringArray(value)) {
+      const items = value.map((s) => (ctx.declared.has(s) ? mapSymbol(s, path, ctx) : s))
+      items.sort(compareStrings)
+      return items
+    }
+    return transformValue(value, path, ctx)
+  }
+
+  if (typeof value === "number") return String(value)
+  if (typeof value === "string") {
+    return ctx.declared.has(value) ? [mapSymbol(value, path, ctx)] : value
+  }
+  if (isStringArray(value)) {
+    const items = value.map((s) => (ctx.declared.has(s) ? mapSymbol(s, path, ctx) : s))
+    items.sort(compareStrings)
+    return items
+  }
+  if (
+    Array.isArray(value) &&
+    value.length === 1 &&
+    Array.isArray(value[0]) &&
+    value[0].length === 1 &&
+    typeof value[0][0] === "string"
+  ) {
+    return value[0][0]
+  }
+  return transformValue(value, path, ctx)
+}
+
+function isStringArray(value: Json): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every((v) => typeof v === "string")
 }
 
 function mapSymbol(symbol: string, path: string, ctx: TransformCtx): string {
@@ -360,12 +426,14 @@ function collectDeclared(intents: Intent[]): Set<string> {
 function collectOccurrences(
   intents: Intent[],
   declared: Set<string>,
+  normalizeValues: boolean,
 ): Map<string, Occurrence[]> {
   const bySymbol = new Map<string, Occurrence[]>()
   const ctx: TransformCtx = {
     declared,
     label: () => "@",
     stack: [],
+    normalizeValues,
     collect: (symbol, path, stack) => {
       const nearest = stack[stack.length - 1]
       const root = stack[0]
@@ -406,6 +474,7 @@ function refine(
   declared: Set<string>,
   fixed: Map<string, string>,
   maxRounds: number,
+  normalizeValues: boolean,
 ): Map<string, string> {
   let colours = new Map<string, string>()
   for (const s of symbols) colours.set(s, fixed.get(s) ?? "@")
@@ -418,6 +487,7 @@ function refine(
       declared,
       label: (s) => colours.get(s) ?? "@",
       stack: [],
+      normalizeValues,
     }
     const render = (node: JsonObject, path: string): string => {
       const cached = renderCache.get(node)
@@ -502,11 +572,12 @@ function assignLabels(
   pinned: Set<string>,
   maxRounds: number,
   maxIndividualizations: number,
+  normalizeValues: boolean,
 ): Labelling {
   const fixed = new Map<string, string>()
   for (const id of pinned) if (symbols.includes(id)) fixed.set(id, `P${id}`)
 
-  let signatures = refine(symbols, occurrences, declared, fixed, maxRounds)
+  let signatures = refine(symbols, occurrences, declared, fixed, maxRounds, normalizeValues)
   let groups = groupBySignature(symbols, signatures)
 
   for (let step = 0; step < maxIndividualizations; step++) {
@@ -516,13 +587,20 @@ function assignLabels(
     for (const member of ambiguous.members) {
       const trial = new Map(fixed)
       trial.set(member, `I${step}`)
-      const trialSignatures = refine(symbols, occurrences, declared, trial, maxRounds)
+      const trialSignatures = refine(
+        symbols,
+        occurrences,
+        declared,
+        trial,
+        maxRounds,
+        normalizeValues,
+      )
       const key = signatureMultiset(trialSignatures)
       if (best === undefined || compareStrings(key, best.key) < 0) best = { member, key }
     }
     if (!best) break
     fixed.set(best.member, `I${step}`)
-    signatures = refine(symbols, occurrences, declared, fixed, maxRounds)
+    signatures = refine(symbols, occurrences, declared, fixed, maxRounds, normalizeValues)
     groups = groupBySignature(symbols, signatures)
   }
 
@@ -555,8 +633,9 @@ function assignLabels(
  */
 export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): CanonicalDocument {
   const list = assertIntents(intents)
+  const normalizeValues = opts.normalizePropertyValues ?? true
   const declared = collectDeclared(list)
-  const occurrences = collectOccurrences(list, declared)
+  const occurrences = collectOccurrences(list, declared, normalizeValues)
   const symbols = [...occurrences.keys()].sort(compareStrings)
   const pinned = new Set(opts.pinnedResourceIds ?? [])
 
@@ -567,12 +646,14 @@ export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): 
     pinned,
     opts.maxRounds ?? 10,
     opts.maxIndividualizations ?? 16,
+    normalizeValues,
   )
 
   const ctx: TransformCtx = {
     declared,
     label: (s) => labels.get(s) ?? `#?${s}`,
     stack: [],
+    normalizeValues,
   }
   const out = list.map((intent) => {
     ctx.stack = []
@@ -923,10 +1004,12 @@ function identityKeys(items: Json[]): string[] | undefined {
   for (const item of items) {
     if (item === null || typeof item !== "object" || Array.isArray(item)) return undefined
     const obj = item as JsonObject
-    // `resourceId` is deliberately not an identity key: canonical labels are
-    // renumbered by any structural change, so they cannot align two documents.
     const raw = obj["name"] ?? obj["property"] ?? obj["propertyId"] ?? obj["type"]
     if (typeof raw !== "string" || raw.length === 0) return undefined
+    // Canonical labels (`resourceId`, `property`, `propertyId`, ...) are
+    // renumbered by any structural change, so they cannot align two documents;
+    // fall back to positional comparison instead.
+    if (/^#c\d+$/.test(raw)) return undefined
     if (seen.has(raw)) return undefined
     seen.add(raw)
     keys.push(raw)

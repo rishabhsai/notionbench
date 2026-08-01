@@ -10,17 +10,27 @@ const templateProbe = JSON.parse(
   readFileSync(path.join(here, "fixtures", "template-probe.intents.json"), "utf8"),
 ) as Intent[]
 
-/** Deep clone with every resourceId-looking string renamed via `map`. */
+/**
+ * Deep clone with every occurrence of a mapped resourceId renamed: whole
+ * strings, `{{id}}` content mentions and `prop("id")` formula tokens.
+ */
 function rename(intents: unknown, map: Record<string, string>): Intent[] {
-  const text = JSON.stringify(intents)
-  const replaced = text.replace(/"([^"\\]*)"/g, (whole, value: string) =>
-    map[value] !== undefined ? `"${map[value]}"` : whole,
-  )
-  // page content mentions ({{id}}) live inside strings, replace them too
-  const withMentions = replaced.replace(/\{\{([^{}]+)\}\}/g, (whole, id: string) =>
-    map[id] !== undefined ? `{{${map[id]}}}` : whole,
-  )
-  return JSON.parse(withMentions) as Intent[]
+  const walk = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(walk)
+    if (value !== null && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, walk(v)]))
+    }
+    if (typeof value !== "string") return value
+    if (map[value] !== undefined) return map[value]
+    return value
+      .replace(/\{\{([^{}]+)\}\}/g, (whole, id: string) =>
+        map[id.trim()] !== undefined ? `{{${map[id.trim()]}}}` : whole,
+      )
+      .replace(/prop\(("|')([^"']+)\1\)/g, (whole, quote: string, id: string) =>
+        map[id] !== undefined ? `prop(${quote}${map[id]}${quote})` : whole,
+      )
+  }
+  return walk(JSON.parse(JSON.stringify(intents))) as Intent[]
 }
 
 function clone<T>(value: T): T {
@@ -454,6 +464,81 @@ describe("diffIntents — reference graph isomorphism", () => {
     const three = diffIntents(twins(2), twins(3))
     expect(three.equal).toBe(false)
     expect(three.differences.some((d) => d.kind === "unexpected")).toBe(true)
+  })
+})
+
+describe("value normalization", () => {
+  it("treats the interchangeable page property value shapes as equal", () => {
+    const actual = clone(workspace())
+    ;(actual[4] as any).properties.Name = "Apollo" // instead of [["Apollo"]]
+    ;(actual[5] as any).properties.Project = "row-apollo" // instead of ["row-apollo"]
+    expect(diffIntents(workspace(), actual).equal).toBe(true)
+
+    const strict = diffIntents(workspace(), actual, { normalizePropertyValues: false })
+    expect(strict.equal).toBe(false)
+  })
+
+  it("normalizes numeric property values to their string form", () => {
+    const make = (value: unknown): Intent[] => [
+      {
+        type: "page",
+        resourceId: "row",
+        parent: { type: "resourceId", resourceId: "ds" },
+        properties: { Count: value as never },
+      },
+    ]
+    expect(diffIntents(make(5), make("5")).equal).toBe(true)
+    expect(diffIntents(make(5), make(6)).equal).toBe(false)
+  })
+
+  it("still distinguishes different values", () => {
+    const actual = clone(workspace())
+    ;(actual[4] as any).properties.Name = "Artemis"
+    expect(diffIntents(workspace(), actual).equal).toBe(false)
+  })
+
+  it("rewrites prop(\"<resourceId>\") inside formula expressions", () => {
+    const withFormula = (): Intent[] => {
+      const intents = clone(workspace())
+      ;(intents[2] as any).dataSources[0].properties.push({
+        resourceId: "p-formula",
+        name: "Label",
+        type: "formula",
+        expression: 'concat(prop("p-name"), " - ", prop("p-status"))',
+      })
+      return intents
+    }
+    const renamed = rename(withFormula(), { ...RENAMES, "p-formula": "zzz" })
+    expect(diffIntents(withFormula(), renamed).equal).toBe(true)
+
+    // pointing the formula at a different property is a real difference
+    const wrong = withFormula()
+    ;(wrong[2] as any).dataSources[0].properties[3].expression =
+      'concat(prop("p-status"), " - ", prop("p-status"))'
+    expect(diffIntents(withFormula(), wrong).equal).toBe(false)
+  })
+
+  it("leaves prop() tokens that are not declared resourceIds verbatim", () => {
+    const intents: Intent[] = [
+      {
+        type: "database",
+        resourceId: "db",
+        name: "D",
+        parent: { type: "resourceId", resourceId: "ts" },
+        dataSources: [
+          {
+            resourceId: "ds",
+            name: "D",
+            properties: [
+              { resourceId: "p1", name: "Name", type: "title" },
+              { resourceId: "p2", name: "F", type: "formula", expression: 'prop("Name")' },
+            ],
+          },
+        ],
+      },
+      { type: "teamspace", resourceId: "ts", name: "T", accessLevel: "open" },
+    ]
+    expect(canonicalize(intents).json).toContain('prop(\\"Name\\")')
   })
 })
 
