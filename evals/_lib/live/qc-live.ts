@@ -99,6 +99,32 @@ async function findLiveTasks(): Promise<string[]> {
   return out.sort()
 }
 
+/**
+ * `runtime: live` tasks with no `fixture/spec.json` — currently just the
+ * exhibition piece, whose starting state is an empty page because the
+ * workspace *is* the deliverable.
+ *
+ * `_lib/qc.ts` defers every live task to this gate, so if this gate also
+ * ignored them silently they would fall between the two and nobody would
+ * notice. They are named and skipped instead.
+ */
+async function findUngatedLiveTasks(): Promise<string[]> {
+  const out: string[] = []
+  for (const entry of await fs.readdir(EVALS_ROOT, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith(".") || entry.name === "_lib") continue
+    const dir = path.join(EVALS_ROOT, entry.name)
+    if (await exists(specPathFor(dir))) continue
+    let prompt: string
+    try {
+      prompt = await fs.readFile(path.join(dir, "PROMPT.md"), "utf8")
+    } catch {
+      continue
+    }
+    if (/^runtime:\s*live\s*$/m.test(prompt.split(/^---\s*$/m)[1] ?? "")) out.push(dir)
+  }
+  return out.sort()
+}
+
 /** `live/<variant>.mjs`, or the `<variant>/solve.mjs` layout, whichever exists. */
 async function oracleScript(taskDir: string, variant: Variant): Promise<string | undefined> {
   for (const candidate of [
@@ -249,15 +275,29 @@ async function runVariant(taskDir: string, variant: Variant, keep: boolean): Pro
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2))
   const all = await findLiveTasks()
+  const ungated = await findUngatedLiveTasks()
+  const skipped: string[] = []
   const tasks =
     args.tasks.length === 0
       ? all
-      : args.tasks.map((t) => {
+      : args.tasks.flatMap((t) => {
           const dir = all.find((d) => path.basename(d) === t || d === path.resolve(t))
-          if (!dir) throw new Error(`no such live task: ${t}`)
-          return dir
+          if (dir) return [dir]
+          const ungatedDir = ungated.find((d) => path.basename(d) === t || d === path.resolve(t))
+          if (ungatedDir) {
+            skipped.push(path.basename(ungatedDir))
+            return []
+          }
+          throw new Error(`no such live task: ${t}`)
         })
 
+  if (args.tasks.length === 0) skipped.push(...ungated.map((d) => path.basename(d)))
+  for (const name of skipped) {
+    console.log(`\n── ${name}`)
+    console.log("   SKIP  no fixture/spec.json — unscored exhibition entry, judged by people, not by a gate")
+  }
+
+  if (tasks.length === 0 && skipped.length > 0) return
   if (tasks.length === 0) {
     console.log("no live tasks found under evals/ (a live task is one with fixture/spec.json)")
     process.exitCode = 1
@@ -293,6 +333,7 @@ async function main(): Promise<void> {
   const failed = checks.filter((c) => !c.ok)
   console.log(
     `\n${checks.length - failed.length}/${checks.length} live checks green` +
+      (skipped.length > 0 ? `, ${skipped.length} task(s) skipped: ${skipped.join(", ")}` : "") +
       (args.keep ? ` (trials kept under ${qcRoot})` : ""),
   )
   if (failed.length > 0) {
