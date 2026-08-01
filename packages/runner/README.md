@@ -9,6 +9,7 @@ notionbench run --tasks 'build-nac-*' --configs claude-code-opus-5 --trials 5 --
 notionbench run --resume 20260731-120000
 notionbench score results/latest
 notionbench status 20260731-120000
+notionbench serve results/latest   # live dashboard + /api/status while the run executes
 notionbench configs          # roster + which harnesses have an adapter
 notionbench tasks --tasks '*nac*'
 ```
@@ -45,6 +46,37 @@ same numbers years later. It prints the README config table (avg@k with a Wilson
 interval, pass^k, tool errors, tokens, API-equivalent cost, wall time) plus
 per-product-area, per-stage and per-docs-condition breakdowns. Stage comes from the
 task id prefix, the `<stage>-<area>-<nnn>-<slug>` convention docs/COVERAGE.md fixes.
+
+## Watching a run (`serve`)
+
+```bash
+notionbench serve results/latest --port 8377          # random token, printed
+notionbench serve results/latest --key $NB_DASH_TOKEN # pin one instead
+```
+
+It prints a ready-to-open URL that carries both the API base and the token in the
+hash:
+
+```
+http://127.0.0.1:8377/#api=http://127.0.0.1:8377&key=<token>
+```
+
+`GET /api/status` returns the `schemaVersion: 1` payload `web/js/schema.js`
+consumes, assembled on demand from the run's `state.json` + `results.jsonl` (+
+`runconfig.json` for labels). `serve` also hosts `web/` itself, so that one command
+is a working private dashboard with nothing else installed.
+
+- **Read-only.** No checkpoint is opened, no lock taken; pointing it at the
+  directory a run is actively writing is safe. Each request re-reads a file only
+  when its mtime+size changed, so a 10s poll costs three `stat`s on a quiet run.
+- **The token is the gate.** `Authorization: Bearer <key>` on `/api/*` (401
+  otherwise) and `Access-Control-Allow-Origin: *`, so the dashboard works from a
+  `file://` copy or another host. The static assets are *not* token-gated — a
+  browser cannot attach a header to a top-level navigation, and they carry no run
+  data. Bind stays on loopback unless you pass `--host`.
+- Config status maps checkpoint cells to `pending` / `running` / `done`, and the
+  scheduler's mirrored rate-window state (`results/<run>/rate-window.json`) to
+  `cooldown` / `blocked`.
 
 ## Dry runs
 

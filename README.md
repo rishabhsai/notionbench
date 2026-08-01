@@ -62,6 +62,10 @@ node packages/runner/dist/cli.js run --dry-run --trials 3
 # appends every verified rollout to results/<runId>/results.jsonl.
 node packages/runner/dist/cli.js run --tasks '*nac*' --configs claude-code-opus-5 --trials 3
 node packages/runner/dist/cli.js score results/latest
+
+# Watch it while it runs: hosts web/ + a bearer-gated /api/status, and prints a
+# ready-to-open http://127.0.0.1:8377/#api=…&key=… link.
+node packages/runner/dist/cli.js serve results/latest
 ```
 
 Presets exist for Claude Code and Codex configs; any prompt-in/files-out CLI works via the `command-template` harness (see [packages/runner](packages/runner/README.md)). Auth is your **subscription** — the runner strips `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` from every child so a stray key cannot silently change what is being measured. Live-suite tasks additionally need a Notion workspace integration token (docs coming). Community submissions (PR with trajectories) planned post-v1.

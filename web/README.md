@@ -20,6 +20,20 @@ wrangler pages deploy web
   run hero, per-config lanes, and the failures feed. Used as a private monitoring
   dashboard while a run executes.
 
+  The real server is `notionbench serve <runDir>` (packages/runner/src/serve.ts),
+  which implements `/api/status` from the run's `state.json` + `results.jsonl` and
+  also hosts this directory — so it prints a URL that already has the hash filled
+  in. `packages/runner/test/serve.test.ts` evaluates `js/schema.js` in a vm and
+  pushes a real payload through `NB.schema.adapt()`, so contract drift between
+  this page and the runner fails that test.
+
+  Two notes on how the run maps onto this contract: `window` (used/limit/resetsAt)
+  is omitted, because subscription CLIs do not report their remaining usage window
+  and inventing one would put a fiction on the dashboard; and the grid's docs axis
+  (`with` / `without` Notion's docs), which this contract has no slot for, is
+  folded into one (task, config) row by offsetting the `without` trial numbers
+  past the `with` ones.
+
 ## Layout
 
 - `js/schema.js` — the data contract (typed) + adapter. **The only file to touch
