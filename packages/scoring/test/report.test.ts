@@ -75,12 +75,31 @@ describe("familyOf", () => {
 })
 
 describe("buildReport", () => {
-  it("picks k as the largest every task supports", () => {
+  it("picks k as the largest every cell supports", () => {
     const report = buildReport([
       ...cell("build-nac-001-a", "c1", 3, 3),
       ...cell("build-nac-002-b", "c1", 5, 5),
     ])
     expect(report.k).toBe(3)
+  })
+
+  it("treats a task's two docs conditions as two independent k-trial cells", () => {
+    // The docs condition is part of a cell's coordinates. Keying on the task
+    // alone would report k=6 over a mixture of the two conditions — and then
+    // find no 6-trial cell anywhere in the per-docs breakdown.
+    const report = buildReport([
+      ...cell("build-nac-001-a", "c1", 3, 3, { docsCondition: "with" }),
+      ...cell("build-nac-001-a", "c1", 3, 0, { docsCondition: "without" }),
+    ])
+    expect(report.k).toBe(3)
+    expect(report.overall[0]!.tasks).toBe(1)
+    expect(report.overall[0]!.cells).toBe(2)
+    expect(report.overall[0]!.trials).toBe(6)
+    expect(report.overall[0]!.avgScore).toBe(0.5)
+    expect(report.byDocs!.rows.map((r) => [r.group, r.avgScore])).toEqual([
+      ["with", 1],
+      ["without", 0],
+    ])
   })
 
   it("macro-averages avg@k over tasks and reports pass^k separately", () => {
@@ -123,13 +142,13 @@ describe("buildReport", () => {
     expect(report.notes.join(" ")).toMatch(/could not be verified/)
   })
 
-  it("drops tasks with fewer than k trials and names them", () => {
+  it("drops cells with fewer than k trials and names them", () => {
     const report = buildReport(
       [...cell("build-nac-001-a", "c1", 3, 3), ...cell("build-nac-002-b", "c1", 1, 1)],
       { k: 3 },
     )
     expect(report.overall[0]!.tasks).toBe(1)
-    expect(report.overall[0]!.droppedTasks).toEqual(["build-nac-002-b"])
+    expect(report.overall[0]!.droppedTasks).toEqual(["build-nac-002-b@docs-with"])
   })
 
   it("de-duplicates a replayed cell, keeping the last row", () => {
@@ -241,12 +260,14 @@ describe("renderReport", () => {
     expect(md).toMatch(/\|\s*build\s*\|/)
   })
 
-  it("names tasks excluded for having too few trials", () => {
+  it("names cells excluded for having too few trials", () => {
     const partial = buildReport(
       [...cell("build-nac-001-a", "c1", 3, 3), ...cell("build-nac-002-b", "c1", 1, 0)],
       { k: 3 },
     )
-    expect(renderReport(partial)).toContain("Excluded for having fewer than k=3 trials: build-nac-002-b")
+    expect(renderReport(partial)).toContain(
+      "Cells excluded for having fewer than k=3 trials: build-nac-002-b@docs-with",
+    )
   })
 })
 

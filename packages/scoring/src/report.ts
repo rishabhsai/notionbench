@@ -41,13 +41,28 @@ export function familyOf(record: Pick<TrialRecord, "taskId" | "family">): string
   return record.taskId.split("-")[1] ?? "other"
 }
 
+/**
+ * The unit avg@k and pass^k are computed over.
+ *
+ * NOT the task: the docs condition is part of a cell's coordinates, so a task
+ * run under both conditions is two independent k-trial experiments. Keying on
+ * the task alone would silently report avg@2k over a mixture of the two
+ * conditions — and then find no cell with 2k trials in the per-docs breakdown.
+ */
+function cellKeyOf(r: Pick<TrialRecord, "taskId" | "docsCondition">): string {
+  return `${r.taskId}@docs-${r.docsCondition}`
+}
+
 export interface ReportRow {
   configId: string
   label: string
   /** Breakdown bucket this row belongs to (family / stage / docs condition). */
   group?: string
+  /** Distinct tasks contributing to this row. */
   tasks: number
-  /** Trials counted: `tasks * k`. */
+  /** (task, docs condition) cells contributing to this row. */
+  cells: number
+  /** Trials counted: `cells * k`. */
   trials: number
   k: number
   /** Macro-average over tasks of avg@k. */
@@ -69,7 +84,7 @@ export interface ReportRow {
   costKnown: boolean
   totalWallMs: number
   meanWallMs: number
-  /** Tasks dropped from this row for having fewer than k trials. */
+  /** Cells dropped from this row for having fewer than k trials. */
   droppedTasks: string[]
 }
 
@@ -119,12 +134,12 @@ export function buildReport(records: readonly TrialRecord[], opts: ReportOptions
   const rows = opts.keepReplays ? [...records] : dedupeByCell(records)
   const notes: string[] = []
 
-  const perTask = new Map<string, number>()
+  const perCell = new Map<string, number>()
   for (const r of rows) {
-    const key = `${r.configId}|${r.taskId}`
-    perTask.set(key, (perTask.get(key) ?? 0) + 1)
+    const key = `${r.configId}|${cellKeyOf(r)}`
+    perCell.set(key, (perCell.get(key) ?? 0) + 1)
   }
-  const k = opts.k ?? (perTask.size === 0 ? 1 : Math.min(...perTask.values()))
+  const k = opts.k ?? (perCell.size === 0 ? 1 : Math.min(...perCell.values()))
   const threshold = opts.threshold ?? 1
   const z = opts.z ?? 1.96
 
@@ -198,7 +213,7 @@ function breakdown(
 /**
  * Collapse one config's (or one config × bucket's) records into a table row.
  *
- * Tasks with fewer than k trials are dropped rather than averaged over a
+ * Cells with fewer than k trials are dropped rather than averaged over a
  * shorter k — mixing k across a row would make pass^k incomparable between
  * cells of the same table.
  */
@@ -207,25 +222,26 @@ function summarizeRow(rows: readonly TrialRecord[], opts: RowOptions): ReportRow
   const configId = rows[0]!.configId
   const label = rows.find((r) => r.configLabel)?.configLabel ?? configId
 
-  const byTask = new Map<string, TrialRecord[]>()
+  const byCell = new Map<string, TrialRecord[]>()
   for (const r of rows) {
-    const list = byTask.get(r.taskId) ?? []
+    const key = cellKeyOf(r)
+    const list = byCell.get(key) ?? []
     list.push(r)
-    byTask.set(r.taskId, list)
+    byCell.set(key, list)
   }
 
   const entries: TaskTrials[] = []
   const droppedTasks: string[] = []
   const counted: TrialRecord[] = []
-  for (const [taskId, trials] of [...byTask.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [cellKey, trials] of [...byCell.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     if (trials.length < opts.k) {
-      droppedTasks.push(taskId)
+      droppedTasks.push(cellKey)
       continue
     }
     const ordered = [...trials].sort((a, b) => a.trial - b.trial).slice(0, opts.k)
     counted.push(...ordered)
     entries.push({
-      taskId,
+      taskId: cellKey,
       family: familyOf(trials[0]!),
       scores: ordered.map((t) => (t.scored === false ? 0 : t.score)),
     })
@@ -236,6 +252,7 @@ function summarizeRow(rows: readonly TrialRecord[], opts: RowOptions): ReportRow
       configId,
       label,
       tasks: 0,
+      cells: 0,
       trials: 0,
       k: opts.k,
       avgScore: 0,
@@ -264,7 +281,8 @@ function summarizeRow(rows: readonly TrialRecord[], opts: RowOptions): ReportRow
   return {
     configId,
     label,
-    tasks: stats.overall.tasks,
+    tasks: new Set(counted.map((r) => r.taskId)).size,
+    cells: stats.overall.tasks,
     trials: stats.overall.trials,
     k: opts.k,
     avgScore: stats.overall.avgScore,
@@ -294,8 +312,15 @@ export function renderReport(report: Report): string {
   out.push(`# NotionBench results${report.runId ? ` — run \`${report.runId}\`` : ""}`)
   out.push("")
   out.push(
-    `${report.tasks} task(s) × ${report.configs} config(s) · k=${report.k} · ` +
-      `${report.records} scored trial(s) · generated ${report.generatedAt}`,
+    `${report.tasks} task(s) × ${report.configs} config(s) · k=${report.k} trial(s) per ` +
+      `(task, docs condition) cell · ${report.records} scored trial(s) · generated ${report.generatedAt}`,
+  )
+  out.push("")
+  out.push(
+    "avg@k is macro-averaged over cells (each weighs the same); the interval is a 95% " +
+      "Wilson score interval on the underlying solve rate. pass^k is the probability that " +
+      "k trials drawn from the observed ones all succeeded — discovery and reliability are " +
+      "different questions and are reported separately.",
   )
   out.push("")
   for (const note of report.notes) out.push(`> ${note}`)
@@ -329,7 +354,7 @@ export function renderReport(report: Report): string {
   if (dropped.size > 0) {
     out.push("")
     out.push(
-      `> Excluded for having fewer than k=${report.k} trials: ${[...dropped].sort().join(", ")}`,
+      `> Cells excluded for having fewer than k=${report.k} trials: ${[...dropped].sort().join(", ")}`,
     )
   }
 
