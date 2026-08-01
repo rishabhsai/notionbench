@@ -30,12 +30,35 @@ import {
   buildCells,
   cellKey,
   newRunId,
-  resume as resumeRun,
   trialDirFor,
   type CellCoords,
   type RunMeta,
+  type RunStateFile,
 } from './checkpoint.js';
 import { ConfigError, loadRunConfig, selectConfigs, type AgentConfig } from './config.js';
+import {
+  RUN_SPEC_FILENAME,
+  createRunSpec,
+  describeGrid,
+  detectDrift,
+  diffGrid,
+  driftLines,
+  expandSpec,
+  gridCells as expandGrid,
+  isSeriousDrift,
+  readRunSpec,
+  reconstructSpec,
+  recordDrift,
+  renderRefusal,
+  specCells,
+  writeRunSpec,
+  type ConfigDrift,
+  type GridDiff,
+  type RequestedAxes,
+  type RunSpecExecution,
+  type RunSpecFile,
+  type SpecConfig,
+} from './run-spec.js';
 import {
   LiveFixtures,
   inspectLiveTasks,
@@ -54,7 +77,7 @@ import {
 } from './queue.js';
 import { DEFAULT_HOST, DEFAULT_PORT, defaultWebRoot, serve } from './serve.js';
 import { compilePatterns } from './rate-limit.js';
-import { buildPlan, renderPlan } from './plan.js';
+import { buildPlan, renderPlan, type ResumePlan } from './plan.js';
 import { isScorable, scoreTrial, unscoredRecord } from './score.js';
 import { getCliVersion, runTrial } from './spawn.js';
 import { discoverTasks, readPrompt } from './tasks.js';
@@ -78,7 +101,16 @@ run options:
   --trials <n>          Trials per (task, config, docs) cell. Default 5.
   --docs <with|without|both>
                         Docs axis condition(s). Default: both.
-  --resume <runId>      Continue an existing run; done cells are skipped.
+  --resume <runId>      Continue an existing run, replaying the grid recorded in
+                        results/<runId>/run-spec.json exactly: the same tasks,
+                        configs (with the harness/model/effort/pricing resolved
+                        at launch), docs conditions and trials. Done cells are
+                        skipped. runconfig.json and the flag defaults above are
+                        NOT consulted for the grid — only to report drift.
+  --expand              With --resume: allow this invocation to ADD cells to the
+                        run, and record the expansion in the spec. Without it, a
+                        resume that would grow the grid is refused, naming what
+                        differs.
   --runconfig <path>    runconfig.json. Default: ./runconfig.json if present.
   --results <dir>       Results root. Default: results/
   --evals <dir>         Task root. Default: evals/
@@ -131,6 +163,7 @@ const OPTIONS = {
   trials: { type: 'string' },
   docs: { type: 'string' },
   resume: { type: 'string' },
+  expand: { type: 'boolean' },
   runconfig: { type: 'string' },
   results: { type: 'string' },
   evals: { type: 'string' },
@@ -172,7 +205,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   try {
     switch (command) {
       case 'run':
-        return await cmdRun(values);
+        return await cmdRun(values, argv);
       case 'score':
         return await cmdScore(values, positionals[1]);
       case 'status':
@@ -429,36 +462,86 @@ function firstLine(text: string): string {
   return line.length > 120 ? `${line.slice(0, 120)}…` : line;
 }
 
-async function cmdRun(values: Values): Promise<number> {
+async function cmdRun(values: Values, argv: string[]): Promise<number> {
   const runconfigPath = await defaultRunconfigPath(values.runconfig);
   const rc = await loadRunConfig(runconfigPath);
   const resultsRoot = path.resolve(values.results ?? rc.resultsRoot);
-  const evalsRoot = path.resolve(values.evals ?? rc.evalsRoot);
-  const trials = intOpt(values.trials, rc.trials, '--trials');
-  const concurrency = intOpt(values.concurrency, rc.concurrency, '--concurrency');
-  const maxAttempts = intOpt(values['max-attempts'], rc.maxAttempts, '--max-attempts');
-  const defaultTimeoutSec = intOpt(values.timeout, rc.timeoutSec, '--timeout');
+  const dryRun = values['dry-run'] === true;
+
+  if (values.expand === true && !values.resume) {
+    throw new ConfigError('--expand only applies with --resume (it extends an existing run)');
+  }
+
+  // The grid a run measures is decided ONCE, at creation, and recorded in
+  // results/<runId>/run-spec.json. A resume replays that; it never rebuilds the
+  // grid from today's runconfig.json or from the defaults of the flags that were
+  // omitted this time. (Run 20260801-085000: a bare --resume of a 35-cell run
+  // re-expanded it to 3,120 cells and started executing. See run-spec.ts.)
+  const replay = values.resume
+    ? await resolveReplay({ runId: values.resume, resultsRoot, rc, runconfigPath, argv, values })
+    : undefined;
+  if (typeof replay === 'number') return replay;
+  if (replay && !dryRun) printReplay(replay);
+
+  const evalsRoot = path.resolve(values.evals ?? replay?.spec.execution.evalsRoot ?? rc.evalsRoot);
+  const trials = replay ? replay.spec.grid.trials : intOpt(values.trials, rc.trials, '--trials');
+  const concurrency = intOpt(
+    values.concurrency,
+    replay?.spec.execution.concurrency ?? rc.concurrency,
+    '--concurrency',
+  );
+  const maxAttempts = intOpt(
+    values['max-attempts'],
+    replay?.spec.execution.maxAttempts ?? rc.maxAttempts,
+    '--max-attempts',
+  );
+  const defaultTimeoutSec = intOpt(
+    values.timeout,
+    replay?.spec.execution.defaultTimeoutSec ?? rc.timeoutSec,
+    '--timeout',
+  );
+  const killGraceMs = replay?.spec.execution.killGraceMs ?? rc.killGraceMs;
   const cooldownMs = values['cooldown-min']
     ? intOpt(values['cooldown-min'], 30, '--cooldown-min') * 60_000
-    : rc.rateWindow.cooldownMs;
-  const docsConditions = parseDocs(values.docs);
-  const scoringEnabled = values['no-score'] !== true;
+    : (replay?.spec.execution.cooldownMs ?? rc.rateWindow.cooldownMs);
+  const docsConditions = replay ? replay.spec.grid.docsConditions : parseDocs(values.docs);
+  const scoringEnabled =
+    values['no-score'] === true ? false : (replay?.spec.execution.scoring.enabled ?? true);
   const scoreTimeoutMs = values['score-timeout']
     ? intOpt(values['score-timeout'], 0, '--score-timeout') * 1000
-    : DEFAULT_SCORE_TIMEOUT_MS;
+    : (replay?.spec.execution.scoring.timeoutMs ?? DEFAULT_SCORE_TIMEOUT_MS);
 
-  const tasks = await discoverTasks(evalsRoot, splitList(values.tasks));
+  const taskPatterns = replay ? replay.taskIds : splitList(values.tasks);
+  const tasks = await discoverTasks(evalsRoot, taskPatterns);
   if (tasks.length === 0) {
     process.stderr.write(
       `no tasks matched under ${evalsRoot}` +
-        (values.tasks ? ` for ${splitList(values.tasks).join(', ')}` : '') +
+        (taskPatterns.length > 0 ? ` for ${taskPatterns.join(', ')}` : '') +
         '\n',
     );
     return 2;
   }
-  const configs = selectConfigs(rc.configs, splitList(values.configs), {
-    includeDisabled: values['include-disabled'] === true,
-  });
+  if (replay) {
+    const found = new Set(tasks.map((t) => t.id));
+    const missing = replay.taskIds.filter((id) => !found.has(id));
+    if (missing.length > 0) {
+      process.stderr.write(
+        `run ${replay.spec.runId} recorded ${missing.length} task(s) that no longer exist under ` +
+          `${evalsRoot}: ${missing.join(', ')}\n` +
+          'Refusing to resume a grid it cannot reproduce. Restore the task directories, or point ' +
+          '--evals at the tree the run was launched against.\n',
+      );
+      return 2;
+    }
+  }
+
+  // A resume executes the config definitions recorded at launch. Anything the
+  // config file says today is drift, reported below, never applied.
+  const configs = replay
+    ? replay.configs
+    : selectConfigs(rc.configs, splitList(values.configs), {
+        includeDisabled: values['include-disabled'] === true,
+      });
   if (configs.length === 0) {
     process.stderr.write('no configs selected (are they all disabled?)\n');
     return 2;
@@ -481,17 +564,19 @@ async function cmdRun(values: Values): Promise<number> {
   const liveSettings = resolveLiveSettings({ notion: rc.notion });
   const liveProblems = liveRequirementProblems(liveInfo, liveSettings);
   const teardown = values['no-teardown'] !== true;
+  const provisionedIds = new Set(liveInfo.provisioned.map((t) => t.id));
   const livePlan =
     liveInfo.live.length > 0
       ? {
           tasks: liveInfo.live.map((t) => t.id),
           provisioned: liveInfo.provisioned.map((t) => t.id),
-          fixturesPerRun:
-            liveInfo.provisioned.length *
-            configs.reduce(
-              (acc, c) => acc + (c.docsCondition ? 1 : docsConditions.length) * trials,
-              0,
-            ),
+          fixturesPerRun: replay
+            ? replay.gridCells.filter((c) => provisionedIds.has(c.taskId)).length
+            : liveInfo.provisioned.length *
+              configs.reduce(
+                (acc, c) => acc + (c.docsCondition ? 1 : docsConditions.length) * trials,
+                0,
+              ),
           parentPageId: liveSettings.parentPageId,
           parentPageIdSource: liveSettings.parentPageIdSource,
           apiBase: liveSettings.apiBase,
@@ -505,7 +590,9 @@ async function cmdRun(values: Values): Promise<number> {
 
   // --dry-run answers "what exactly is about to happen" and must therefore
   // change nothing: no `<cli> --version` probes, no run directory, no state.
-  if (values['dry-run']) {
+  // With --resume it additionally must not touch the run it is describing — the
+  // checkpoint is opened read-only and no interrupted cell is reset.
+  if (dryRun) {
     const prompts = new Map<string, string>();
     const verifiers = new Set<string>();
     for (const task of tasks) {
@@ -530,6 +617,8 @@ async function cmdRun(values: Values): Promise<number> {
       notionTokens: tokens.size,
       templatesDir: DEFAULT_TEMPLATES_DIR,
       live: livePlan,
+      cells: replay?.gridCells,
+      resume: replay ? resumePlanFor(replay) : undefined,
     });
     if (values.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
@@ -550,23 +639,42 @@ async function cmdRun(values: Values): Promise<number> {
 
   // Built per config so a config that pins itself to one docs condition (the
   // `docsCondition` field) contributes only that half of the grid.
-  const cells = configs.flatMap((c) =>
-    buildCells({
-      taskIds: tasks.map((t) => t.id),
-      configIds: [c.id],
-      docsConditions: c.docsCondition ? [c.docsCondition] : docsConditions,
-      trials,
-    }),
-  );
+  const cells = replay
+    ? replay.gridCells
+    : configs.flatMap((c) =>
+        buildCells({
+          taskIds: tasks.map((t) => t.id),
+          configIds: [c.id],
+          docsConditions: c.docsCondition ? [c.docsCondition] : docsConditions,
+          trials,
+        }),
+      );
+
+  const execution: RunSpecExecution = {
+    concurrency,
+    maxAttempts,
+    cooldownMs,
+    defaultTimeoutSec,
+    killGraceMs,
+    evalsRoot,
+    resultsRoot,
+    scoring: { enabled: scoringEnabled, timeoutMs: scoreTimeoutMs },
+  };
 
   // Checkpoint: resume or create.
   let cp: Checkpoint;
-  if (values.resume) {
-    cp = await resumeRun(values.resume, resultsRoot);
-    const added = await cp.ensureCells(cells);
-    process.stdout.write(`resuming ${cp.runId}: ${added} new cell(s) added\n`);
+  /** Cells this pass may execute. On a resume, filters narrow it; nothing widens it. */
+  let passKeys: Set<string>;
+  if (replay) {
+    cp = await Checkpoint.load(replay.spec.runId, resultsRoot);
+    await cp.resetRunning();
+    await applyReplay(cp, replay, resultsRoot);
+    passKeys = new Set(replay.passCells.map(cellKey));
   } else {
     const runId = newRunId();
+    const specConfigs: SpecConfig[] = await Promise.all(
+      configs.map(async (c) => ({ ...c, cliVersion: await cliVersionFor(c) })),
+    );
     const meta: RunMeta = {
       concurrency,
       trials,
@@ -575,15 +683,13 @@ async function cmdRun(values: Values): Promise<number> {
       cooldownMs,
       evalsRoot,
       resultsRoot,
-      configs: await Promise.all(
-        configs.map(async (c) => ({
-          id: c.id,
-          harness: c.harness,
-          model: c.model,
-          reasoningEffort: c.reasoningEffort,
-          cliVersion: await cliVersionFor(c),
-        })),
-      ),
+      configs: specConfigs.map((c) => ({
+        id: c.id,
+        harness: c.harness,
+        model: c.model,
+        reasoningEffort: c.reasoningEffort,
+        cliVersion: c.cliVersion,
+      })),
       taskIds: tasks.map((t) => t.id),
       provenance: {
         node: process.version,
@@ -593,12 +699,31 @@ async function cmdRun(values: Values): Promise<number> {
       },
     };
     cp = await Checkpoint.create({ runId, resultsRoot, meta, cells });
+    // Written before the first trial: a run that dies in its first minute is
+    // still resumable as the grid it was launched with.
+    await writeRunSpec(
+      resultsRoot,
+      createRunSpec({
+        runId,
+        grid: {
+          taskIds: tasks.map((t) => t.id),
+          configIds: configs.map((c) => c.id),
+          docsConditions,
+          trials,
+        },
+        configs: specConfigs,
+        execution,
+        runconfigPath,
+        argv,
+      }),
+    );
+    passKeys = new Set(cells.map(cellKey));
     process.stdout.write(`run ${runId}\n`);
   }
   await linkLatest(resultsRoot, cp.runId);
   const runDir = path.join(resultsRoot, cp.runId);
 
-  const summary = cp.summary();
+  const summary = tallyCells(cp, cells);
   process.stdout.write(
     `${tasks.length} task(s) × ${configs.length} config(s) × ${docsConditions.join('/')} × ${trials} trial(s) ` +
       `= ${summary.total} cell(s); ${summary.done} already done, ${summary.pending} pending\n`,
@@ -639,7 +764,15 @@ async function cmdRun(values: Values): Promise<number> {
       void writeRateWindowState(runDir, s).catch(() => {});
     },
   });
-  scheduler.enqueue(cp.pending().map((c) => ({ ...c, attempts: c.attempts })));
+  // Only cells this pass is allowed to touch. On a fresh run that is the whole
+  // grid; on a resume it is the recorded grid (narrowed by any filters the
+  // operator typed), never whatever else happens to be sitting in state.json.
+  scheduler.enqueue(
+    cp
+      .pending()
+      .filter((c) => passKeys.has(cellKey(c)))
+      .map((c) => ({ ...c, attempts: c.attempts })),
+  );
 
   const configById = new Map(configs.map((c) => [c.id, c]));
   const abort = new AbortController();
@@ -670,7 +803,7 @@ async function cmdRun(values: Values): Promise<number> {
         scoringEnabled,
         scoreTimeoutMs,
         defaultTimeoutSec,
-        killGraceMs: rc.killGraceMs,
+        killGraceMs,
         cooldownMs,
         patterns,
         tokens,
@@ -693,6 +826,411 @@ async function cmdRun(values: Values): Promise<number> {
       `report with: notionbench score ${path.relative(process.cwd(), runDir) || runDir}\n`,
   );
   return final.failed > 0 ? 1 : 0;
+}
+
+// ---------------------------------------------------------------------------
+// --resume: replaying a run's own recorded grid
+// ---------------------------------------------------------------------------
+
+/** Everything `--resume` decided, resolved before anything is written. */
+interface Replay {
+  spec: RunSpecFile;
+  /** Where the grid came from, in the operator's words. */
+  specSource: string;
+  notes: string[];
+  drift: ConfigDrift[];
+  diff: GridDiff;
+  expanded: boolean;
+  /** Every cell of the recorded (possibly just-expanded) grid. */
+  gridCells: CellCoords[];
+  /** The subset this invocation may execute — filters narrow it, nothing widens it. */
+  passCells: CellCoords[];
+  /** state.json cells outside the recorded grid; repaired away on a real resume. */
+  strayKeys: string[];
+  strayStarted: number;
+  /** The config definitions recorded at launch — what actually gets executed. */
+  configs: AgentConfig[];
+  taskIds: string[];
+  /** state.json as loaded, so tallies are taken before any mutation. */
+  state: RunStateFile;
+  /** The spec on disk is out of date (reconstructed, expanded, or new drift). */
+  dirty: boolean;
+}
+
+/**
+ * Work out what `--resume <runId>` is going to replay.
+ *
+ * Reads nothing but the run's own files plus runconfig.json (for drift only) and
+ * writes nothing at all, so `--dry-run --resume` can use it unchanged.
+ * Returns an exit code instead of a Replay when the invocation is refused.
+ */
+async function resolveReplay(args: {
+  runId: string;
+  resultsRoot: string;
+  rc: Awaited<ReturnType<typeof loadRunConfig>>;
+  runconfigPath?: string;
+  argv: string[];
+  values: Values;
+}): Promise<Replay | number> {
+  const { runId, resultsRoot, rc, runconfigPath, argv, values } = args;
+  const cp = await Checkpoint.load(runId, resultsRoot);
+  const state = cp.snapshot();
+  const notes: string[] = [];
+  let dirty = false;
+
+  let spec = await readRunSpec(resultsRoot, runId);
+  let specSource: string;
+  if (spec) {
+    specSource = `${RUN_SPEC_FILENAME} (recorded at launch)`;
+  } else {
+    // Back-compat: this run predates run-spec.json. Its grid is reconstructed
+    // from its own recorded history — never from the current config file, which
+    // is exactly the substitution that corrupted run 20260801-085000.
+    const rebuilt = reconstructSpec({
+      state,
+      execution: {
+        concurrency: state.meta?.concurrency ?? rc.concurrency,
+        maxAttempts: state.meta?.maxAttempts ?? rc.maxAttempts,
+        cooldownMs: state.meta?.cooldownMs ?? rc.rateWindow.cooldownMs,
+        defaultTimeoutSec: rc.timeoutSec,
+        killGraceMs: rc.killGraceMs,
+        evalsRoot: state.meta?.evalsRoot ?? path.resolve(rc.evalsRoot),
+        resultsRoot: state.meta?.resultsRoot ?? resultsRoot,
+        scoring: { enabled: true, timeoutMs: DEFAULT_SCORE_TIMEOUT_MS },
+      },
+      runconfigPath,
+      argv,
+    });
+    spec = rebuilt.spec;
+    notes.push(...rebuilt.notes);
+    notes.push(
+      'that run did not record its per-trial timeout, kill grace or scoring budget; this resume ' +
+        'uses the current defaults for those three',
+    );
+    specSource = `state.json (no ${RUN_SPEC_FILENAME} — grid reconstructed from the run's own history)`;
+    dirty = true;
+  }
+
+  spec = { ...spec, configs: hydrateConfigs(spec, rc.configs, notes) };
+  const invocationProblems = spec.configs
+    .filter((c) => c.reconstructed)
+    .flatMap((c) => {
+      try {
+        getAdapter(c.harness).buildInvocation(c, { prompt: '', workspaceDir: process.cwd() });
+        return [];
+      } catch (err) {
+        return [`${c.id}: ${(err as Error).message}`];
+      }
+    });
+  if (invocationProblems.length > 0) {
+    throw new ConfigError(
+      `run ${runId} has no ${RUN_SPEC_FILENAME}, and the definitions recovered from state.json are ` +
+        `not enough to invoke:\n  ${invocationProblems.join('\n  ')}\n` +
+        'Add those config ids back to the runconfig, or hand-write ' +
+        `results/${runId}/${RUN_SPEC_FILENAME}. Refusing to guess.`,
+    );
+  }
+
+  // The axes. Everything defaults to the RECORDED grid; only a flag the operator
+  // actually typed on this command line overrides it.
+  const explicit = {
+    tasks: splitList(values.tasks).length > 0,
+    configs: splitList(values.configs).length > 0,
+    docs: values.docs !== undefined,
+    trials: values.trials !== undefined,
+  };
+  const evalsRoot = path.resolve(values.evals ?? spec.execution.evalsRoot);
+  let taskIds = [...spec.grid.taskIds];
+  if (explicit.tasks) {
+    const patterns = splitList(values.tasks);
+    const matched = await discoverTasks(evalsRoot, patterns);
+    if (matched.length === 0) {
+      throw new ConfigError(`--tasks ${patterns.join(', ')} matched no task under ${evalsRoot}`);
+    }
+    taskIds = matched.map((t) => t.id);
+  }
+  let configIds = [...spec.grid.configIds];
+  if (explicit.configs) {
+    configIds = splitList(values.configs);
+    const known = new Set([...spec.configs.map((c) => c.id), ...rc.configs.map((c) => c.id)]);
+    const unknown = configIds.filter((id) => !known.has(id));
+    if (unknown.length > 0) {
+      throw new ConfigError(
+        `unknown config ${unknown.join(', ')}. Recorded in this run: ${spec.grid.configIds.join(', ')}`,
+      );
+    }
+  }
+  const axes: RequestedAxes = {
+    taskIds,
+    configIds,
+    docsConditions: explicit.docs ? parseDocs(values.docs) : [...spec.grid.docsConditions],
+    trials: explicit.trials
+      ? intOpt(values.trials, spec.grid.trials, '--trials')
+      : spec.grid.trials,
+    explicit,
+  };
+
+  // Docs pins live on the config, so a config added by --expand needs its
+  // current definition to expand correctly.
+  const pinSource: SpecConfig[] = [...spec.configs];
+  for (const id of axes.configIds) {
+    if (pinSource.some((c) => c.id === id)) continue;
+    const fromFile = rc.configs.find((c) => c.id === id);
+    if (fromFile) pinSource.push({ ...fromFile });
+  }
+  const requested = expandGrid(
+    {
+      taskIds: axes.taskIds,
+      configIds: axes.configIds,
+      docsConditions: axes.docsConditions,
+      trials: axes.trials,
+    },
+    pinSource,
+  );
+  const diff = diffGrid(spec, requested, axes);
+
+  let expanded = false;
+  if (diff.added.length > 0) {
+    if (values.expand !== true) {
+      // The whole point of the fix: adding cells to a run in flight is a
+      // decision, and a decision needs a decision-maker.
+      process.stderr.write(
+        `${renderRefusal(spec, diff)}\n` +
+          `  run ${runId} recorded ${specCells(spec).length} cell(s) — ${describeGrid(spec.grid)}\n` +
+          `  source: ${specSource}\n` +
+          `  this invocation asks for ${requested.length} cell(s)\n`,
+      );
+      return 2;
+    }
+    const newConfigs: SpecConfig[] = axes.configIds
+      .filter((id) => !spec!.configs.some((c) => c.id === id))
+      .map((id) => {
+        const fromFile = rc.configs.find((c) => c.id === id);
+        if (!fromFile) {
+          throw new ConfigError(
+            `--expand cannot add config "${id}": it is not in ${runconfigPath ?? 'the built-in roster'}`,
+          );
+        }
+        return { ...fromFile };
+      });
+    spec = expandSpec(spec, { axes, requested, diff, newConfigs, argv });
+    expanded = true;
+    dirty = true;
+  }
+
+  const drift = detectDrift(spec, rc.configs);
+  if (drift.length > 0) {
+    const withDrift = recordDrift(spec, drift, argv);
+    if (withDrift !== spec) {
+      spec = withDrift;
+      dirty = true;
+    }
+  }
+
+  const gridCells = specCells(spec);
+  const gridKeys = new Set(gridCells.map(cellKey));
+  const requestedKeys = new Set(requested.map(cellKey));
+  const filtered = explicit.tasks || explicit.configs || explicit.docs || explicit.trials;
+  const passCells = filtered
+    ? gridCells.filter((c) => requestedKeys.has(cellKey(c)))
+    : gridCells;
+
+  const strayKeys = Object.keys(state.cells ?? {}).filter((k) => !gridKeys.has(k));
+  const strayStarted = strayKeys.filter((k) => {
+    const cell = state.cells[k];
+    return (
+      cell !== undefined &&
+      (cell.status !== 'pending' ||
+        cell.attempts > 0 ||
+        cell.rateLimitedAttempts > 0 ||
+        (cell.history?.length ?? 0) > 0)
+    );
+  }).length;
+
+  const usedConfigIds = new Set(gridCells.map((c) => c.configId));
+  return {
+    spec,
+    specSource,
+    notes,
+    drift,
+    diff,
+    expanded,
+    gridCells,
+    passCells,
+    strayKeys,
+    strayStarted,
+    configs: spec.configs.filter((c) => usedConfigIds.has(c.id)),
+    taskIds: [...new Set(gridCells.map((c) => c.taskId))].sort(),
+    state,
+    dirty,
+  };
+}
+
+/**
+ * Fill in what a pre-spec state.json could not record.
+ *
+ * `RunMeta.configs` holds only (id, harness, model, reasoningEffort, cliVersion);
+ * pricing, labels and `command-template` invocations are not in there. The
+ * recorded identity always wins — the config file only supplies the fields the
+ * old format had nowhere to put — and the substitution is stated out loud,
+ * because it is the one place a resume reads today's config for something other
+ * than a drift report.
+ */
+function hydrateConfigs(
+  spec: RunSpecFile,
+  current: AgentConfig[],
+  notes: string[],
+): SpecConfig[] {
+  const byId = new Map(current.map((c) => [c.id, c]));
+  const merged: string[] = [];
+  const out = spec.configs.map((recorded) => {
+    if (!recorded.reconstructed) return recorded;
+    const now = byId.get(recorded.id);
+    if (!now) return recorded;
+    merged.push(recorded.id);
+    return {
+      ...now,
+      harness: recorded.harness,
+      model: recorded.model,
+      reasoningEffort: recorded.reasoningEffort,
+      cliVersion: recorded.cliVersion,
+      reconstructed: true,
+    } satisfies SpecConfig;
+  });
+  if (merged.length > 0) {
+    notes.push(
+      `state.json recorded only harness/model/effort for ${merged.join(', ')}; their label, ` +
+        'pricing and invocation details were taken from the current config file — check them ' +
+        'before trusting this run\'s cost column',
+    );
+  }
+  return out;
+}
+
+/** Print what a resume is about to do, before it does any of it. */
+function printReplay(replay: Replay): void {
+  process.stdout.write(
+    `resuming ${replay.spec.runId} — replaying the recorded grid ` +
+      `(${replay.gridCells.length} cell(s); ${replay.specSource})\n`,
+  );
+  for (const note of replay.notes) process.stdout.write(`  note: ${note}\n`);
+  if (replay.expanded) {
+    process.stdout.write(
+      `  --expand: ADDING ${replay.diff.added.length} cell(s) to this run — ` +
+        `${replay.diff.reasons.join(', ')}\n` +
+        `  the run now measures ${describeGrid(replay.spec.grid)}; the expansion is recorded in ` +
+        `${RUN_SPEC_FILENAME}\n`,
+    );
+  }
+  if (replay.passCells.length < replay.gridCells.length) {
+    process.stdout.write(
+      `  filters restrict this pass to ${replay.passCells.length} of ${replay.gridCells.length} ` +
+        'recorded cell(s); the rest keep their state\n',
+    );
+  }
+  if (replay.drift.length > 0) {
+    process.stderr.write(
+      `\n!! CONFIG DRIFT — runconfig.json no longer matches run ${replay.spec.runId}:\n`,
+    );
+    for (const line of driftLines(replay.drift)) process.stderr.write(`     ${line}\n`);
+    process.stderr.write(
+      '   This resume replays the definitions recorded at launch, so results are not mixed.\n' +
+        '   To measure the new definitions, start a new run.\n' +
+        (isSeriousDrift(replay.drift)
+          ? '   (Model/effort/harness drift means the config file and this run now describe ' +
+            'different experiments.)\n'
+          : '') +
+        '\n',
+    );
+  }
+}
+
+/** The state-mutating half of a resume. Never reached by --dry-run. */
+async function applyReplay(
+  cp: Checkpoint,
+  replay: Replay,
+  resultsRoot: string,
+): Promise<void> {
+  const added = await cp.ensureCells(replay.gridCells);
+  if (added > 0) process.stdout.write(`  ${added} cell(s) added to state.json\n`);
+  if (replay.strayKeys.length > 0) {
+    const removed = await cp.dropCells(replay.strayKeys);
+    process.stdout.write(
+      `  pruned ${removed} cell(s) from state.json that are not in the recorded grid` +
+        (replay.strayStarted > 0 ? ` (${replay.strayStarted} of them had been started)` : '') +
+        '\n',
+    );
+  }
+  await cp.updateMeta({
+    trials: replay.spec.grid.trials,
+    docsConditions: [...replay.spec.grid.docsConditions],
+    taskIds: [...replay.taskIds],
+    concurrency: replay.spec.execution.concurrency,
+    maxAttempts: replay.spec.execution.maxAttempts,
+    cooldownMs: replay.spec.execution.cooldownMs,
+    configs: replay.spec.configs.map((c) => ({
+      id: c.id,
+      harness: c.harness,
+      model: c.model,
+      reasoningEffort: c.reasoningEffort,
+      cliVersion: c.cliVersion,
+    })),
+  });
+  if (replay.dirty) await writeRunSpec(resultsRoot, replay.spec);
+}
+
+function resumePlanFor(replay: Replay): ResumePlan {
+  const grid = tallyStateCells(replay.state, replay.gridCells);
+  const pass = tallyStateCells(replay.state, replay.passCells);
+  return {
+    runId: replay.spec.runId,
+    specSource: replay.specSource,
+    specOrigin: replay.spec.origin,
+    recordedAt: replay.spec.createdAt,
+    cells: replay.gridCells.length,
+    done: grid.done,
+    pending: grid.pending,
+    running: grid.running,
+    failed: grid.failed,
+    wouldRun: pass.pending + pass.running,
+    stray: replay.strayKeys.length,
+    excluded: replay.gridCells.length - replay.passCells.length,
+    adding: replay.expanded ? replay.diff.added.length : 0,
+    addDiffs: replay.diff.reasons,
+    drift: driftLines(replay.drift),
+    notes: replay.notes,
+  };
+}
+
+interface CellTally {
+  total: number;
+  done: number;
+  pending: number;
+  running: number;
+  failed: number;
+}
+
+function tallyBy(
+  cells: CellCoords[],
+  lookup: (c: CellCoords) => { status: string } | undefined,
+): CellTally {
+  const out: CellTally = { total: cells.length, done: 0, pending: 0, running: 0, failed: 0 };
+  for (const c of cells) {
+    const status = lookup(c)?.status;
+    if (status === 'done') out.done++;
+    else if (status === 'running') out.running++;
+    else if (status === 'failed') out.failed++;
+    else out.pending++;
+  }
+  return out;
+}
+
+function tallyCells(cp: Checkpoint, cells: CellCoords[]): CellTally {
+  return tallyBy(cells, (c) => cp.get(c));
+}
+
+function tallyStateCells(state: RunStateFile, cells: CellCoords[]): CellTally {
+  return tallyBy(cells, (c) => state.cells?.[cellKey(c)]);
 }
 
 /**

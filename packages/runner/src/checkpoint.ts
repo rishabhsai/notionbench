@@ -188,9 +188,12 @@ export class Checkpoint {
   }
 
   /**
-   * Add cells that aren't in the state yet (e.g. `--trials` was raised, or a task
-   * was added to the glob). Existing cells keep their status — this is what makes
-   * `resume` safe to re-invoke with a wider selection.
+   * Add cells that aren't in the state yet. Existing cells keep their status.
+   *
+   * NOT a decision point: what a run's cells *are* is decided by the run spec
+   * (run-spec.ts), never by whatever grid the current invocation happens to
+   * compute. Callers must diff against the spec and refuse (or record an
+   * `--expand`) before widening a run — see `cmdRun`.
    */
   async ensureCells(cells: CellCoords[]): Promise<number> {
     let added = 0;
@@ -203,6 +206,26 @@ export class Checkpoint {
     }
     if (added > 0) await this.save();
     return added;
+  }
+
+  /**
+   * Drop cells from the run.
+   *
+   * Used to repair a state file holding cells that were never part of the run's
+   * recorded grid — the residue of a resume that rebuilt the grid from config
+   * defaults. `results.jsonl` is the record of truth and is never touched, so
+   * this can only lose the *enumeration* of a cell, never a verdict.
+   */
+  async dropCells(keys: string[]): Promise<number> {
+    let removed = 0;
+    for (const key of keys) {
+      if (this.state.cells[key]) {
+        delete this.state.cells[key];
+        removed++;
+      }
+    }
+    if (removed > 0) await this.save();
+    return removed;
   }
 
   get meta(): RunMeta {

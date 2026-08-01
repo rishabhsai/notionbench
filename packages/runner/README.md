@@ -6,7 +6,8 @@ trial, checkpoints every cell, and paces the grid around subscription rate windo
 ```bash
 notionbench run --dry-run    # the exact plan: grid, argv per config, child env
 notionbench run --tasks 'build-nac-*' --configs claude-code-opus-5 --trials 5 --docs both
-notionbench run --resume 20260731-120000
+notionbench run --resume 20260731-120000   # replays that run's recorded grid, exactly
+notionbench run --dry-run --resume 20260731-120000
 notionbench score results/latest
 notionbench status 20260731-120000
 notionbench serve results/latest   # live dashboard + /api/status while the run executes
@@ -36,6 +37,59 @@ turn, and verifying the untouched fixture would write a spurious 0. `timeout` an
 workspace solves the task is the verifier's call, not the runner's. A verifier that
 crashes or hangs yields `scored: false` — an absence of measurement, kept distinct
 from a zero all the way into the report.
+
+## Resume replays the run, not the config file
+
+A full grid is a multi-day experiment: subscription rate windows force many
+resumes, most of them unattended. So a run's definition is frozen at creation in
+`results/<runId>/run-spec.json` — the resolved task ids, the resolved config
+definitions (harness/model/effort/pricing **as they were at launch**), the docs
+conditions, the trial count, the execution knobs, and provenance (runconfig path,
+a hash of the resolved configs, argv, host, CLI versions).
+
+`--resume <runId>` replays exactly that. It never rebuilds the grid from
+`runconfig.json` or from the defaults of the flags you did not type this time.
+
+> This is not hypothetical. Run `20260801-085000` was launched as 5 tasks × 7
+> configs × `--docs with` × `--trials 1` = 35 cells. A bare
+> `notionbench run --resume 20260801-085000` rebuilt the grid from config
+> defaults — 39 tasks × 8 configs × both docs conditions × 5 trials = 3,120 cells
+> — printed `3085 new cell(s) added` and started executing: a docs arm the
+> project had cut, a config outside the published roster, and k=5 where the
+> project chose k=3. ~271h of agent time, noticed by hand after ten seconds.
+
+The rules:
+
+- **Done cells stay done.** Only pending cells (and cells that were in flight when
+  the process died) run.
+- **Adding cells needs `--expand`.** Any resume that would grow the grid is a hard
+  error naming precisely what differs, e.g.
+  `refusing to add 3085 cell(s) to run 20260801-085000: --trials 5 vs recorded 1,
+  docs with+without vs recorded with, 34 task(s) not in the recorded grid …;
+  pass --expand to extend this run`. With `--expand`, the addition is logged
+  loudly and appended to the spec's `history` (with the previous grid).
+- **Narrowing is allowed.** `--configs`/`--tasks`/`--docs`/`--trials` may restrict
+  a pass to a subset of the recorded grid; the excluded cells keep their state.
+- **Config drift is reported, never applied.** If a recorded config no longer
+  matches `runconfig.json` (model, effort, harness, invocation, pricing…), the
+  resume prints a `!! CONFIG DRIFT` block and records it in the spec — and then
+  executes the **recorded** definition. Results scored under the old definition
+  are therefore never mixed with new ones; measuring the new definition means
+  starting a new run.
+  *Pricing-only drift is a warning, not an error:* the API-equivalent cost column
+  is computed from the recorded pricing, so the run stays internally consistent,
+  and hard-failing the unattended overnight resume over an edit that cannot change
+  a single token of a trajectory costs more than it protects. Model/effort/
+  harness drift is flagged as `CHANGED DEFINITION`.
+- **`--dry-run --resume` works and touches nothing** — it prints the replayed
+  grid, how much of it is done, and what would run, without resetting an
+  interrupted cell or writing a byte.
+- **Runs created before `run-spec.json` existed** reconstruct their grid from
+  `state.json` — the run's own recorded metadata and completed cells, never the
+  current config file. Cells that were never completed and are not in that grid
+  (the residue of an unguarded resume) are pruned, and the reconstructed spec is
+  persisted so the next resume is exact. If nothing in `state.json` can describe a
+  grid, the resume fails with a message instead of guessing.
 
 ## Live tasks: a real Notion workspace
 
@@ -284,6 +338,8 @@ doubles or halves the headline token numbers:
   temp-then-rename on every mutation, writes are serialized, and `resume()` returns
   cells that were in flight when the process died to `pending` *without* refunding
   their attempt — so a cell that reliably kills the runner eventually gives up.
+  What the cells *are* is a separate file, `run-spec.json`, written once — see
+  [Resume replays the run, not the config file](#resume-replays-the-run-not-the-config-file).
 
 ## Configuration
 
