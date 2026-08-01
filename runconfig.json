@@ -1,0 +1,114 @@
+{
+  "_comment": "Full v1 roster + OpenCode via command-template.",
+  "configs": [
+    {
+      "id": "claude-code-opus-5",
+      "label": "Claude Code \u00d7 Opus 5",
+      "harness": "claude-code",
+      "model": "opus",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 5,
+        "outputPerMTok": 25,
+        "cacheReadPerMTok": 0.5,
+        "cacheWritePerMTok": 6.25
+      }
+    },
+    {
+      "id": "claude-code-fable-5",
+      "label": "Claude Code \u00d7 Fable 5",
+      "harness": "claude-code",
+      "model": "fable",
+      "enabled": true
+    },
+    {
+      "id": "codex-gpt-5.6-sol-medium",
+      "label": "Codex \u00d7 GPT-5.6 Sol (medium)",
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "medium",
+      "enabled": true
+    },
+    {
+      "id": "codex-gpt-5.6-sol-high",
+      "label": "Codex \u00d7 GPT-5.6 Sol (high)",
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "high",
+      "enabled": true,
+      "note": "Extra config \u2014 not in the published v1 roster (README lists medium + xhigh)."
+    },
+    {
+      "id": "claude-code-haiku-4-5",
+      "label": "Claude Code \u00d7 Haiku 4.5 (budget)",
+      "harness": "claude-code",
+      "model": "haiku",
+      "enabled": false,
+      "note": "Budget config for the cost-Pareto story."
+    },
+    {
+      "id": "opencode-kimi-k3",
+      "label": "OpenCode \u00d7 Kimi K3",
+      "harness": "command-template",
+      "model": "opencode-go/kimi-k3",
+      "enabled": true,
+      "command": "opencode",
+      "argsTemplate": [
+        "run",
+        "{prompt}",
+        "-m",
+        "{model}",
+        "--format",
+        "json",
+        "--dir",
+        "{workspace}",
+        "--title",
+        "notionbench-{configId}"
+      ],
+      "promptVia": "argv",
+      "versionArgs": [
+        "--version"
+      ],
+      "pricing": {
+        "inputPerMTok": 2.9,
+        "outputPerMTok": 14
+      },
+      "note": "OpenCode Go sub; Kimi K3 limited to 110 requests/5h \u2014 schedule this lane first and let it trickle."
+    },
+    {
+      "id": "claude-code-sonnet-5",
+      "label": "Claude Code \u00d7 Sonnet 5 (high)",
+      "harness": "claude-code",
+      "model": "sonnet",
+      "reasoningEffort": "high",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 3,
+        "outputPerMTok": 15,
+        "cacheReadPerMTok": 0.3,
+        "cacheWritePerMTok": 3.75
+      }
+    },
+    {
+      "id": "codex-gpt-5.6-luna-high",
+      "label": "Codex \u00d7 GPT-5.6 Luna (high)",
+      "harness": "codex",
+      "model": "gpt-5.6-luna",
+      "reasoningEffort": "high",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 1.0,
+        "outputPerMTok": 8.0
+      },
+      "note": "Pricing TBC \u2014 verify Luna list prices before publishing; also available via opencode-go/gpt-5.6-luna as a cross-harness check."
+    },
+    {
+      "id": "codex-gpt-5.6-sol-xhigh",
+      "label": "Codex \u00d7 GPT-5.6 Sol (xhigh)",
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "enabled": true
+    }
+  ]
+}

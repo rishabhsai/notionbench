@@ -74,7 +74,7 @@
       return `<div class="lane">
         <div class="lane-id">
           <span class="dot" style="background:${slotVar(c.slot)}"></span>
-          <span class="lane-name" title="${esc(c.label)}">${esc(c.label)}</span>
+          <span class="lane-name" title="${esc(c.label)}">${esc(c.short)}</span>
           ${statusChip(c.status)}
         </div>
         <div class="lane-mid">
