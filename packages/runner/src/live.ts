@@ -428,9 +428,17 @@ export class LiveFixtures {
     return { NOTION_API_BASE: this.settings.apiBase };
   }
 
+  /**
+   * Load once, but never cache a *failure*.
+   *
+   * A rejected promise left in `this.lib` would be handed to every subsequent
+   * cell, so one transient hiccup during the first import would turn the
+   * scheduler's retry budget into three copies of the same stale error and take
+   * the whole live half of the grid with it.
+   */
   private async load(): Promise<LiveLib> {
     if (!this.lib) {
-      this.lib = (async () => {
+      const pending = (async () => {
         const dir =
           this.opts.libDir ??
           (await resolveLiveLibDir(this.opts.evalsRoot ?? 'evals', this.opts.env ?? process.env));
@@ -442,6 +450,10 @@ export class LiveFixtures {
         }
         return loadLiveLib(dir);
       })();
+      this.lib = pending;
+      pending.catch(() => {
+        if (this.lib === pending) this.lib = undefined;
+      });
     }
     return this.lib;
   }

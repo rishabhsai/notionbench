@@ -863,6 +863,12 @@ async function executeCell(args: {
     });
     return { kind: 'done' };
   } catch (err) {
+    // Infrastructure, not a verdict: workspace prep, fixture provisioning, a
+    // failed append. Say so on the console — "failed 1" with the reason only in
+    // state.json is how an operator loses an evening.
+    process.stderr.write(
+      `  ${pad('ERROR', 13)} ${cellKey(coords)}  ${firstLine((err as Error).message)}\n`,
+    );
     await cp.markFailed(coords, (err as Error).message);
     return { kind: 'failed', detail: (err as Error).message };
   } finally {

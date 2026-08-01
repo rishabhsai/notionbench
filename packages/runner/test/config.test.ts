@@ -115,6 +115,38 @@ describe('resolveRunConfig', () => {
   });
 });
 
+describe('the notion block', () => {
+  it('is empty by default — an offline grid needs no workspace', () => {
+    expect(resolveRunConfig().notion).toEqual({});
+  });
+
+  it('carries the live-fixture destination', () => {
+    const rc = resolveRunConfig({ notion: { parentPageId: ' page-1 ', apiBase: 'https://x.test/' } });
+    // Trimmed and de-slashed: both are concatenated with API paths downstream.
+    expect(rc.notion).toEqual({ parentPageId: 'page-1', apiBase: 'https://x.test' });
+  });
+
+  it('rejects a blank parent page id rather than failing at cell 1', () => {
+    expect(() => resolveRunConfig({ notion: { parentPageId: '  ' } })).toThrow(ConfigError);
+  });
+
+  it('rejects an apiBase that is not an http(s) URL', () => {
+    expect(() => resolveRunConfig({ notion: { apiBase: 'api.notion.com' } })).toThrow(
+      /must be an http\(s\) URL/,
+    );
+  });
+
+  it('refuses a token in the config file', () => {
+    expect(() =>
+      resolveRunConfig({ notion: { token: 'ntn_secret' } as never }),
+    ).toThrow(/NOTION_API_TOKEN/);
+  });
+
+  it('rejects a non-object notion block', () => {
+    expect(() => resolveRunConfig({ notion: 'page-1' as never })).toThrow(ConfigError);
+  });
+});
+
 describe('loadRunConfig', () => {
   it('reads a runconfig.json from disk', async () => {
     const p = path.join(scratch, 'runconfig.json');
@@ -146,6 +178,9 @@ describe('loadRunConfig', () => {
     for (const c of rc.configs.filter((x) => x.enabled)) {
       expect(hasAdapter(c.harness)).toBe(true);
     }
+    // Shipped empty on purpose: a copied config must hit `run`'s explicit
+    // "set NOTION_PARENT_PAGE_ID" message, not a 404 from a placeholder id.
+    expect(rc.notion).toEqual({});
   });
 });
 
