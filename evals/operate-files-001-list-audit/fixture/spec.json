@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "id": "operate-files-001-list-audit",
+  "seed": 20260815,
+  "root": { "title": "NotionBench · operate-files-001", "icon": "🧪" },
+  "files": [
+    {
+      "key": "press-release",
+      "name": "press-release.md",
+      "contentType": "text/markdown",
+      "text": "# Ledger 3.0 is here\n\nEmbargoed until 2026-09-01.\n"
+    },
+    {
+      "key": "brand-guide",
+      "name": "brand-guide.md",
+      "contentType": "text/markdown",
+      "text": "# Brand\n\nOne typeface. Two greys. No gradients.\n"
+    },
+    {
+      "key": "old-runbook",
+      "name": "old-runbook.md",
+      "contentType": "text/markdown",
+      "text": "# Runbook (2023)\n\nSuperseded. Kept because finance asked.\nPage the on-call rota before touching anything.\n"
+    },
+    {
+      "key": "q3-metrics",
+      "name": "q3-metrics.csv",
+      "contentType": "text/csv",
+      "text": "week,signups,churn\n27,412,19\n28,455,22\n29,501,17\n30,488,25\n"
+    },
+    {
+      "key": "q4-forecast",
+      "name": "q4-forecast.csv",
+      "contentType": "text/csv",
+      "text": "quarter,low,mid,high\nQ4,1200,1450,1900\n"
+    }
+  ],
+  "pages": [
+    {
+      "key": "marketing",
+      "title": "Marketing",
+      "icon": "📣",
+      "attachments": ["press-release"],
+      "blocks": [{ "type": "paragraph", "text": "Launch material lives here." }]
+    },
+    {
+      "key": "brand",
+      "title": "Brand",
+      "parent": "marketing",
+      "icon": "🎨",
+      "attachments": ["brand-guide"],
+      "blocks": [{ "type": "paragraph", "text": "How the thing is allowed to look." }]
+    },
+    {
+      "key": "attic",
+      "title": "Attic",
+      "parent": "brand",
+      "icon": "🗄️",
+      "attachments": ["old-runbook"],
+      "blocks": [{ "type": "paragraph", "text": "Nothing in here is current. Nothing in here is deletable." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "reports",
+      "title": "Reports",
+      "dataSource": { "name": "Reports" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Period": { "type": "select", "options": [{ "name": "Q3", "color": "brown" }, { "name": "Q4", "color": "pink" }] },
+        "Attachment": { "type": "files" }
+      },
+      "rows": [
+        {
+          "key": "report-q3",
+          "properties": { "Name": "Q3 metrics", "Period": "Q3" },
+          "files": { "Attachment": ["q3-metrics"] }
+        },
+        {
+          "key": "report-q4",
+          "properties": { "Name": "Q4 forecast", "Period": "Q4" },
+          "files": { "Attachment": ["q4-forecast"] }
+        },
+        { "key": "report-empty", "properties": { "Name": "Q1 retro", "Period": "Q3" } }
+      ]
+    }
+  ]
+}
