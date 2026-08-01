@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "id": "resolve-db-001-bulk-archive-condition",
+  "seed": 20260807,
+  "root": { "title": "NotionBench · resolve-db-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "inbox",
+      "title": "Support Inbox",
+      "icon": "📥",
+      "blocks": [
+        { "type": "paragraph", "text": "Everything the intake form files lands in the database below." }
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "key": "requests",
+      "title": "Inbox Requests",
+      "parent": "inbox",
+      "icon": "📨",
+      "dataSource": { "name": "Inbox Requests" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "New", "color": "blue" },
+            { "name": "Triaged", "color": "yellow" },
+            { "name": "Duplicate", "color": "red" },
+            { "name": "Closed", "color": "green" }
+          ]
+        },
+        "Requester": { "type": "rich_text" },
+        "Age (days)": { "type": "number" }
+      },
+      "rows": {
+        "count": 30,
+        "keyPrefix": "req",
+        "properties": {
+          "Name": { "template": "REQ-{i:3}" },
+          "Status": { "cycle": ["New", "Duplicate", "Triaged", "Closed", "Duplicate", "New"] },
+          "Requester": { "cycle": ["Ada", "Grace", "Alan", "Radia", "Barbara"] },
+          "Age (days)": { "seq": { "start": 1, "step": 2 } }
+        }
+      }
+    }
+  ]
+}
