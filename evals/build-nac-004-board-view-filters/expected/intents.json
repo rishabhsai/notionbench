@@ -1,0 +1,279 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "support-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Support",
+    "accessLevel": "open"
+  },
+  {
+    "type": "database",
+    "resourceId": "support-queue-db",
+    "name": "Support Queue",
+    "dataSources": [
+      {
+        "resourceId": "support-queue-ds",
+        "name": "Support Queue",
+        "properties": [
+          {
+            "resourceId": "ticket-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "ticket-priority-prop",
+            "name": "Priority",
+            "type": "select",
+            "options": [
+              {
+                "name": "Urgent",
+                "color": "red"
+              },
+              {
+                "name": "Normal",
+                "color": "blue"
+              },
+              {
+                "name": "Low",
+                "color": "gray"
+              }
+            ]
+          },
+          {
+            "resourceId": "ticket-team-prop",
+            "name": "Team",
+            "type": "select",
+            "options": [
+              {
+                "name": "Platform",
+                "color": "purple"
+              },
+              {
+                "name": "Billing",
+                "color": "orange"
+              },
+              {
+                "name": "Mobile",
+                "color": "green"
+              }
+            ]
+          },
+          {
+            "resourceId": "ticket-escalated-prop",
+            "name": "Escalated",
+            "type": "checkbox"
+          },
+          {
+            "resourceId": "ticket-opened-prop",
+            "name": "Opened",
+            "type": "date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "support-teamspace"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "support-queue-db",
+    "view": {
+      "resourceId": "support-queue-table-view",
+      "name": "All Tickets",
+      "type": "table",
+      "dataSourceResourceId": "support-queue-ds"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "support-queue-db",
+    "view": {
+      "resourceId": "support-queue-escalations-view",
+      "name": "Platform Escalations",
+      "type": "board",
+      "dataSourceResourceId": "support-queue-ds",
+      "groupBy": {
+        "property": "ticket-priority-prop",
+        "type": "select",
+        "emptyGroupVisibility": "hide"
+      },
+      "columns": [
+        {
+          "property": "ticket-priority-prop",
+          "value": {
+            "type": "select",
+            "value": "Urgent"
+          }
+        },
+        {
+          "property": "ticket-priority-prop",
+          "value": {
+            "type": "select",
+            "value": "Normal"
+          }
+        },
+        {
+          "property": "ticket-priority-prop",
+          "value": {
+            "type": "select",
+            "value": "Low"
+          },
+          "hidden": true
+        }
+      ],
+      "filters": [
+        {
+          "propertyId": "ticket-escalated-prop",
+          "propertyType": "checkbox",
+          "operator": "checkbox_is",
+          "value": true
+        },
+        {
+          "propertyId": "ticket-team-prop",
+          "propertyType": "select",
+          "operator": "enum_is",
+          "value": "Platform"
+        },
+        {
+          "propertyId": "ticket-opened-prop",
+          "propertyType": "date",
+          "operator": "date_is_on_or_after",
+          "value": "2026-07-01"
+        }
+      ],
+      "properties": [
+        {
+          "property": "ticket-team-prop",
+          "visible": true
+        },
+        {
+          "property": "ticket-opened-prop",
+          "visible": true
+        },
+        {
+          "property": "ticket-escalated-prop",
+          "visible": false
+        }
+      ],
+      "sorts": [
+        {
+          "propertyId": "ticket-opened-prop",
+          "direction": "ascending"
+        }
+      ]
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "checkout-500s-ticket",
+    "properties": {
+      "Name": [
+        [
+          "Checkout returning 500s"
+        ]
+      ],
+      "Priority": "Urgent",
+      "Team": "Platform",
+      "Escalated": [
+        [
+          "Yes"
+        ]
+      ],
+      "Opened": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-14"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "support-queue-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "invoice-pdf-ticket",
+    "properties": {
+      "Name": [
+        [
+          "Invoice PDF missing tax line"
+        ]
+      ],
+      "Priority": "Normal",
+      "Team": "Billing",
+      "Escalated": [
+        [
+          "No"
+        ]
+      ],
+      "Opened": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-06-28"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "support-queue-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "push-notifications-ticket",
+    "properties": {
+      "Name": [
+        [
+          "Push notifications delayed"
+        ]
+      ],
+      "Priority": "Normal",
+      "Team": "Platform",
+      "Escalated": [
+        [
+          "Yes"
+        ]
+      ],
+      "Opened": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-22"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "support-queue-ds"
+    }
+  }
+]
