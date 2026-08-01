@@ -1,0 +1,79 @@
+$ ntn workers runs list --plain
+run_4b0a7e12c9	assignee_load	tool	succeeded	2026-07-28T09:14:03Z	441ms
+run_9d3f6c08a1	ticketsSync	sync	succeeded	2026-07-28T09:30:00Z	2.9s
+run_1e7b2a54d0	assignee_load	tool	succeeded	2026-07-28T10:05:47Z	388ms
+run_c62d8f31b4	ticketsSync	sync	succeeded	2026-07-28T10:00:00Z	3.1s
+run_7c1e9d3a5b	assignee_load	tool	failed	2026-07-28T11:41:22Z	96ms
+run_a08f5b7e23	ticketsSync	sync	succeeded	2026-07-28T11:30:00Z	2.7s
+run_5f9c3d1a86	assignee_load	tool	succeeded	2026-07-28T12:18:09Z	402ms
+run_b31e0a6c7d	ticketsSync	sync	succeeded	2026-07-28T12:30:00Z	3.4s
+
+$ ntn workers runs logs run_4b0a7e12c9
+2026-07-28T09:14:03.118Z  INFO   run started  capability=assignee_load type=tool
+2026-07-28T09:14:03.119Z  INFO   input tickets=14
+2026-07-28T09:14:03.402Z  INFO   grouped into 4 buckets
+2026-07-28T09:14:03.559Z  INFO   run succeeded  duration=441ms
+
+$ ntn workers runs logs run_9d3f6c08a1
+2026-07-28T09:30:00.004Z  INFO   run started  capability=ticketsSync type=sync
+2026-07-28T09:30:00.310Z  INFO   deskline page fetched  cursor=null count=5
+2026-07-28T09:30:01.002Z  INFO   deskline page fetched  cursor=dl_cursor_5 count=5
+2026-07-28T09:30:01.744Z  WARN   deskline responded 429, retrying in 400ms
+2026-07-28T09:30:02.190Z  INFO   deskline page fetched  cursor=dl_cursor_10 count=2
+2026-07-28T09:30:02.902Z  INFO   12 upserts applied
+2026-07-28T09:30:02.905Z  INFO   run succeeded  duration=2.9s
+
+$ ntn workers runs logs run_1e7b2a54d0
+2026-07-28T10:05:47.201Z  INFO   run started  capability=assignee_load type=tool
+2026-07-28T10:05:47.202Z  INFO   input tickets=9
+2026-07-28T10:05:47.480Z  INFO   grouped into 3 buckets
+2026-07-28T10:05:47.589Z  INFO   run succeeded  duration=388ms
+
+$ ntn workers runs logs run_c62d8f31b4
+2026-07-28T10:00:00.006Z  INFO   run started  capability=ticketsSync type=sync
+2026-07-28T10:00:00.288Z  INFO   deskline page fetched  cursor=null count=5
+2026-07-28T10:00:01.041Z  INFO   deskline page fetched  cursor=dl_cursor_5 count=5
+2026-07-28T10:00:01.833Z  INFO   deskline page fetched  cursor=dl_cursor_10 count=2
+2026-07-28T10:00:03.077Z  INFO   12 upserts applied
+2026-07-28T10:00:03.081Z  INFO   run succeeded  duration=3.1s
+
+$ ntn workers runs logs run_7c1e9d3a5b
+2026-07-28T11:41:22.507Z  INFO   run started  capability=assignee_load type=tool
+2026-07-28T11:41:22.508Z  INFO   agent=Support Triage conversation=c_5518a0
+2026-07-28T11:41:22.509Z  INFO   input tickets=11
+2026-07-28T11:41:22.511Z  DEBUG  input payload (truncated to 512 bytes)
+2026-07-28T11:41:22.511Z  DEBUG  {"tickets":[{"id":"DL-1041","assignee":"Dana Whitfield","minutes":35},{"id":"DL-1042","assignee":"Ravi Menon","minutes":20},{"id":"DL-1043","assignee":"Dana Whitfield","minutes":15},{"id":"DL-1044","assignee":null,"minutes":45},{"id":"DL-1045","assignee":"Priya Raman","minutes":25},{"id":"DL-1046","assignee":null,"minutes":10},{"id":"DL-1047","assignee":"Ravi Menon","min…
+2026-07-28T11:41:22.593Z  ERROR  InvalidToolInputError: [
+2026-07-28T11:41:22.593Z  ERROR    {
+2026-07-28T11:41:22.593Z  ERROR      "instancePath": "/tickets/3/assignee",
+2026-07-28T11:41:22.593Z  ERROR      "schemaPath": "#/properties/tickets/items/properties/assignee/type",
+2026-07-28T11:41:22.593Z  ERROR      "keyword": "type",
+2026-07-28T11:41:22.593Z  ERROR      "params": { "type": "string" },
+2026-07-28T11:41:22.593Z  ERROR      "message": "must be string"
+2026-07-28T11:41:22.593Z  ERROR    }
+2026-07-28T11:41:22.593Z  ERROR  ]
+2026-07-28T11:41:22.601Z  ERROR  run failed  duration=96ms
+2026-07-28T11:41:22.604Z  INFO   agent surfaced: "I wasn't able to read the ticket list, so here is my best guess from the conversation so far."
+
+$ ntn workers runs logs run_a08f5b7e23
+2026-07-28T11:30:00.003Z  INFO   run started  capability=ticketsSync type=sync
+2026-07-28T11:30:00.271Z  INFO   deskline page fetched  cursor=null count=5
+2026-07-28T11:30:00.998Z  INFO   deskline page fetched  cursor=dl_cursor_5 count=5
+2026-07-28T11:30:01.702Z  INFO   deskline page fetched  cursor=dl_cursor_10 count=2
+2026-07-28T11:30:02.688Z  INFO   12 upserts applied
+2026-07-28T11:30:02.691Z  INFO   run succeeded  duration=2.7s
+
+$ ntn workers runs logs run_5f9c3d1a86
+2026-07-28T12:18:09.744Z  INFO   run started  capability=assignee_load type=tool
+2026-07-28T12:18:09.745Z  INFO   input tickets=7
+2026-07-28T12:18:10.020Z  INFO   grouped into 3 buckets
+2026-07-28T12:18:10.146Z  INFO   run succeeded  duration=402ms
+
+$ ntn workers runs logs run_b31e0a6c7d
+2026-07-28T12:30:00.005Z  INFO   run started  capability=ticketsSync type=sync
+2026-07-28T12:30:00.302Z  INFO   deskline page fetched  cursor=null count=5
+2026-07-28T12:30:01.115Z  INFO   deskline page fetched  cursor=dl_cursor_5 count=5
+2026-07-28T12:30:01.966Z  WARN   deskline responded 429, retrying in 400ms
+2026-07-28T12:30:02.410Z  INFO   deskline page fetched  cursor=dl_cursor_10 count=2
+2026-07-28T12:30:03.398Z  INFO   12 upserts applied
+2026-07-28T12:30:03.402Z  INFO   run succeeded  duration=3.4s

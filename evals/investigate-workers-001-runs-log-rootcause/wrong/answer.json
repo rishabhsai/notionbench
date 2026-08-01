@@ -1,0 +1,7 @@
+{
+	"run_id": "run_7c1e9d3a5b",
+	"capability": "assignee_load",
+	"error": "InvalidToolInputError",
+	"field": "assignee",
+	"root_cause": "The tool's input schema declares assignee as a plain string, but the agent sends null for tickets nobody has picked up yet, so input validation rejects the whole call before execute ever runs."
+}
