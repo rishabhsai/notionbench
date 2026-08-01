@@ -1,0 +1,254 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "consulting-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Consulting",
+    "accessLevel": "open"
+  },
+  {
+    "type": "database",
+    "resourceId": "clients-db",
+    "name": "Clients",
+    "dataSources": [
+      {
+        "resourceId": "clients-ds",
+        "name": "Clients",
+        "properties": [
+          {
+            "resourceId": "client-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "client-account-lead-prop",
+            "name": "Account Lead",
+            "type": "text"
+          },
+          {
+            "resourceId": "client-engagements-prop",
+            "name": "Engagements",
+            "type": "relation",
+            "targetDataSourceResourceId": "engagements-ds",
+            "targetDataSourcePropertyResourceId": "engagement-client-prop"
+          },
+          {
+            "resourceId": "client-billable-hours-prop",
+            "name": "Billable Hours",
+            "type": "rollup",
+            "relationPropertyResourceId": "client-engagements-prop",
+            "targetPropertyResourceId": "engagement-hours-prop",
+            "targetPropertyType": "number",
+            "aggregation": "sum"
+          },
+          {
+            "resourceId": "client-next-milestone-prop",
+            "name": "Next Milestone",
+            "type": "rollup",
+            "relationPropertyResourceId": "client-engagements-prop",
+            "targetPropertyResourceId": "engagement-due-prop",
+            "targetPropertyType": "date",
+            "aggregation": "earliest_date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "consulting-teamspace"
+    }
+  },
+  {
+    "type": "database",
+    "resourceId": "engagements-db",
+    "name": "Engagements",
+    "dataSources": [
+      {
+        "resourceId": "engagements-ds",
+        "name": "Engagements",
+        "properties": [
+          {
+            "resourceId": "engagement-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "engagement-client-prop",
+            "name": "Client",
+            "type": "relation",
+            "targetDataSourceResourceId": "clients-ds",
+            "targetDataSourcePropertyResourceId": "client-engagements-prop"
+          },
+          {
+            "resourceId": "engagement-hours-prop",
+            "name": "Hours",
+            "type": "number"
+          },
+          {
+            "resourceId": "engagement-due-prop",
+            "name": "Due",
+            "type": "date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "consulting-teamspace"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "northwind-client",
+    "properties": {
+      "Name": [
+        [
+          "Northwind Traders"
+        ]
+      ],
+      "Account Lead": [
+        [
+          "Priya Raman"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "clients-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "cascade-client",
+    "properties": {
+      "Name": [
+        [
+          "Cascade Foods"
+        ]
+      ],
+      "Account Lead": [
+        [
+          "Miguel Ortiz"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "clients-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "northwind-discovery-engagement",
+    "properties": {
+      "Name": [
+        [
+          "Discovery workshop"
+        ]
+      ],
+      "Client": [
+        "northwind-client"
+      ],
+      "Hours": [
+        [
+          "40"
+        ]
+      ],
+      "Due": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-07"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "engagements-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "northwind-migration-engagement",
+    "properties": {
+      "Name": [
+        [
+          "Data migration"
+        ]
+      ],
+      "Client": [
+        "northwind-client"
+      ],
+      "Hours": [
+        [
+          "120"
+        ]
+      ],
+      "Due": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-09-18"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "engagements-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "cascade-audit-engagement",
+    "properties": {
+      "Name": [
+        [
+          "Supply chain audit"
+        ]
+      ],
+      "Client": [
+        "cascade-client"
+      ],
+      "Hours": [
+        [
+          "65"
+        ]
+      ],
+      "Due": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-28"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "engagements-ds"
+    }
+  }
+]
