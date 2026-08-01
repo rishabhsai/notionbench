@@ -1,0 +1,302 @@
+[
+  {
+    "name": "Ada Lovelace",
+    "email": "ada.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Ada Hopper",
+    "email": "ada.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Ada Turing",
+    "email": "ada.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "SMB"
+  },
+  {
+    "name": "Ada Perlman",
+    "email": "ada.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Ada Liskov",
+    "email": "ada.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Grace Lovelace",
+    "email": "grace.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Grace Hopper",
+    "email": "grace.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Grace Turing",
+    "email": "grace.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Grace Perlman",
+    "email": "grace.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Grace Liskov",
+    "email": "grace.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Alan Lovelace",
+    "email": "alan.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Alan Hopper",
+    "email": "alan.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "SMB"
+  },
+  {
+    "name": "Alan Turing",
+    "email": "alan.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Alan Perlman",
+    "email": "alan.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Alan Liskov",
+    "email": "alan.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Radia Lovelace",
+    "email": "radia.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Radia Hopper",
+    "email": "radia.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Radia Turing",
+    "email": "radia.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "SMB"
+  },
+  {
+    "name": "Radia Perlman",
+    "email": "radia.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Radia Liskov",
+    "email": "radia.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Barbara Lovelace",
+    "email": "barbara.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Barbara Hopper",
+    "email": "barbara.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Barbara Turing",
+    "email": "barbara.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Barbara Perlman",
+    "email": "barbara.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Barbara Liskov",
+    "email": "barbara.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Katherine Lovelace",
+    "email": "katherine.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Katherine Hopper",
+    "email": "katherine.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "SMB"
+  },
+  {
+    "name": "Katherine Turing",
+    "email": "katherine.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Katherine Perlman",
+    "email": "katherine.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Katherine Liskov",
+    "email": "katherine.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Edsger Lovelace",
+    "email": "edsger.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Edsger Hopper",
+    "email": "edsger.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Edsger Turing",
+    "email": "edsger.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "SMB"
+  },
+  {
+    "name": "Edsger Perlman",
+    "email": "edsger.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Edsger Liskov",
+    "email": "edsger.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Leslie Lovelace",
+    "email": "leslie.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Leslie Hopper",
+    "email": "leslie.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Leslie Turing",
+    "email": "leslie.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Leslie Perlman",
+    "email": "leslie.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Leslie Liskov",
+    "email": "leslie.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Donald Lovelace",
+    "email": "donald.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Donald Hopper",
+    "email": "donald.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "SMB"
+  },
+  {
+    "name": "Donald Turing",
+    "email": "donald.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Donald Perlman",
+    "email": "donald.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Donald Liskov",
+    "email": "donald.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "SMB"
+  },
+  {
+    "name": "Frances Lovelace",
+    "email": "frances.lovelace@northwind.example",
+    "company": "Northwind Logistics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Frances Hopper",
+    "email": "frances.hopper@calderfinch.example",
+    "company": "Calder & Finch",
+    "segment": "Mid-market"
+  },
+  {
+    "name": "Frances Turing",
+    "email": "frances.turing@blueharbor.example",
+    "company": "Blue Harbor Health",
+    "segment": "SMB"
+  },
+  {
+    "name": "Frances Perlman",
+    "email": "frances.perlman@vantage.example",
+    "company": "Vantage Robotics",
+    "segment": "Enterprise"
+  },
+  {
+    "name": "Frances Liskov",
+    "email": "frances.liskov@redwood.example",
+    "company": "Redwood Analytics",
+    "segment": "Mid-market"
+  }
+]

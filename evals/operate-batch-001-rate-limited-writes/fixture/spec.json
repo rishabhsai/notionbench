@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "operate-batch-001-rate-limited-writes",
+  "seed": 20260811,
+  "root": { "title": "NotionBench · operate-batch-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "growth",
+      "title": "Growth",
+      "icon": "📈",
+      "blocks": [
+        { "type": "paragraph", "text": "Everything the growth team imports lands in the database below." }
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "key": "contacts",
+      "title": "Contact Imports",
+      "parent": "growth",
+      "icon": "📇",
+      "dataSource": { "name": "Contact Imports" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Email": { "type": "email" },
+        "Company": { "type": "rich_text" },
+        "Segment": {
+          "type": "select",
+          "options": [
+            { "name": "Enterprise", "color": "purple" },
+            { "name": "Mid-market", "color": "blue" },
+            { "name": "SMB", "color": "green" }
+          ]
+        }
+      }
+    }
+  ]
+}
