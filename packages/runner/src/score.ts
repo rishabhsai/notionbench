@@ -52,6 +52,22 @@ export interface ScoreTrialOptions {
   /** Wall-clock budget for verification. Defaults to the scoring package's. */
   timeoutMs?: number;
   signal?: AbortSignal;
+  /**
+   * `{apiBase, rootId, idMap, token}` for a `runtime: live` trial whose fixture
+   * the runner provisioned.
+   *
+   * A live verifier resolves its workspace from ctx first, then the environment,
+   * then the trial workspace's `notionbench.json` (see
+   * `evals/_lib/live/context.ts`). Passing ctx is what makes the *id map*
+   * available at all — the fallbacks can only recover the root — so a verifier
+   * that wants to check a specific seeded row does not have to re-discover it.
+   */
+  liveCtx?: {
+    apiBase: string;
+    rootId: string;
+    idMap: Record<string, string>;
+    token?: string;
+  };
 }
 
 export interface ScoredTrial {
@@ -76,6 +92,9 @@ export async function scoreTrial(opts: ScoreTrialOptions): Promise<ScoredTrial> 
       trial: outcome.identity.trial,
       trialStatus: outcome.status,
       timeoutMs: opts.timeoutMs,
+      // Spread last: for a live task these four keys are the whole point of the
+      // call, and nothing above may shadow them.
+      ...(opts.liveCtx ?? {}),
     },
     timeoutMs: opts.timeoutMs,
     signal: opts.signal,

@@ -15,9 +15,35 @@ export {
   selectConfigs,
   type AgentConfig,
   type RateWindowConfig,
+  type NotionConfig,
   type ResolvedRunConfig,
   type RunConfigFile,
 } from './config.js';
+
+export {
+  DEFAULT_NOTION_API_BASE,
+  LIVE_LIB_ENV,
+  LiveFixtures,
+  POINTER_FILENAME,
+  RUN_LOG_FILENAME,
+  appendRunLog,
+  inspectLiveTasks,
+  isLiveTask,
+  liveRequirementProblems,
+  loadLiveLib,
+  renderLiveProblems,
+  resolveLiveLibDir,
+  resolveLiveSettings,
+  specPathFor,
+  type LiveFixture,
+  type LiveFixturesOptions,
+  type LiveLib,
+  type LiveNotionClient,
+  type LiveSettings,
+  type LiveTaskInfo,
+  type NotionSettings,
+  type ProvisionedFixture,
+} from './live.js';
 
 export {
   Checkpoint,
@@ -50,6 +76,7 @@ export {
   buildPlan,
   renderPlan,
   type BuildPlanOptions,
+  type LivePlan,
   type PlanEnv,
   type PlannedConfig,
   type PlannedTask,

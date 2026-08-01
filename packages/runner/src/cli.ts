@@ -36,6 +36,14 @@ import {
   type RunMeta,
 } from './checkpoint.js';
 import { ConfigError, loadRunConfig, selectConfigs, type AgentConfig } from './config.js';
+import {
+  LiveFixtures,
+  inspectLiveTasks,
+  liveRequirementProblems,
+  renderLiveProblems,
+  resolveLiveSettings,
+  type ProvisionedFixture,
+} from './live.js';
 import { getAdapter, hasAdapter } from './parsers/index.js';
 import {
   Scheduler,
@@ -82,8 +90,18 @@ run options:
   --keep-workspaces     Do not delete trial workspaces (debugging).
   --score-timeout <sec> Per-trial verification budget. Default 600.
   --no-score            Record rollouts without running the verifiers.
+  --no-teardown         Keep provisioned live fixtures instead of archiving them
+                        after scoring (debugging). Every kept root is logged as
+                        an ORPHAN in results/<runId>/run.log.
   --dry-run             Print the execution plan and exit; spawn nothing.
   -h, --help            This message.
+
+live tasks (runtime: live with a fixture/spec.json) additionally need:
+  NOTION_API_TOKEN      integration token (NOTIONBENCH_NOTION_TOKENS=a,b for a pool)
+  NOTION_PARENT_PAGE_ID page shared with the integration; every per-trial fixture
+                        root is created under it and archived after scoring
+                        (or runconfig.json's "notion": {"parentPageId": "…"})
+  NOTION_API_BASE       optional API root override (or "notion": {"apiBase": …})
 
 score options:
   --k <n>               Trials per task to count. Default: the largest k every
@@ -124,6 +142,7 @@ const OPTIONS = {
   'keep-workspaces': { type: 'boolean' },
   'score-timeout': { type: 'string' },
   'no-score': { type: 'boolean' },
+  'no-teardown': { type: 'boolean' },
   'dry-run': { type: 'boolean' },
   port: { type: 'string' },
   host: { type: 'string' },
@@ -455,6 +474,35 @@ async function cmdRun(values: Values): Promise<number> {
   const taskById = new Map(tasks.map((t) => [t.id, t]));
   const tokens = TokenPool.fromEnv();
 
+  // Live tasks mutate a real Notion workspace, so everything about that half of
+  // the run is settled here — before a run directory exists — and either printed
+  // (--dry-run) or enforced (a real run refuses to start half-configured).
+  const liveInfo = await inspectLiveTasks(tasks);
+  const liveSettings = resolveLiveSettings({ notion: rc.notion });
+  const liveProblems = liveRequirementProblems(liveInfo, liveSettings);
+  const teardown = values['no-teardown'] !== true;
+  const livePlan =
+    liveInfo.live.length > 0
+      ? {
+          tasks: liveInfo.live.map((t) => t.id),
+          provisioned: liveInfo.provisioned.map((t) => t.id),
+          fixturesPerRun:
+            liveInfo.provisioned.length *
+            configs.reduce(
+              (acc, c) => acc + (c.docsCondition ? 1 : docsConditions.length) * trials,
+              0,
+            ),
+          parentPageId: liveSettings.parentPageId,
+          parentPageIdSource: liveSettings.parentPageIdSource,
+          apiBase: liveSettings.apiBase,
+          apiBaseSource: liveSettings.apiBaseSource,
+          tokenPresent: Boolean(liveSettings.token),
+          tokenSource: liveSettings.tokenSource,
+          teardown,
+          problems: liveProblems,
+        }
+      : undefined;
+
   // --dry-run answers "what exactly is about to happen" and must therefore
   // change nothing: no `<cli> --version` probes, no run directory, no state.
   if (values['dry-run']) {
@@ -481,6 +529,7 @@ async function cmdRun(values: Values): Promise<number> {
       verifiers,
       notionTokens: tokens.size,
       templatesDir: DEFAULT_TEMPLATES_DIR,
+      live: livePlan,
     });
     if (values.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
@@ -488,6 +537,15 @@ async function cmdRun(values: Values): Promise<number> {
       process.stdout.write(`${renderPlan(plan)}\n`);
     }
     return 0;
+  }
+
+  // Fail fast, before a run directory exists. Discovering halfway through a
+  // multi-day grid that every live cell cannot provision is the expensive way to
+  // learn this, and provisioning without a parent page is worse than failing:
+  // it would create pages the API cannot archive.
+  if (liveProblems.length > 0) {
+    process.stderr.write(renderLiveProblems(liveProblems));
+    return 2;
   }
 
   // Built per config so a config that pins itself to one docs condition (the
@@ -547,10 +605,26 @@ async function cmdRun(values: Values): Promise<number> {
   );
 
   const patterns = compilePatterns(rc.rateWindow.patterns);
-  const needsLive = tasks.some((t) => t.runtime === 'live');
-  if (needsLive && tokens.isEmpty) {
-    process.stderr.write(
-      'warning: live tasks selected but no NOTION_API_TOKEN / NOTIONBENCH_NOTION_TOKENS in env\n',
+
+  // One instance for the whole grid; it no-ops for offline tasks, and the live
+  // library under evals/_lib/live/ is only imported the first time a fixture is
+  // actually provisioned — an offline run never touches it.
+  const live =
+    liveInfo.provisioned.length > 0
+      ? new LiveFixtures({
+          settings: liveSettings,
+          provisionedIds: liveInfo.provisionedIds,
+          runDir,
+          evalsRoot,
+          noTeardown: !teardown,
+          onNotice: (l) => process.stderr.write(`  ${l}\n`),
+        })
+      : undefined;
+  if (live) {
+    process.stdout.write(
+      `live: ${liveInfo.provisioned.length} task(s) provision a fixture under page ` +
+        `${liveSettings.parentPageId} at ${liveSettings.apiBase}` +
+        (teardown ? '\n' : ' — teardown DISABLED (--no-teardown)\n'),
     );
   }
 
@@ -600,6 +674,7 @@ async function cmdRun(values: Values): Promise<number> {
         cooldownMs,
         patterns,
         tokens,
+        live,
         keepWorkspaces: values['keep-workspaces'] === true,
         signal: abort.signal,
       }),
@@ -607,6 +682,8 @@ async function cmdRun(values: Values): Promise<number> {
 
   process.off('SIGINT', onSigint);
   const final = cp.summary();
+  const orphans = live?.orphanSummary();
+  if (orphans) process.stdout.write(`\nwarning: ${orphans}\n`);
   process.stdout.write(
     `\ndone: ${final.done}/${final.total}  failed ${final.failed}  pending ${final.pending}\n` +
       `scored: ${final.solved}/${final.scored} solved` +
@@ -638,12 +715,18 @@ async function linkLatest(resultsRoot: string, runId: string): Promise<void> {
 }
 
 /**
- * One cell, start to finish: **spawn → score → checkpoint**.
+ * One cell, start to finish: **(provision →) spawn → score → checkpoint (→ teardown)**.
  *
  * The order is the contract. The verifier needs the trial workspace, which is
  * deleted in `finally`, so scoring happens before cleanup; and the results row
  * is appended before the cell is marked done, so an interrupted run never
  * leaves a cell claiming a verdict that was never written.
+ *
+ * Live tasks bracket that with a Notion fixture. Provisioning is inside the try,
+ * so a failure marks the cell failed and lets the scheduler retry it — the
+ * alternative, scoring an unprovisioned workspace, would record a confident 0
+ * about an agent that was handed nothing. Teardown is in the `finally`, after
+ * the verdict is durable, and is never allowed to fail the cell.
  */
 async function executeCell(args: {
   cell: QueueCell;
@@ -660,6 +743,8 @@ async function executeCell(args: {
   cooldownMs: number;
   patterns: ReturnType<typeof compilePatterns>;
   tokens: TokenPool;
+  /** Present only when some selected task provisions a live fixture. */
+  live?: LiveFixtures;
   keepWorkspaces: boolean;
   signal: AbortSignal;
 }): Promise<CellOutcome> {
@@ -679,9 +764,23 @@ async function executeCell(args: {
     label: `${task.id.replace(/\//g, '-')}-${config.id}-t${cell.trial}`,
     keep: args.keepWorkspaces,
   });
-  const lease = task.runtime === 'live' ? await args.tokens.acquire() : undefined;
+  const wantsFixture = args.live?.wants(task) === true;
+  const lease =
+    task.runtime === 'live' || wantsFixture ? await args.tokens.acquire() : undefined;
 
+  let fixture: ProvisionedFixture | undefined;
   try {
+    if (wantsFixture) {
+      fixture = await args.live!.provision({
+        task,
+        workspaceDir: workspace.dir,
+        token: lease?.token,
+        // Folded into the fixture root's title so a leaked page names the cell
+        // that leaked it.
+        label: `${cp.runId} ${cellKey(coords)}`,
+      });
+    }
+
     const prompt = await readPrompt(task);
     const timeoutSec = task.limits?.time ?? args.defaultTimeoutSec;
     const outcome = await runTrial({
@@ -694,6 +793,10 @@ async function executeCell(args: {
       killGraceMs: args.killGraceMs,
       notionHome: workspace.notionHome,
       notionApiToken: lease?.token,
+      // A runconfig-supplied API base would not otherwise reach the child (env
+      // is inherited, a config file is not), and an agent talking to a different
+      // Notion than its fixture lives in fails for reasons no verifier can explain.
+      extraEnv: fixture ? args.live?.childEnv() : undefined,
       ratePatterns: args.patterns,
       defaultCooldownMs: args.cooldownMs,
       signal: args.signal,
@@ -741,6 +844,7 @@ async function executeCell(args: {
       runDir: args.runDir,
       timeoutMs: args.scoreTimeoutMs,
       signal: args.signal,
+      liveCtx: fixture?.ctx,
     });
 
     process.stdout.write(
@@ -762,6 +866,9 @@ async function executeCell(args: {
     await cp.markFailed(coords, (err as Error).message);
     return { kind: 'failed', detail: (err as Error).message };
   } finally {
+    // After the verdict is durable, and never fatal: `teardown` swallows its own
+    // errors into an ORPHAN line in run.log rather than throwing.
+    if (fixture) await args.live?.teardown(fixture);
     lease?.release();
     await workspace.cleanup();
   }

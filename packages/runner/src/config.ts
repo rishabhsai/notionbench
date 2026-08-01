@@ -77,9 +77,35 @@ export interface RateWindowConfig {
   cooldownMs: number;
 }
 
+/**
+ * Where `runtime: live` fixtures are created.
+ *
+ * Deliberately holds no token: `NOTION_API_TOKEN` (or `NOTIONBENCH_NOTION_TOKENS`
+ * for a pool) stays in the environment, because runconfig.json is a file people
+ * check in and paste into issues. The page id is not a secret — it is the one
+ * page an operator shares with the integration once, under which every per-trial
+ * fixture root is created and archived.
+ *
+ * Environment variables win over these: the file is the project's default, the
+ * environment is this operator on this machine.
+ */
+export interface NotionConfig {
+  /**
+   * Page id every per-trial fixture root is created under. Overridden by
+   * `NOTION_PARENT_PAGE_ID`. Never the workspace root — a workspace-level page
+   * cannot be archived through the API, so a run that created one would leak an
+   * un-deletable page per trial.
+   */
+  parentPageId?: string;
+  /** API root. Default `https://api.notion.com`. Overridden by `NOTION_API_BASE`. */
+  apiBase?: string;
+}
+
 export interface RunConfigFile {
   /** Configs to schedule. */
   configs: AgentConfig[];
+  /** Live-fixture destination. Only consulted when live tasks are in the grid. */
+  notion?: NotionConfig;
   /** Global in-flight trial cap across all configs. Default 2. */
   concurrency?: number;
   /** Default trials per (task, config, docsCondition) cell. Default 5. */
@@ -225,6 +251,9 @@ export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow'>> 
     maxAttempts: DEFAULT_MAX_ATTEMPTS,
     resultsRoot: 'results',
     evalsRoot: 'evals',
+    // Empty by default: an offline grid needs no Notion workspace at all, and a
+    // live grid is expected to configure this via the environment.
+    notion: {},
     rateWindow: {
       patterns: DEFAULT_RATE_LIMIT_PATTERNS,
       cooldownMs: DEFAULT_COOLDOWN_MS,
@@ -250,6 +279,7 @@ export function resolveRunConfig(file: Partial<RunConfigFile> = {}): ResolvedRun
     maxAttempts: positive(file.maxAttempts, base.maxAttempts, 'maxAttempts'),
     resultsRoot: file.resultsRoot ?? base.resultsRoot,
     evalsRoot: file.evalsRoot ?? base.evalsRoot,
+    notion: normalizeNotion(file.notion),
     rateWindow: {
       patterns: file.rateWindow?.patterns ?? base.rateWindow.patterns,
       cooldownMs: positive(file.rateWindow?.cooldownMs, base.rateWindow.cooldownMs, 'rateWindow.cooldownMs'),
@@ -296,6 +326,42 @@ function normalizeConfig(c: AgentConfig): AgentConfig {
     throw new ConfigError(`config "${c.id}" needs a model`);
   }
   return { ...c, label: c.label ?? c.id, enabled: c.enabled !== false };
+}
+
+/**
+ * Validate the `notion` block eagerly.
+ *
+ * A typo here is only discovered ~hours into a live grid otherwise — every cell
+ * failing to provision against a page id that is actually the string "undefined"
+ * — so the cheap check happens at config load.
+ */
+function normalizeNotion(notion: NotionConfig | undefined): NotionConfig {
+  if (notion === undefined) return {};
+  if (typeof notion !== 'object' || notion === null || Array.isArray(notion)) {
+    throw new ConfigError('notion must be an object, e.g. { "parentPageId": "…" }');
+  }
+  const out: NotionConfig = {};
+  if (notion.parentPageId !== undefined) {
+    if (typeof notion.parentPageId !== 'string' || notion.parentPageId.trim().length === 0) {
+      throw new ConfigError('notion.parentPageId must be a non-empty string (a Notion page id)');
+    }
+    out.parentPageId = notion.parentPageId.trim();
+  }
+  if (notion.apiBase !== undefined) {
+    if (typeof notion.apiBase !== 'string' || !/^https?:\/\//i.test(notion.apiBase.trim())) {
+      throw new ConfigError(
+        `notion.apiBase must be an http(s) URL (got ${JSON.stringify(notion.apiBase)})`,
+      );
+    }
+    out.apiBase = notion.apiBase.trim().replace(/\/+$/, '');
+  }
+  if ('token' in notion || 'apiToken' in notion) {
+    throw new ConfigError(
+      'notion.token is not supported: the integration token belongs in NOTION_API_TOKEN ' +
+        '(or NOTIONBENCH_NOTION_TOKENS), never in a checked-in runconfig.json',
+    );
+  }
+  return out;
 }
 
 function assertUniqueIds(configs: AgentConfig[]): void {
