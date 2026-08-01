@@ -1,0 +1,8 @@
+{
+	"command": "ntn workers exec receipt_digest --local -d '{\"lines\":[{\"sku\":\"WH-101\",\"qty\":3,\"unit_cents\":1299},{\"sku\":\"WH-207\",\"qty\":1,\"unit_cents\":4599},{\"sku\":\"WH-101\",\"qty\":2,\"unit_cents\":1299},{\"sku\":\"WH-512\",\"qty\":10,\"unit_cents\":99}]}'",
+	"output": {
+		"line_count": 4,
+		"total_cents": 12084,
+		"digest": "3f2b9c1d4e7a"
+	}
+}
