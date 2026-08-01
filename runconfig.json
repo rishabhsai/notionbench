@@ -19,7 +19,13 @@
       "label": "Claude Code \u00d7 Fable 5",
       "harness": "claude-code",
       "model": "fable",
-      "enabled": true
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 10,
+        "outputPerMTok": 50,
+        "cacheReadPerMTok": 1.0,
+        "cacheWritePerMTok": 12.5
+      }
     },
     {
       "id": "codex-gpt-5.6-sol-medium",
@@ -27,7 +33,12 @@
       "harness": "codex",
       "model": "gpt-5.6-sol",
       "reasoningEffort": "medium",
-      "enabled": true
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 5.0,
+        "outputPerMTok": 30.0,
+        "cacheReadPerMTok": 0.5
+      }
     },
     {
       "id": "codex-gpt-5.6-sol-high",
@@ -36,7 +47,12 @@
       "model": "gpt-5.6-sol",
       "reasoningEffort": "high",
       "enabled": true,
-      "note": "Extra config \u2014 not in the published v1 roster (README lists medium + xhigh)."
+      "note": "Extra config \u2014 not in the published v1 roster (README lists medium + xhigh).",
+      "pricing": {
+        "inputPerMTok": 5.0,
+        "outputPerMTok": 30.0,
+        "cacheReadPerMTok": 0.5
+      }
     },
     {
       "id": "claude-code-haiku-4-5",
@@ -44,7 +60,13 @@
       "harness": "claude-code",
       "model": "haiku",
       "enabled": false,
-      "note": "Budget config for the cost-Pareto story."
+      "note": "Budget config for the cost-Pareto story.",
+      "pricing": {
+        "inputPerMTok": 1,
+        "outputPerMTok": 5,
+        "cacheReadPerMTok": 0.1,
+        "cacheWritePerMTok": 1.25
+      }
     },
     {
       "id": "opencode-kimi-k3",
@@ -87,7 +109,8 @@
         "outputPerMTok": 15,
         "cacheReadPerMTok": 0.3,
         "cacheWritePerMTok": 3.75
-      }
+      },
+      "note": "List pricing $3/$15 used for API-equiv cost; intro pricing $2/$10 runs through 2026-08-31 \u2014 footnote in the post."
     },
     {
       "id": "codex-gpt-5.6-luna-high",
@@ -97,10 +120,11 @@
       "reasoningEffort": "high",
       "enabled": true,
       "pricing": {
-        "inputPerMTok": 1.0,
-        "outputPerMTok": 8.0
+        "inputPerMTok": 0.2,
+        "outputPerMTok": 1.2,
+        "cacheReadPerMTok": 0.02
       },
-      "note": "Pricing TBC \u2014 verify Luna list prices before publishing; also available via opencode-go/gpt-5.6-luna as a cross-harness check."
+      "note": "Official list pricing (developers.openai.com/api/docs/pricing). Also available via opencode-go/gpt-5.6-luna as a cross-harness check."
     },
     {
       "id": "codex-gpt-5.6-sol-xhigh",
@@ -108,7 +132,12 @@
       "harness": "codex",
       "model": "gpt-5.6-sol",
       "reasoningEffort": "xhigh",
-      "enabled": true
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 5.0,
+        "outputPerMTok": 30.0,
+        "cacheReadPerMTok": 0.5
+      }
     }
   ]
 }
