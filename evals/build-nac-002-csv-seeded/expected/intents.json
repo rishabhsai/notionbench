@@ -1,0 +1,442 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "it-ops-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "IT Ops",
+    "accessLevel": "open"
+  },
+  {
+    "type": "database",
+    "resourceId": "hardware-inventory-db",
+    "name": "Hardware Inventory",
+    "dataSources": [
+      {
+        "resourceId": "hardware-inventory-ds",
+        "name": "Hardware Inventory",
+        "properties": [
+          {
+            "resourceId": "asset-name-prop",
+            "name": "Asset",
+            "type": "title"
+          },
+          {
+            "resourceId": "asset-category-prop",
+            "name": "Category",
+            "type": "select",
+            "options": [
+              {
+                "name": "Laptop",
+                "color": "blue"
+              },
+              {
+                "name": "Monitor",
+                "color": "purple"
+              },
+              {
+                "name": "Phone",
+                "color": "orange"
+              },
+              {
+                "name": "Accessory",
+                "color": "gray"
+              }
+            ]
+          },
+          {
+            "resourceId": "asset-quantity-prop",
+            "name": "Quantity",
+            "type": "number"
+          },
+          {
+            "resourceId": "asset-purchased-prop",
+            "name": "Purchased",
+            "type": "date"
+          },
+          {
+            "resourceId": "asset-insured-prop",
+            "name": "Insured",
+            "type": "checkbox"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "it-ops-teamspace"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "hardware-inventory-db",
+    "view": {
+      "resourceId": "hardware-inventory-table-view",
+      "name": "All Assets",
+      "type": "table",
+      "dataSourceResourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-macbook-pro-16-inch",
+    "properties": {
+      "Asset": [
+        [
+          "MacBook Pro 16-inch"
+        ]
+      ],
+      "Category": "Laptop",
+      "Quantity": [
+        [
+          "24"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-01-14"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "Yes"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-macbook-air-13-inch",
+    "properties": {
+      "Asset": [
+        [
+          "MacBook Air 13-inch"
+        ]
+      ],
+      "Category": "Laptop",
+      "Quantity": [
+        [
+          "31"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-02-02"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "Yes"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-studio-display",
+    "properties": {
+      "Asset": [
+        [
+          "Studio Display"
+        ]
+      ],
+      "Category": "Monitor",
+      "Quantity": [
+        [
+          "18"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2025-11-20"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-lg-ultrafine-4k",
+    "properties": {
+      "Asset": [
+        [
+          "LG UltraFine 4K"
+        ]
+      ],
+      "Category": "Monitor",
+      "Quantity": [
+        [
+          "12"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-03-09"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-iphone-17-pro",
+    "properties": {
+      "Asset": [
+        [
+          "iPhone 17 Pro"
+        ]
+      ],
+      "Category": "Phone",
+      "Quantity": [
+        [
+          "27"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-04-21"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "Yes"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-pixel-11",
+    "properties": {
+      "Asset": [
+        [
+          "Pixel 11"
+        ]
+      ],
+      "Category": "Phone",
+      "Quantity": [
+        [
+          "6"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-05-05"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-logitech-mx-master",
+    "properties": {
+      "Asset": [
+        [
+          "Logitech MX Master"
+        ]
+      ],
+      "Category": "Accessory",
+      "Quantity": [
+        [
+          "44"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-02-17"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-anker-usb-c-hub",
+    "properties": {
+      "Asset": [
+        [
+          "Anker USB-C Hub"
+        ]
+      ],
+      "Category": "Accessory",
+      "Quantity": [
+        [
+          "52"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-06-01"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "asset-sony-wh-1000xm6",
+    "properties": {
+      "Asset": [
+        [
+          "Sony WH-1000XM6"
+        ]
+      ],
+      "Category": "Accessory",
+      "Quantity": [
+        [
+          "15"
+        ]
+      ],
+      "Purchased": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-06-30"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Insured": [
+        [
+          "Yes"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "hardware-inventory-ds"
+    }
+  }
+]
