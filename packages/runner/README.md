@@ -140,6 +140,62 @@ notionbench run … --no-watchdog          # disable entirely
 notionbench run … --watchdog-warn-only   # alert and record, but never stop
 ```
 
+### When the failure is real: `--ack`
+
+Sometimes the watchdog is right about the evidence and wrong about the
+conclusion. On the 798-cell run, `resolve-instructions-001-workflow-canary`
+failed in three configs with one diagnostic
+(`tool_unknown_category … InvalidToolInputError`) — the halt signature. But the
+task's prompt says *"a category nobody has expensed answers with zeros rather
+than an error"*, those three configs had pinned their tool's input schema to an
+enum so the SDK rejected the call, and two other configs handled it correctly.
+The task is fine; the failure is real and belongs in the results.
+
+Both existing escapes throw away the protection of the other 37 tasks.
+`--ack` is the surgical one:
+
+```bash
+notionbench run --resume 20260801-085000 \
+  --ack resolve-instructions-001-workflow-canary:tool_unknown_category \
+  --ack-reason "reviewed 2026-08-01: the prompt says an unexpensed category answers with zeros,
+                not an error; these configs pinned the tool input schema to an enum, so the SDK
+                rejects the call. Two configs handled it. Genuine agent failure."
+```
+
+- **Nothing is hidden.** The signal is still detected and still written to
+  `ALERT.json`, to `run-spec.json`, to the console and to `doctor` — at
+  `level: "acknowledged"`, carrying your reason. The cells are still scored 0 and
+  still counted as failures. Only the *halt* is withheld.
+- **`--ack-reason` is mandatory.** A suppression with no stated reason is
+  indistinguishable from one nobody thought about, and a published run has to be
+  able to show which failures a human reviewed and why.
+- **Prefer the `task:substring` form.** The substring is matched against the
+  *normalized* shared diagnostic (lower-cased, ids/paths/numbers stripped —
+  matching is case-insensitive), so a **different** failure mode on the same task
+  still halts. The bare `--ack <taskId>` form covers the whole task's
+  cross-config-identical-failure and total-task-failure signals, including modes
+  nobody has looked at yet.
+- **Verifier crashes and fixture-provisioning failures can never be
+  acknowledged**, by any spelling of the flag. Those are the measurement
+  apparatus failing rather than the agent — the disk-full incident that motivated
+  this watchdog presented as a verifier crash — so `--ack` refuses to name them
+  and the matcher refuses those alert kinds outright:
+
+  ```
+  $ notionbench run … --ack some-task:verifier-crash --ack-reason "…"
+  --ack refused: --ack "some-task:verifier-crash" names "verifier-crash", which can never be
+  acknowledged. A verifier crash means the verifier returned no usable verdict … Fix the
+  verifier or the fixture, then `notionbench run --resume <runId> --redo <taskId>`.
+  ```
+
+Acknowledgments are run metadata: they are stored in `run-spec.json` with the
+reason, the timestamp and the argv that recorded them, appended to the spec's
+history, and **replayed automatically on `--resume`** — so an unattended
+overnight resume does not re-halt on something already reviewed, and does not
+need the flag re-typed. `--dry-run` prints the ones in force, including inherited
+ones, and `doctor` lists every one of them above its own report with the number
+of cells it covers (see below).
+
 Thresholds live under `"watchdog"` in `runconfig.json`; every field is optional
 and merges over the defaults above:
 
@@ -178,9 +234,27 @@ verdict. Exit code carries it, so it works as a publish gate in CI:
 
 | code | meaning |
 |---|---|
-| 0 | no task shows a cross-config failure signature — safe to publish |
+| 0 | no *unreviewed* cross-config failure signature — safe to publish (includes the `acknowledged` verdict below) |
 | 1 | at least one task is SUSPECT (every config scored 0, for different stated reasons) |
 | 3 | at least one task looks INVALID (shared diagnostic, or a verifier crash) |
+
+Acknowledgments (`--ack`) are printed **above everything else**, read from
+`run-spec.json` and `ALERT.json`, with the reason and the number of failed cells
+each one covers. A run carrying any acknowledgment is never reported as *clean*:
+
+```
+ACKNOWLEDGMENTS (1) — human-reviewed failure signature(s) the watchdog was told not to halt on
+  this run is NOT clean; every one of these is recorded as a failure and reviewed below
+  resolve-instructions-001-workflow-canary:tool_unknown_category
+      reason:   reviewed 2026-08-01: the prompt says an unexpensed category answers with zeros…
+      covers:   3 failed cell(s) across opus, sol-medium, sonnet; downgraded 1 finding(s)
+      recorded: 2026-08-01T21:40:11.204Z  ·  run --resume 20260801-085000 --ack …
+  verifier crashes and fixture-provisioning failures are never acknowledgeable, so nothing
+  above suppressed a broken measurement.
+…
+verdict: no invalid tasks detected, but 1 ACKNOWLEDGED failure signature(s) were reviewed and
+         suppressed — this run is not clean
+```
 
 On the real 35-cell pilot (`20260801-085000`, 34/35, one Sonnet failure):
 

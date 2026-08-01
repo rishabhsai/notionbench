@@ -101,7 +101,8 @@ export interface StatusFailure {
  * page's own adapter to keep that honest.
  */
 export interface StatusAlert {
-  level: 'halt' | 'warn';
+  /** `acknowledged`: a halt a human reviewed in advance (`--ack`). Still shown. */
+  level: 'halt' | 'warn' | 'acknowledged';
   kind: string;
   taskId?: string;
   configIds: string[];
@@ -109,6 +110,8 @@ export interface StatusAlert {
   at: string;
   /** True for the alert that actually stopped the run. */
   halted: boolean;
+  /** Present when `level` is `acknowledged`: why a human accepted this failure. */
+  acknowledgedReason?: string;
 }
 
 export interface StatusPayload {
@@ -230,25 +233,36 @@ export function buildStatus(input: StatusInput, now: number = Date.now()): Statu
 
 /**
  * ALERT.json -> the wire shape. Halting alerts first, then halt-level, then
- * warnings: the dashboard shows the top of this list and "the run stopped" is
- * the only thing worth interrupting someone for.
+ * warnings, then acknowledged ones: the dashboard shows the top of this list and
+ * "the run stopped" is the only thing worth interrupting someone for.
+ *
+ * Acknowledged alerts sort last but are never dropped — the dashboard is one of
+ * the places a reader must be able to see that a failure signature was
+ * human-reviewed rather than silently tolerated.
  */
 function buildAlerts(file: AlertFile | undefined): StatusAlert[] {
   if (!file || !Array.isArray(file.alerts)) return [];
   return [...file.alerts]
     .map((a) => ({
-      level: a.level === 'halt' ? ('halt' as const) : ('warn' as const),
+      level:
+        a.level === 'halt'
+          ? ('halt' as const)
+          : a.level === 'acknowledged'
+            ? ('acknowledged' as const)
+            : ('warn' as const),
       kind: String(a.kind),
       ...(a.taskId ? { taskId: a.taskId } : {}),
       configIds: Array.isArray(a.configIds) ? a.configIds.map(String) : [],
       evidence: String(a.evidence ?? ''),
       at: String(a.at ?? ''),
       halted: a.halted === true,
+      ...(a.acknowledgment?.reason ? { acknowledgedReason: String(a.acknowledgment.reason) } : {}),
     }))
     .sort(
       (a, b) =>
         Number(b.halted) - Number(a.halted) ||
         Number(b.level === 'halt') - Number(a.level === 'halt') ||
+        Number(a.level === 'acknowledged') - Number(b.level === 'acknowledged') ||
         (a.at < b.at ? 1 : a.at > b.at ? -1 : 0),
     );
 }

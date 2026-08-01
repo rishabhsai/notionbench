@@ -40,6 +40,17 @@ import {
 } from './checkpoint.js';
 import { ConfigError, loadRunConfig, selectConfigs, type AgentConfig } from './config.js';
 import {
+  AckError,
+  ackFlag,
+  buildAcknowledgments,
+  mergeAcknowledgments,
+  newAcknowledgments,
+  parseAckFlags,
+  renderAcknowledgments,
+  requireAckReason,
+  type Acknowledgment,
+} from './ack.js';
+import {
   RUN_SPEC_FILENAME,
   createRunSpec,
   describeGrid,
@@ -51,9 +62,11 @@ import {
   isSeriousDrift,
   readRunSpec,
   reconstructSpec,
+  recordAcks,
   recordDrift,
   recordRedo,
   renderRefusal,
+  specAcknowledgments,
   specCells,
   writeRunSpec,
   type ConfigDrift,
@@ -154,6 +167,34 @@ run options:
   --no-watchdog         Disable the in-process watchdog (see below).
   --watchdog-warn-only  Watchdog alerts are recorded and printed, but never stop
                         the run.
+  --ack <task[:text]>   ACKNOWLEDGE ONE KNOWN-LEGITIMATE FAILURE SIGNATURE.
+                        Repeatable/comma-separated. Requires --ack-reason.
+                        The watchdog still detects it, still writes it to
+                        ALERT.json and still shows it in \`doctor\` and the
+                        dashboard — at level "acknowledged", with your reason —
+                        but it no longer halts the run. Everything else stays
+                        protected, unlike --no-watchdog/--watchdog-warn-only.
+
+                            --ack resolve-instructions-001-workflow-canary:invalidtoolinputerror \\
+                              --ack-reason "reviewed: the prompt asks for zeros on an unknown
+                                category; these configs pinned the tool schema to an enum. Real miss."
+
+                        With :text, only a shared diagnostic CONTAINING that
+                        text is acknowledged, so a different failure mode on the
+                        same task still halts — always prefer this form. Bare
+                        --ack <taskId> acknowledges the cross-config-identical-
+                        failure and total-task-failure signals for that whole
+                        task. Matching is against the NORMALIZED diagnostic
+                        (lower-cased, ids/paths/numbers replaced).
+                        Verifier crashes and fixture-provisioning failures can
+                        NEVER be acknowledged — they are the measurement
+                        apparatus failing, not the agent — and --ack refuses to
+                        name them. Acknowledgments are recorded in
+                        run-spec.json and replayed automatically on --resume.
+  --ack-reason "<text>" Why the acknowledged failure is a real agent failure.
+                        Mandatory with --ack; stored in run-spec.json and
+                        ALERT.json so a published run shows every suppression
+                        and its justification.
   --runconfig <path>    runconfig.json. Default: ./runconfig.json if present.
   --results <dir>       Results root. Default: results/
   --evals <dir>         Task root. Default: evals/
@@ -210,6 +251,11 @@ the watchdog (deterministic, no model; thresholds under "watchdog" in runconfig)
   On halt: scheduling stops, in-flight cells finish and are scored, ALERT.json
   and a run.log banner are written, and the process exits ${WATCHDOG_EXIT_CODE}.
   Then: fix the task and \`notionbench run --resume <runId> --redo <taskId>\`.
+  If instead you reviewed the failure and it is REAL — the task is fine and the
+  agents genuinely failed it the same way — re-run with
+  \`--ack <taskId>:<substring> --ack-reason "<why>"\`: that one signature is
+  recorded as acknowledged and stops halting, every other task stays protected,
+  and \`doctor\` lists the acknowledgment and its reason so nothing hides.
 
 \`run\` does spawn -> score -> checkpoint per trial and appends every scored
 rollout to results/<runId>/results.jsonl; \`score\` aggregates that file into
@@ -233,6 +279,8 @@ const OPTIONS = {
   order: { type: 'string' },
   'no-watchdog': { type: 'boolean' },
   'watchdog-warn-only': { type: 'boolean' },
+  ack: { type: 'string', multiple: true },
+  'ack-reason': { type: 'string' },
   runconfig: { type: 'string' },
   results: { type: 'string' },
   evals: { type: 'string' },
@@ -292,6 +340,12 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return 2;
     }
   } catch (err) {
+    if (err instanceof AckError) {
+      // A refused or malformed --ack is an operator mistake, and the message is
+      // the whole product: it says what cannot be acknowledged and why.
+      process.stderr.write(`--ack refused: ${err.message}\n`);
+      return 2;
+    }
     if (err instanceof ConfigError) {
       process.stderr.write(`config error: ${err.message}\n`);
       return 2;
@@ -447,7 +501,10 @@ async function cmdServe(values: Values, target: string | undefined): Promise<num
  * writes nothing, and is safe to point at a directory a run is still writing.
  *
  * Exit code carries the verdict, so it is usable as a publish gate in CI:
- *   0  no task shows a cross-config failure signature
+ *   0  no task shows an unreviewed cross-config failure signature — including
+ *      the `acknowledged` verdict, where every such signature was reviewed by a
+ *      human and recorded with its reason (the report says so loudly, and the
+ *      gate lets it through: that is the whole point of an acknowledgment)
  *   1  at least one task is SUSPECT (all configs scored 0, different reasons)
  *   3  at least one task looks INVALID (shared diagnostic, or a verifier crash)
  */
@@ -586,6 +643,13 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     );
   }
 
+  // --ack is parsed before anything is read or written, so a refusal (an
+  // apparatus fault named, a missing reason) costs nothing and is the first
+  // thing the operator sees. `parseAckFlags` is where "verifier crashes are
+  // never acknowledgeable" is *explained*; `matchAck` is where it is enforced.
+  const ackSpecs = parseAckFlags(values.ack);
+  const ackReason = requireAckReason(ackSpecs, values['ack-reason']);
+
   // The grid a run measures is decided ONCE, at creation, and recorded in
   // results/<runId>/run-spec.json. A resume replays that; it never rebuilds the
   // grid from today's runconfig.json or from the defaults of the flags that were
@@ -662,6 +726,33 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
       );
       return 2;
     }
+  }
+
+  // Acknowledgments in force for this invocation: whatever the run already
+  // recorded (replayed automatically — an unattended overnight resume must not
+  // re-halt on a signature that was reviewed at 2am) plus anything typed now.
+  //
+  // A typo'd task id is refused rather than silently acknowledging nothing: the
+  // failure mode of a suppression that does not apply is a grid that halts at
+  // 4am for a reason its operator believes they already handled.
+  const knownTaskIds = new Set(replay ? replay.taskIds : tasks.map((t) => t.id));
+  for (const spec of ackSpecs) {
+    if (knownTaskIds.has(spec.taskId)) continue;
+    throw new AckError(
+      `--ack ${ackFlag(spec)}: "${spec.taskId}" is not a task in this ${replay ? 'run' : 'grid'}. ` +
+        `Selected: ${[...knownTaskIds].sort().slice(0, 8).join(', ')}` +
+        (knownTaskIds.size > 8 ? ` … +${knownTaskIds.size - 8} more` : ''),
+    );
+  }
+  const typedAcks = buildAcknowledgments(ackSpecs, { reason: ackReason, argv });
+  const recordedAcks = replay ? specAcknowledgments(replay.spec) : [];
+  const acknowledgments = mergeAcknowledgments(recordedAcks, typedAcks);
+  const addedAcks = newAcknowledgments(recordedAcks, typedAcks);
+  // Adding an ack on a resume is a decision about the run, so it appends to the
+  // spec's history exactly as --expand and --redo do.
+  if (replay && addedAcks.length > 0 && !dryRun) {
+    replay.spec = recordAcks(replay.spec, { acknowledgments: addedAcks, argv });
+    replay.dirty = true;
   }
 
   // A resume executes the config definitions recorded at launch. Anything the
@@ -750,6 +841,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
       resume: replay ? resumePlanFor(replay) : undefined,
       order,
       watchdog: watchdogSettings,
+      acknowledgments,
     });
     if (values.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
@@ -847,6 +939,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
         execution,
         runconfigPath,
         argv,
+        acknowledgments,
       }),
     );
     passKeys = new Set(cells.map(cellKey));
@@ -860,8 +953,15 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     `${tasks.length} task(s) × ${configs.length} config(s) × ${docsConditions.join('/')} × ${trials} trial(s) ` +
       `= ${summary.total} cell(s); ${summary.done} already done, ${summary.pending} pending\n` +
       `order: ${order}${watchdogSettings.enabled ? '' : '  ·  watchdog DISABLED'}` +
-      `${watchdogSettings.enabled && watchdogSettings.warnOnly ? '  ·  watchdog warn-only' : ''}\n`,
+      `${watchdogSettings.enabled && watchdogSettings.warnOnly ? '  ·  watchdog warn-only' : ''}` +
+      `${acknowledgments.length > 0 ? `  ·  ${acknowledgments.length} acknowledgment(s)` : ''}\n`,
   );
+  // Printed on every pass, including the resumes that never typed the flag: an
+  // inherited suppression the operator has forgotten about is the only way this
+  // feature can hurt, so it is stated every single time the run starts.
+  if (acknowledgments.length > 0) {
+    process.stdout.write(`${renderAcknowledgments(acknowledgments).join('\n')}\n`);
+  }
 
   const patterns = compilePatterns(rc.rateWindow.patterns);
 
@@ -925,6 +1025,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     settings: watchdogSettings,
     runId: cp.runId,
     configIds: configs.map((c) => c.id),
+    acknowledgments,
   });
 
   const configById = new Map(configs.map((c) => [c.id, c]));
@@ -948,7 +1049,11 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   const raise = (alerts: WatchdogAlert[]): void => {
     for (const alert of alerts) {
       process.stderr.write(
-        `\n  [watchdog ${alert.level}] ${alert.kind}${alert.taskId ? ` ${alert.taskId}` : ''}: ${alert.evidence}\n`,
+        `\n  [watchdog ${alert.level}] ${alert.kind}${alert.taskId ? ` ${alert.taskId}` : ''}: ${alert.evidence}\n` +
+          (alert.acknowledgment
+            ? `  [watchdog] acknowledged (--ack ${ackFlag(alert.acknowledgment)}) — ` +
+              `${alert.acknowledgment.reason}\n  [watchdog] recorded as a failure; the run continues\n`
+            : ''),
       );
     }
     if (watchdog.halted && !halt.signal.aborted) {
@@ -1025,8 +1130,10 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   if (infraTimer) clearInterval(infraTimer);
 
   // Written after the queue has drained, so ALERT.json describes a settled run:
-  // every in-flight cell has finished and been scored by this point.
-  if (watchdog.alerts.length > 0) {
+  // every in-flight cell has finished and been scored by this point. Written for
+  // acknowledgments too, even when nothing ever matched them — a run whose
+  // watchdog was partly disarmed must say so in its own results tree.
+  if (watchdog.alerts.length > 0 || acknowledgments.length > 0) {
     const file = watchdog.snapshot();
     const banner = renderAlertBanner(file, runDir);
     await writeAlertFile(runDir, file);

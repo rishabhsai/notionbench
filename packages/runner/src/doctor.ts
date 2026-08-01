@@ -20,16 +20,31 @@
  * and then, in plain English: **which tasks look invalid and should be
  * investigated before publishing.**
  *
+ * It also answers the question a published benchmark has to answer about
+ * itself: **what did a human suppress, and why.** Acknowledgments (`--ack`,
+ * ack.ts) are read from run-spec.json and ALERT.json and printed above
+ * everything else, with the mandatory reason and the number of cells each one
+ * covers. A run carrying acknowledgments is never reported as `clean`.
+ *
  * Input is `results.jsonl` first (the record of truth), plus `state.json` for
  * cells that never produced a row at all, `rate-window.json` for blocked
- * configs, and `ALERT.json` for what the live watchdog already said.
+ * configs, `run-spec.json` for acknowledgments, and `ALERT.json` for what the
+ * live watchdog already said.
  */
 
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { dedupeByCell, readResults, type TrialRecord } from '@notionbench/scoring';
+import {
+  ackFlag,
+  ackKey,
+  matchAck,
+  mergeAcknowledgments,
+  type Acknowledgment,
+} from './ack.js';
 import type { CellState, RunStateFile } from './checkpoint.js';
 import { readRateWindowState } from './queue.js';
+import { RUN_SPEC_FILENAME, type RunSpecFile } from './run-spec.js';
 import {
   DEFAULT_WATCHDOG_SETTINGS,
   normalizeDiagnostic,
@@ -73,7 +88,13 @@ export interface DoctorTask {
 }
 
 export interface DoctorFinding {
-  level: 'invalid' | 'suspect' | 'note';
+  /**
+   * `acknowledged` is an `invalid`/`suspect` finding a human reviewed in advance
+   * (`--ack`, ack.ts). It is not an excuse to stop reading: the finding keeps its
+   * evidence, gains the reason it was accepted, and is listed in its own section
+   * and in the verdict.
+   */
+  level: 'invalid' | 'suspect' | 'note' | 'acknowledged';
   kind:
     | 'cross-config-identical-failure'
     | 'verifier-crash'
@@ -85,6 +106,31 @@ export interface DoctorFinding {
   configIds: string[];
   evidence: string;
   detail: string[];
+  /** Set when `level` is `acknowledged`. */
+  acknowledgment?: Acknowledgment;
+}
+
+/**
+ * One acknowledgment, with what it actually covers in this run.
+ *
+ * `cells` and `configIds` are the point: "3 cells across 3 configs" is a
+ * reviewer deciding whether the stated reason is proportionate, and `matched:
+ * false` names an acknowledgment that no longer suppresses anything and should
+ * be dropped from the command line.
+ */
+export interface DoctorAcknowledgment {
+  taskId: string;
+  pattern?: string;
+  reason: string;
+  at: string;
+  argv?: string[];
+  /** Scored failures of that task whose normalized diagnostics this ack covers. */
+  cells: number;
+  configIds: string[];
+  /** Findings this acknowledgment downgraded. */
+  findings: number;
+  /** False when nothing in this run matches it. */
+  matched: boolean;
 }
 
 export interface DoctorReport {
@@ -111,8 +157,18 @@ export interface DoctorReport {
   findings: DoctorFinding[];
   /** What the live watchdog recorded, if it recorded anything. */
   alerts?: AlertFile;
+  /**
+   * Failure signatures this run was told to accept (`--ack`), from
+   * run-spec.json and ALERT.json. Always present, possibly empty.
+   */
+  acknowledgments: DoctorAcknowledgment[];
   verdict: {
-    level: 'clean' | 'suspect' | 'invalid';
+    /**
+     * `acknowledged` sits between `clean` and `suspect`: no unreviewed problem,
+     * but this run is NOT clean — a human suppressed something, and the
+     * headline says so.
+     */
+    level: 'clean' | 'acknowledged' | 'suspect' | 'invalid';
     headline: string;
     lines: string[];
   };
@@ -165,6 +221,14 @@ export async function buildDoctorReport(
   const alerts = await readAlertFile(runDir);
   const runId = state?.runId ?? records[0]?.runId ?? path.basename(runDir);
 
+  // run-spec.json is the authoritative record of what was acknowledged (it is
+  // what a resume replays); ALERT.json is merged in so a run whose spec predates
+  // this feature, or was hand-edited, still cannot hide a suppression.
+  const acks = mergeAcknowledgments(
+    (await readSpecFile(runDir, problems))?.acknowledgments ?? [],
+    alerts?.acknowledgments ?? [],
+  );
+
   // --- per config -----------------------------------------------------------
   const configIds = [
     ...new Set([
@@ -206,10 +270,13 @@ export async function buildDoctorReport(
       records: records.filter((r) => r.taskId === taskId),
       cells: cells.filter((c) => c.taskId === taskId),
       settings,
+      acknowledgments: acks,
     });
     tasks.push(task);
     findings.push(...task.findings);
   }
+
+  const acknowledgments = summarizeAcks(acks, records, findings);
 
   const invalidTasks = [
     ...new Set(findings.filter((f) => f.level === 'invalid').map((f) => f.taskId)),
@@ -243,9 +310,61 @@ export async function buildDoctorReport(
     suspectTasks,
     findings,
     alerts,
-    verdict: verdictFor({ runId, invalidTasks, suspectTasks, findings, totals, alerts }),
+    acknowledgments,
+    verdict: verdictFor({
+      runId,
+      invalidTasks,
+      suspectTasks,
+      findings,
+      totals,
+      alerts,
+      acknowledgments,
+    }),
     problems,
   };
+}
+
+/**
+ * What each acknowledgment actually covers in this run's results.
+ *
+ * Counted from results.jsonl rather than from the findings alone, because an
+ * acknowledgment's *blast radius* — how many measured failures a reader is being
+ * asked to take on trust — is the number that decides whether the stated reason
+ * is proportionate.
+ */
+function summarizeAcks(
+  acks: Acknowledgment[],
+  records: TrialRecord[],
+  findings: DoctorFinding[],
+): DoctorAcknowledgment[] {
+  const downgraded = new Map<string, number>();
+  for (const f of findings) {
+    if (!f.acknowledgment) continue;
+    const key = ackKey(f.acknowledgment);
+    downgraded.set(key, (downgraded.get(key) ?? 0) + 1);
+  }
+  return acks.map((ack) => {
+    const covered = records.filter(
+      (r) =>
+        r.taskId === ack.taskId &&
+        r.scored === true &&
+        r.score < 1 &&
+        (!ack.pattern ||
+          normalizeDiagnostic((r.diagnostics ?? []).join(' · ')).includes(ack.pattern)),
+    );
+    const findingCount = downgraded.get(ackKey(ack)) ?? 0;
+    return {
+      taskId: ack.taskId,
+      pattern: ack.pattern,
+      reason: ack.reason,
+      at: ack.at,
+      argv: ack.argv,
+      cells: covered.length,
+      configIds: [...new Set(covered.map((r) => r.configId))].sort(),
+      findings: findingCount,
+      matched: covered.length > 0 || findingCount > 0,
+    };
+  });
 }
 
 function analyzeTask(args: {
@@ -253,9 +372,35 @@ function analyzeTask(args: {
   records: TrialRecord[];
   cells: CellState[];
   settings: WatchdogSettings;
+  acknowledgments: Acknowledgment[];
 }): DoctorTask {
   const { taskId, records, cells, settings } = args;
-  const findings: DoctorFinding[] = [];
+  const raw: DoctorFinding[] = [];
+  /**
+   * Push a finding through the same acknowledgment gate the live watchdog used,
+   * so a finished run is judged by exactly the rules that were in force while it
+   * ran. `matchAck` refuses verifier-crash and fixture-failure kinds itself, so
+   * routing every finding through here cannot weaken them.
+   */
+  const findings = {
+    push(finding: DoctorFinding, normalizedTexts: string[] = []): void {
+      const ack = matchAck(args.acknowledgments, {
+        kind: finding.kind,
+        taskId: finding.taskId,
+        normalizedTexts,
+      });
+      if (ack) {
+        finding.level = 'acknowledged';
+        finding.acknowledgment = ack;
+        finding.detail = [
+          ...finding.detail,
+          `ACKNOWLEDGED by --ack ${ackFlag(ack)} — reason: ${ack.reason}`,
+          `recorded ${ack.at} — this failure is still counted as a failure`,
+        ];
+      }
+      raw.push(finding);
+    },
+  };
 
   const crashes = records.filter(isVerifierCrash);
   const graded = records.filter((r) => r.scored === true);
@@ -299,26 +444,29 @@ function analyzeTask(args: {
       const byFraction =
         matched >= 2 && attempted > 0 && matched / attempted >= settings.crossConfig.minFraction;
       if (byCount || byFraction) {
-        findings.push({
-          level: 'invalid',
-          kind: 'cross-config-identical-failure',
-          taskId,
-          trial,
-          configIds: [...shared.configIds].sort(),
-          evidence:
-            `${matched} of ${attempted} config(s) failed trial ${trial} with the ` +
-            `${shared.kind === 'exact' ? 'same' : 'same underlying'} diagnostic: "${truncate(shared.text, 160)}"`,
-          detail: failedConfigs.map(
-            (configId) =>
-              `${configId}: ${truncate(
-                failedHere
-                  .filter((r) => r.configId === configId)
-                  .flatMap((r) => r.diagnostics ?? [])
-                  .join(' · ') || '(no diagnostics)',
-                200,
-              )}`,
-          ),
-        });
+        findings.push(
+          {
+            level: 'invalid',
+            kind: 'cross-config-identical-failure',
+            taskId,
+            trial,
+            configIds: [...shared.configIds].sort(),
+            evidence:
+              `${matched} of ${attempted} config(s) failed trial ${trial} with the ` +
+              `${shared.kind === 'exact' ? 'same' : 'same underlying'} diagnostic: "${truncate(shared.text, 160)}"`,
+            detail: failedConfigs.map(
+              (configId) =>
+                `${configId}: ${truncate(
+                  failedHere
+                    .filter((r) => r.configId === configId)
+                    .flatMap((r) => r.diagnostics ?? [])
+                    .join(' · ') || '(no diagnostics)',
+                  200,
+                )}`,
+            ),
+          },
+          [shared.text],
+        );
       }
     }
 
@@ -328,17 +476,27 @@ function analyzeTask(args: {
       failedConfigs.length >= Math.max(2, settings.totalTaskFailure.minConfigs) &&
       !shared
     ) {
-      findings.push({
-        level: 'suspect',
-        kind: 'total-task-failure',
-        taskId,
-        trial,
-        configIds: failedConfigs,
-        evidence: `every one of the ${attemptedConfigs.length} config(s) that attempted trial ${trial} scored 0, with no shared diagnostic`,
-        detail: [
-          'may be a broken task, may be a genuinely very hard one — read the diagnostics before publishing',
-        ],
-      });
+      findings.push(
+        {
+          level: 'suspect',
+          kind: 'total-task-failure',
+          taskId,
+          trial,
+          configIds: failedConfigs,
+          evidence: `every one of the ${attemptedConfigs.length} config(s) that attempted trial ${trial} scored 0, with no shared diagnostic`,
+          detail: [
+            'may be a broken task, may be a genuinely very hard one — read the diagnostics before publishing',
+          ],
+        },
+        failedConfigs.map((configId) =>
+          normalizeDiagnostic(
+            failedHere
+              .filter((r) => r.configId === configId)
+              .flatMap((r) => r.diagnostics ?? [])
+              .join(' · '),
+          ),
+        ),
+      );
     }
   }
 
@@ -386,7 +544,7 @@ function analyzeTask(args: {
     abandoned: abandoned.length,
     trials,
     diagnosticClusters: clusterDiagnostics(failed),
-    findings,
+    findings: raw,
   };
 }
 
@@ -416,9 +574,33 @@ function verdictFor(args: {
   findings: DoctorFinding[];
   totals: DoctorReport['totals'];
   alerts?: AlertFile;
+  acknowledgments: DoctorAcknowledgment[];
 }): DoctorReport['verdict'] {
-  const { invalidTasks, suspectTasks, findings, totals } = args;
+  const { invalidTasks, suspectTasks, findings, totals, acknowledgments } = args;
   const lines: string[] = [];
+
+  // First, before anything else the verdict says: this run contains suppressed
+  // failures. A reader who stops after one sentence must still learn that.
+  if (acknowledgments.length > 0) {
+    const cells = acknowledgments.reduce((acc, a) => acc + a.cells, 0);
+    lines.push(
+      `This run is NOT clean: ${acknowledgments.length} failure signature(s) were ACKNOWLEDGED by ` +
+        `a human (--ack), covering ${cells} failed cell(s). They were reviewed and judged real ` +
+        'agent failures, and they are recorded as failures — but the watchdog was told not to ' +
+        'halt on them, so read the reasons before publishing:',
+    );
+    for (const a of acknowledgments) {
+      lines.push(
+        `  ${ackFlag(a)} — "${a.reason}" (${a.cells} cell(s)` +
+          `${a.configIds.length > 0 ? ` across ${a.configIds.join(', ')}` : ''}, recorded ${a.at})` +
+          (a.matched ? '' : ' — MATCHES NOTHING in this run; drop it'),
+      );
+    }
+    lines.push(
+      'Verifier crashes and fixture-provisioning failures cannot be acknowledged, so none of the ' +
+        'above suppressed a broken measurement.',
+    );
+  }
 
   if (invalidTasks.length > 0) {
     lines.push(
@@ -446,24 +628,39 @@ function verdictFor(args: {
   }
   if (invalidTasks.length === 0 && suspectTasks.length === 0) {
     lines.push(
-      'No task shows a cross-config failure signature: where configs failed, they failed for ' +
-        'different stated reasons, which is what genuine agent misses look like.',
+      'No task shows an unreviewed cross-config failure signature: where configs failed, they ' +
+        'failed for different stated reasons, which is what genuine agent misses look like.',
     );
     if (totals.unverified > 0) {
       lines.push(
         `${totals.unverified} row(s) are unverified — check they are rate-window/spawn artefacts, not verifier crashes.`,
       );
     }
-    lines.push('Safe to publish as far as task validity goes.');
+    lines.push(
+      acknowledgments.length > 0
+        ? 'Safe to publish as far as task validity goes, PROVIDED the acknowledgments above are ' +
+          'published with it — a run with suppressions is only interpretable alongside them.'
+        : 'Safe to publish as far as task validity goes.',
+    );
   }
 
-  const level = invalidTasks.length > 0 ? 'invalid' : suspectTasks.length > 0 ? 'suspect' : 'clean';
+  const level =
+    invalidTasks.length > 0
+      ? 'invalid'
+      : suspectTasks.length > 0
+        ? 'suspect'
+        : acknowledgments.length > 0
+          ? 'acknowledged'
+          : 'clean';
   const headline =
     level === 'invalid'
       ? `${invalidTasks.length} task(s) look INVALID`
       : level === 'suspect'
         ? `${suspectTasks.length} task(s) are SUSPECT`
-        : 'no invalid tasks detected';
+        : level === 'acknowledged'
+          ? `no invalid tasks detected, but ${acknowledgments.length} ACKNOWLEDGED failure ` +
+            'signature(s) were reviewed and suppressed — this run is not clean'
+          : 'no invalid tasks detected';
   return { level, headline, lines };
 }
 
@@ -483,6 +680,34 @@ export function renderDoctorReport(r: DoctorReport): string {
       `${r.totals.abandoned} abandoned`,
   );
   line();
+
+  // Above the alerts and above the per-task table on purpose. An acknowledgment
+  // is the one thing in this report that a reader cannot re-derive from the
+  // numbers, and the one thing a publisher is accountable for.
+  if (r.acknowledgments.length > 0) {
+    line(
+      `ACKNOWLEDGMENTS (${r.acknowledgments.length}) — human-reviewed failure signature(s) the ` +
+        'watchdog was told not to halt on',
+    );
+    line('  this run is NOT clean; every one of these is recorded as a failure and reviewed below');
+    for (const a of r.acknowledgments) {
+      line(
+        `  ${ackFlag(a)}${a.matched ? '' : '   (MATCHES NOTHING IN THIS RUN)'}`,
+      );
+      line(`      reason:   ${a.reason}`);
+      line(
+        `      covers:   ${a.cells} failed cell(s)` +
+          `${a.configIds.length > 0 ? ` across ${a.configIds.join(', ')}` : ''}` +
+          `${a.findings > 0 ? `; downgraded ${a.findings} finding(s)` : ''}`,
+      );
+      line(`      recorded: ${a.at}${a.argv && a.argv.length > 0 ? `  ·  ${a.argv.join(' ')}` : ''}`);
+    }
+    line(
+      '  verifier crashes and fixture-provisioning failures are never acknowledgeable, so nothing ' +
+        'above suppressed a broken measurement.',
+    );
+    line();
+  }
 
   if (r.alerts && r.alerts.alerts.length > 0) {
     line(`live watchdog (ALERT.json) — ${r.alerts.halted ? 'THIS RUN WAS HALTED' : 'alerts raised, run continued'}`);
@@ -508,7 +733,9 @@ export function renderDoctorReport(r: DoctorReport): string {
       ? 'INVALID?'
       : t.findings.find((f) => f.level === 'suspect')
         ? 'SUSPECT'
-        : '';
+        : t.findings.find((f) => f.level === 'acknowledged')
+          ? 'ACKNOWLEDGED'
+          : '';
     line(
       `  ${pad(t.taskId, 44)} ${pad(`${t.solved}/${t.attempted} solved`, 16)}` +
         `${t.verifierCrashes > 0 ? ` ${t.verifierCrashes} VERIFIER CRASH` : ''}` +
@@ -517,7 +744,9 @@ export function renderDoctorReport(r: DoctorReport): string {
     );
     for (const f of t.findings) {
       if (f.level === 'note' && f.kind === 'no-results') continue;
-      line(`      ${f.level === 'invalid' ? '!!' : f.level === 'suspect' ? '?' : '-'} ${f.evidence}`);
+      line(
+        `      ${f.level === 'invalid' ? '!!' : f.level === 'suspect' ? '?' : f.level === 'acknowledged' ? '✓ACK' : '-'} ${f.evidence}`,
+      );
       for (const d of f.detail.slice(0, 8)) line(`         ${d}`);
     }
     if (t.failed > 0 && t.diagnosticClusters.length > 0 && t.findings.length === 0) {
@@ -547,6 +776,25 @@ async function readStateFile(runDir: string, problems: string[]): Promise<RunSta
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
     if (code !== 'ENOENT') problems.push(`state.json: ${(err as Error).message}`);
+    return undefined;
+  }
+}
+
+/**
+ * The run's spec, for its acknowledgments only.
+ *
+ * Read directly rather than through `readRunSpec` so `doctor` keeps working on a
+ * run directory that has been copied out of its results root, and so a spec
+ * written by a future version never turns an audit into an error — an
+ * unreadable spec is reported as a problem, and the ALERT.json copy of the
+ * acknowledgments still stands.
+ */
+async function readSpecFile(runDir: string, problems: string[]): Promise<RunSpecFile | undefined> {
+  try {
+    return JSON.parse(await readFile(path.join(runDir, RUN_SPEC_FILENAME), 'utf8')) as RunSpecFile;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code !== 'ENOENT') problems.push(`${RUN_SPEC_FILENAME}: ${(err as Error).message}`);
     return undefined;
   }
 }

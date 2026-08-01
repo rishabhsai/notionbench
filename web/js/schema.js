@@ -38,8 +38,9 @@
  *     failures: Array<{ at: string; taskId: string; config: string;
  *                       trial: number; diagnostic: string }>;
  *     alerts?: Array<{               // EXTENSION: run watchdog (results/<run>/ALERT.json)
- *       level: "halt" | "warn"; kind: string; taskId?: string;
+ *       level: "halt" | "warn" | "acknowledged"; kind: string; taskId?: string;
  *       configIds: string[]; evidence: string; at: string; halted: boolean;
+ *       acknowledgedReason?: string;
  *     }>;
  *   }
  *
@@ -47,6 +48,12 @@
  * deterministic watchdog, which halts a run when several configs fail the same
  * task with the same diagnostic (a verifier bug, not a model failure). A payload
  * without it normalizes to an empty array, so nothing downstream has to branch.
+ *
+ * `"acknowledged"` is a halt-level signal a human reviewed in advance
+ * (`--ack <task>[:<pattern>] --ack-reason "<why>"`) — the run kept going and the
+ * failure is still recorded. It is preserved rather than folded into "warn"
+ * precisely so the dashboard can distinguish "nobody has looked at this" from
+ * "someone looked at this and here is what they said".
  */
 (function () {
   "use strict";
@@ -130,13 +137,21 @@
       alerts: (raw.alerts || [])
         .filter((a) => a && a.evidence)
         .map((a) => ({
-          level: a.level === "halt" ? "halt" : "warn",
+          level:
+            a.level === "halt"
+              ? "halt"
+              : a.level === "acknowledged"
+                ? "acknowledged"
+                : "warn",
           kind: String(a.kind ?? "unknown"),
           taskId: a.taskId ?? null,
           configIds: Array.isArray(a.configIds) ? a.configIds.map(String) : [],
           evidence: String(a.evidence),
           at: a.at ?? "",
           halted: !!a.halted,
+          acknowledgedReason: a.acknowledgedReason
+            ? String(a.acknowledgedReason)
+            : null,
         })),
     };
   }

@@ -90,6 +90,14 @@ every cell that touched it. Three things keep that cheap:
   is flagged SUSPECT but never halts: that is also what a very hard task looks
   like, and this benchmark is meant to contain those. In-flight trials always
   finish and are scored; nothing is killed.
+- **A reviewed failure stops the halt without blinding the watchdog.** When the
+  shared diagnostic turns out to be a real agent failure — a prompt several
+  models misread the same way — `--ack <taskId>:<substring> --ack-reason "<why>"`
+  records exactly that signature as `acknowledged` and lets the grid continue,
+  while every other task stays protected. Nothing is hidden: the reason is stored
+  in `run-spec.json`, replayed on `--resume`, shown in `ALERT.json` and listed by
+  `doctor`, which stops calling the run clean. Verifier crashes and fixture
+  failures can never be acknowledged.
 - **Fix it and re-run only it, in one command.** `--redo` invalidates that task's
   cells and retires its stale rows to `results.superseded.jsonl` rather than
   leaving them to be averaged in:

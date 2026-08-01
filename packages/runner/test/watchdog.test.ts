@@ -16,6 +16,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { buildAcknowledgments, parseAckFlags, type Acknowledgment } from '../src/ack.js';
 import {
   DEFAULT_WATCHDOG_SETTINGS,
   Watchdog,
@@ -32,12 +33,26 @@ import {
 
 const CONFIGS = ['opus', 'sonnet', 'sol-medium', 'sol-xhigh', 'luna', 'fable', 'kimi'];
 
-function watchdog(over: Partial<WatchdogSettings> = {}, configIds = CONFIGS): Watchdog {
+function watchdog(
+  over: Partial<WatchdogSettings> = {},
+  configIds = CONFIGS,
+  acknowledgments: Acknowledgment[] = [],
+): Watchdog {
   return new Watchdog({
     settings: { ...DEFAULT_WATCHDOG_SETTINGS, ...over },
     runId: 'test-run',
     configIds,
+    acknowledgments,
     now: () => 1_700_000_000_000,
+  });
+}
+
+/** `--ack <flags> --ack-reason <reason>`, as the CLI would resolve it. */
+function acks(flags: string[], reason = 'reviewed: real agent failure'): Acknowledgment[] {
+  return buildAcknowledgments(parseAckFlags(flags), {
+    reason,
+    argv: ['run', '--ack', ...flags],
+    now: new Date('2026-08-01T12:00:00.000Z'),
   });
 }
 
@@ -430,6 +445,164 @@ describe('switches', () => {
     expect(merged.crossConfig.minFraction).toBe(DEFAULT_WATCHDOG_SETTINGS.crossConfig.minFraction);
     expect(merged.infrastructure.stallMinutes).toBe(60);
     expect(resolveWatchdogSettings(undefined)).toEqual(DEFAULT_WATCHDOG_SETTINGS);
+  });
+});
+
+// --- acknowledgments ---------------------------------------------------------
+
+/**
+ * The live half of `--ack`. The case is the real one from the 798-cell run:
+ * `resolve-instructions-001-workflow-canary` tells the agent to answer with
+ * zeros for a category nobody has expensed, three configs pinned their tool's
+ * input schema to an enum, and the SDK rejected the call. Same diagnostic from
+ * three configs — the watchdog's halt signature — and a genuine agent failure.
+ */
+describe('acknowledgments', () => {
+  const CANARY = 'resolve-instructions-001-workflow-canary';
+  const ENUM_FAILURE = [
+    'tool_unknown_category: InvalidToolInputError: input does not match the tool schema ' +
+      '(category "office-plants" is not one of the enum values)',
+  ];
+  const OTHER_FAILURE = ['summary.json totals the wrong month: expected 2026-07, got 2026-06'];
+
+  function canary(configId: string, diagnostics: string[]): WatchdogObservation {
+    return scored(configId, 0, diagnostics, { taskId: CANARY });
+  }
+
+  it('records the halt signature at level "acknowledged" and does NOT stop the run', () => {
+    const w = watchdog({}, CONFIGS, acks(
+      [`${CANARY}:invalidtoolinputerror`],
+      'reviewed 2026-08-01: the prompt says an unexpensed category answers with zeros, not an ' +
+        'error; these three configs constrained the tool input to an enum. Genuine agent miss.',
+    ));
+    w.observe(canary('opus', ENUM_FAILURE));
+    w.observe(canary('sonnet', ENUM_FAILURE));
+    const alerts = w.observe(canary('sol-medium', ENUM_FAILURE));
+
+    // Detected and recorded exactly as before — only the halt is withheld.
+    expect(alerts).toHaveLength(1);
+    expect(alerts[0]!.kind).toBe('cross-config-identical-failure');
+    expect(alerts[0]!.level).toBe('acknowledged');
+    expect(alerts[0]!.evidence).toContain('invalidtoolinputerror');
+    expect(alerts[0]!.acknowledgment!.reason).toContain('Genuine agent miss');
+    expect(alerts[0]!.detail.join('\n')).toContain('the failure is recorded as a failure');
+    expect(w.halted).toBe(false);
+    expect(w.haltingAlert).toBeUndefined();
+    expect(w.acknowledgedAlerts).toHaveLength(1);
+    expect(w.alerts).toHaveLength(1);
+  });
+
+  it('a DIFFERENT failure mode on the SAME task still halts when a pattern was given', () => {
+    const w = watchdog({}, CONFIGS, acks([`${CANARY}:invalidtoolinputerror`]));
+    w.observe(canary('opus', OTHER_FAILURE));
+    w.observe(canary('sonnet', OTHER_FAILURE));
+    const alerts = w.observe(canary('sol-medium', OTHER_FAILURE));
+    expect(alerts[0]!.level).toBe('halt');
+    expect(alerts[0]!.acknowledgment).toBeUndefined();
+    expect(w.halted).toBe(true);
+  });
+
+  it('acknowledges only the named task — another task with the same complaint still halts', () => {
+    const w = watchdog({}, CONFIGS, acks([`${CANARY}:invalidtoolinputerror`]));
+    for (const cfg of ['opus', 'sonnet', 'sol-medium']) w.observe(canary(cfg, ENUM_FAILURE));
+    expect(w.halted).toBe(false);
+    for (const cfg of ['opus', 'sonnet', 'sol-medium']) {
+      w.observe(scored(cfg, 0, ENUM_FAILURE)); // the default task id
+    }
+    expect(w.halted).toBe(true);
+    expect(w.haltingAlert!.taskId).toBe('build-nac-004-board-view-filters');
+  });
+
+  it('bare --ack <taskId> covers the cross-config signal for that task', () => {
+    const w = watchdog({}, CONFIGS, acks([CANARY]));
+    for (const cfg of ['opus', 'sonnet', 'sol-medium']) w.observe(canary(cfg, ENUM_FAILURE));
+    expect(w.alerts[0]!.level).toBe('acknowledged');
+    expect(w.halted).toBe(false);
+  });
+
+  it('bare --ack <taskId> covers the total-task-failure signal too', () => {
+    const w = watchdog(
+      { totalTaskFailure: { enabled: true, minConfigs: 5, halt: true } },
+      CONFIGS,
+      acks([CANARY]),
+    );
+    const distinct = [
+      'no summary.json produced',
+      'the month total is wrong',
+      'wrote a page instead of a database row',
+      'never called the expense tool',
+      'crashed on an empty category list',
+      'returned an error for the unexpensed category',
+      'summed the wrong column',
+    ];
+    CONFIGS.forEach((cfg, i) => w.observe(canary(cfg, [distinct[i]!])));
+    const total = w.alerts.find((a) => a.kind === 'total-task-failure');
+    expect(total!.level).toBe('acknowledged');
+    expect(w.halted).toBe(false);
+  });
+
+  it('a patterned ack covers total-task-failure only when EVERY failing config said it', () => {
+    const settings = { totalTaskFailure: { enabled: true, minConfigs: 5, halt: true } };
+    const shared = 'the run refused to start';
+    const all = watchdog(settings, CONFIGS, acks([`${CANARY}:refused to start`]));
+    CONFIGS.forEach((cfg, i) => all.observe(canary(cfg, [`${shared} (${i})`])));
+    expect(all.alerts.find((a) => a.kind === 'total-task-failure')!.level).toBe('acknowledged');
+
+    const some = watchdog(settings, CONFIGS, acks([`${CANARY}:refused to start`]));
+    CONFIGS.forEach((cfg, i) =>
+      some.observe(canary(cfg, [i === 3 ? 'wrote the wrong month total' : `${shared} (${i})`])),
+    );
+    expect(some.alerts.find((a) => a.kind === 'total-task-failure')!.level).toBe('halt');
+  });
+
+  // The safety property. Both of these are apparatus faults, and the ENOSPC
+  // incident that motivated the whole watchdog presented as a verifier crash.
+  it('CANNOT be acknowledged away: a verifier crash halts even under a bare ack for that task', () => {
+    const w = watchdog({}, CONFIGS, acks([CANARY]));
+    const alerts = w.observe({
+      taskId: CANARY,
+      configId: 'opus',
+      trial: 1,
+      kind: 'verifier-crash',
+      error: 'ENOSPC: no space left on device, write',
+    });
+    expect(alerts[0]!.level).toBe('halt');
+    expect(alerts[0]!.acknowledgment).toBeUndefined();
+    expect(w.halted).toBe(true);
+  });
+
+  it('CANNOT be acknowledged away: fixture provisioning failures halt under a bare ack', () => {
+    const w = watchdog({}, CONFIGS, acks([CANARY]));
+    w.observe({ taskId: CANARY, configId: 'opus', trial: 1, kind: 'fixture-failure', error: 'notion 502' });
+    const second = w.observe({
+      taskId: CANARY,
+      configId: 'sonnet',
+      trial: 1,
+      kind: 'fixture-failure',
+      error: 'spec.json: unknown property type',
+    });
+    expect(second[0]!.level).toBe('halt');
+    expect(second[0]!.acknowledgment).toBeUndefined();
+    expect(w.halted).toBe(true);
+  });
+
+  it('keeps the acknowledged level under --watchdog-warn-only, reason and all', () => {
+    const w = watchdog({ warnOnly: true }, CONFIGS, acks([`${CANARY}:invalidtoolinputerror`]));
+    for (const cfg of ['opus', 'sonnet', 'sol-medium']) w.observe(canary(cfg, ENUM_FAILURE));
+    expect(w.alerts[0]!.level).toBe('acknowledged');
+    expect(w.alerts[0]!.acknowledgment).toBeDefined();
+  });
+
+  it('writes every acknowledgment into ALERT.json, including ones that matched nothing', () => {
+    const w = watchdog({}, CONFIGS, acks([`${CANARY}:invalidtoolinputerror`, 'some-other-task']));
+    const snapshot = w.snapshot();
+    expect(snapshot.alerts).toHaveLength(0);
+    expect(snapshot.acknowledgments).toHaveLength(2);
+    const banner = renderAlertBanner(snapshot, '/results/test-run');
+    expect(banner).toContain('acknowledgments (2)');
+    expect(banner).toContain(`${CANARY}:invalidtoolinputerror`);
+    expect(banner).toContain('reviewed: real agent failure');
+    expect(banner).toContain('never acknowledgeable');
   });
 });
 

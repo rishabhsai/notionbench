@@ -25,6 +25,12 @@
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  ackFlag,
+  mergeAcknowledgments,
+  newAcknowledgments,
+  type Acknowledgment,
+} from './ack.js';
 import { cellKey, type CellCoords, type CellState, type RunStateFile } from './checkpoint.js';
 import type { AgentConfig } from './config.js';
 import type { OrderPolicy } from './order.js';
@@ -108,10 +114,12 @@ export interface RunSpecProvenance {
 
 export interface RunSpecHistoryEntry {
   at: string;
-  event: 'created' | 'reconstructed' | 'expanded' | 'drift' | 'replayed' | 'redo';
+  event: 'created' | 'reconstructed' | 'expanded' | 'drift' | 'replayed' | 'redo' | 'acknowledged';
   detail: string;
   /** argv of the invocation that produced the entry. */
   argv?: string[];
+  /** `acknowledged`: the failure signature(s) this invocation accepted, with reasons. */
+  acknowledgments?: Acknowledgment[];
   /** `expanded`: how many cells were added, and the axis diffs that added them. */
   added?: number;
   diffs?: string[];
@@ -134,7 +142,24 @@ export interface RunSpecFile {
   configs: SpecConfig[];
   execution: RunSpecExecution;
   provenance: RunSpecProvenance;
+  /**
+   * Failure signatures a human reviewed and accepted (`--ack`, ack.ts).
+   *
+   * Run metadata, not execution state, so it lives here rather than in
+   * state.json: an unattended overnight `--resume` must not re-halt on something
+   * that was reviewed at 2am, and the run's own file is the only place that can
+   * tell it so without the operator re-typing the flag. It is also the audit
+   * record — every entry carries the mandatory reason, the timestamp and the
+   * argv that recorded it — which is why it is written next to `provenance`
+   * rather than anywhere a torn hot-path write could reach.
+   */
+  acknowledgments?: Acknowledgment[];
   history: RunSpecHistoryEntry[];
+}
+
+/** The acknowledgments a run carries. Never undefined, so callers do not branch. */
+export function specAcknowledgments(spec: RunSpecFile | undefined): Acknowledgment[] {
+  return spec?.acknowledgments ?? [];
 }
 
 export function runSpecPath(resultsRoot: string, runId: string): string {
@@ -254,11 +279,14 @@ export interface CreateSpecOptions {
   execution: RunSpecExecution;
   runconfigPath?: string;
   argv: string[];
+  /** `--ack` acknowledgments typed at launch. */
+  acknowledgments?: Acknowledgment[];
   now?: Date;
 }
 
 export function createRunSpec(opts: CreateSpecOptions): RunSpecFile {
   const at = (opts.now ?? new Date()).toISOString();
+  const acks = opts.acknowledgments ?? [];
   const cliVersions: Record<string, string> = {};
   for (const c of opts.configs) if (c.cliVersion) cliVersions[c.id] = c.cliVersion;
   return {
@@ -281,12 +309,68 @@ export function createRunSpec(opts: CreateSpecOptions): RunSpecFile {
       cwd: process.cwd(),
       cliVersions,
     },
+    // Omitted entirely rather than written as `undefined`: a run with nothing
+    // acknowledged should have no acknowledgment key at all in its spec file.
+    ...(acks.length > 0 ? { acknowledgments: acks } : {}),
     history: [
       {
         at,
         event: 'created',
         detail: describeGrid(opts.grid),
         argv: opts.argv,
+      },
+      ...(acks.length > 0
+        ? [
+            {
+              at,
+              event: 'acknowledged' as const,
+              detail: describeAcks(acks),
+              acknowledgments: acks,
+              argv: opts.argv,
+            },
+          ]
+        : []),
+    ],
+  };
+}
+
+function describeAcks(acks: Acknowledgment[]): string {
+  return (
+    `--ack accepted ${acks.length} known-legitimate failure signature(s): ` +
+    acks.map((a) => `${ackFlag(a)} ("${a.reason}")`).join('; ') +
+    ' — the watchdog records them at level "acknowledged" instead of halting'
+  );
+}
+
+/**
+ * Fold `--ack` acknowledgments into a run's spec.
+ *
+ * Idempotent by signature: re-passing the same flag on every overnight resume
+ * appends nothing and returns the spec unchanged, so the history stays a record
+ * of *decisions* rather than of how many times the run was restarted. A new
+ * signature — or the same task with a different pattern — is a new decision and
+ * does append, with its own reason, timestamp and argv.
+ */
+export function recordAcks(
+  spec: RunSpecFile,
+  args: { acknowledgments: Acknowledgment[]; argv: string[]; now?: Date },
+): RunSpecFile {
+  const existing = specAcknowledgments(spec);
+  const added = newAcknowledgments(existing, args.acknowledgments);
+  if (added.length === 0) return spec;
+  const at = (args.now ?? new Date()).toISOString();
+  return {
+    ...spec,
+    updatedAt: at,
+    acknowledgments: mergeAcknowledgments(existing, added),
+    history: [
+      ...spec.history,
+      {
+        at,
+        event: 'acknowledged',
+        detail: describeAcks(added),
+        acknowledgments: added,
+        argv: args.argv,
       },
     ],
   };

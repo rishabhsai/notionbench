@@ -35,6 +35,17 @@
  * `--no-watchdog` disables it entirely and `--watchdog-warn-only` downgrades
  * every halt to a warning.
  *
+ * ## Acknowledgments
+ *
+ * Signals (a) and (d) can be right about the evidence and wrong about the
+ * conclusion: a task whose *prompt* leads several agents into the same mistake
+ * produces exactly the cross-config signature of a broken verifier. `--ack
+ * <task>[:<pattern>] --ack-reason "<why>"` (ack.ts) records that a human read
+ * that signature and found it legitimate — the alert is still raised, still
+ * written to ALERT.json, still shown by `doctor`, at `level: "acknowledged"`
+ * with the reason attached — and only the *halt* is withheld. Signals (b) and
+ * (c) are apparatus faults and are never acknowledgeable at any syntax.
+ *
  * ## What "halt" means
  *
  * Halt stops *scheduling*. In-flight cells run to completion and are scored
@@ -47,6 +58,12 @@
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { writeJsonAtomic } from './spawn.js';
+import {
+  ackFlag,
+  matchAck,
+  renderAcknowledgments,
+  type Acknowledgment,
+} from './ack.js';
 
 export const ALERT_FILENAME = 'ALERT.json';
 export const ALERT_FILE_VERSION = 1;
@@ -161,7 +178,12 @@ function num(value: unknown, fallback: number): number {
 // Alerts
 // ---------------------------------------------------------------------------
 
-export type AlertLevel = 'halt' | 'warn';
+/**
+ * `halt` stops scheduling. `warn` is recorded and printed. `acknowledged` is a
+ * `halt` a human reviewed in advance (`--ack`): fully recorded, never halting,
+ * and carrying the reason it was accepted.
+ */
+export type AlertLevel = 'halt' | 'warn' | 'acknowledged';
 
 export type AlertKind =
   | 'cross-config-identical-failure'
@@ -187,6 +209,12 @@ export interface WatchdogAlert {
   at: string;
   /** True when this alert is what stopped the run. */
   halted: boolean;
+  /**
+   * Set when `level` is `acknowledged`: the `--ack` that covered this signature,
+   * with the operator's mandatory reason. Present so ALERT.json alone answers
+   * "what was suppressed in this run, and on whose say-so".
+   */
+  acknowledgment?: Acknowledgment;
 }
 
 export interface AlertFile {
@@ -197,6 +225,12 @@ export interface AlertFile {
   /** The alert that stopped the run, when one did. */
   halting?: WatchdogAlert;
   alerts: WatchdogAlert[];
+  /**
+   * Every acknowledgment in force for this run — including ones that never
+   * matched anything. An unused suppression is still a suppression a reader is
+   * entitled to see.
+   */
+  acknowledgments?: Acknowledgment[];
 }
 
 export function alertPath(runDir: string): string {
@@ -225,6 +259,14 @@ export async function readAlertFile(runDir: string): Promise<AlertFile | undefin
       halted: parsed.halted === true,
       halting: parsed.halting,
       alerts: parsed.alerts.filter((a): a is WatchdogAlert => !!a && typeof a === 'object'),
+      ...(Array.isArray(parsed.acknowledgments)
+        ? {
+            acknowledgments: parsed.acknowledgments.filter(
+              (a): a is Acknowledgment =>
+                !!a && typeof a === 'object' && typeof (a as Acknowledgment).taskId === 'string',
+            ),
+          }
+        : {}),
     };
   } catch {
     // A torn write of an advisory file is not worth failing a status request over.
@@ -407,6 +449,13 @@ export interface WatchdogOptions {
   runId: string;
   /** The configs in this run — needed for "every config is blocked". */
   configIds: string[];
+  /**
+   * Failure signatures a human reviewed and accepted (`--ack`, replayed from
+   * run-spec.json on resume). They downgrade a matching halt to `acknowledged`;
+   * they never suppress the alert, and never apply to a verifier crash or a
+   * fixture-provisioning failure (ack.ts `matchAck`).
+   */
+  acknowledgments?: Acknowledgment[];
   now?: () => number;
 }
 
@@ -424,6 +473,7 @@ export interface InfrastructureSnapshot {
 export class Watchdog {
   readonly settings: WatchdogSettings;
   readonly runId: string;
+  readonly acknowledgments: Acknowledgment[];
   private readonly configIds: string[];
   private readonly now: () => number;
 
@@ -441,6 +491,7 @@ export class Watchdog {
   constructor(opts: WatchdogOptions) {
     this.settings = opts.settings ?? DEFAULT_WATCHDOG_SETTINGS;
     this.runId = opts.runId;
+    this.acknowledgments = [...(opts.acknowledgments ?? [])];
     this.configIds = [...opts.configIds];
     this.now = opts.now ?? (() => Date.now());
     this.lastCompletionMs = this.now();
@@ -459,6 +510,11 @@ export class Watchdog {
     return this.halting;
   }
 
+  /** Alerts that WOULD have halted the run had they not been acknowledged. */
+  get acknowledgedAlerts(): readonly WatchdogAlert[] {
+    return this.all.filter((a) => a.level === 'acknowledged');
+  }
+
   snapshot(): AlertFile {
     return {
       version: ALERT_FILE_VERSION,
@@ -467,6 +523,9 @@ export class Watchdog {
       halted: this.halted,
       halting: this.halting,
       alerts: [...this.all],
+      ...(this.acknowledgments.length > 0
+        ? { acknowledgments: [...this.acknowledgments] }
+        : {}),
     };
   }
 
@@ -604,6 +663,10 @@ export class Watchdog {
         halted: false,
       },
       `cross-config::${taskId}::${trial}`,
+      // A patterned --ack is matched against the SHARED diagnostic — the exact
+      // thing this signal fired on — so acknowledging one failure mode of a task
+      // leaves every other failure mode on it halting as before.
+      [evidence.text],
     );
   }
 
@@ -647,6 +710,11 @@ export class Watchdog {
         halted: false,
       },
       `total-failure::${taskId}::${trial}`,
+      // There is no shared diagnostic here by construction, so a patterned ack
+      // must hold for EVERY failing config before it covers this alert.
+      [...state.failed.values()].map((diagnostics) =>
+        normalizeDiagnostic(diagnostics.join(' · ')),
+      ),
     );
   }
 
@@ -751,11 +819,44 @@ export class Watchdog {
     this.halting = alert;
   }
 
-  private push(out: WatchdogAlert[], alert: WatchdogAlert, dedupeKey?: string): void {
+  /**
+   * @param ackSubject the normalized diagnostic text(s) a patterned `--ack` is
+   *        matched against. Omitted for kinds that are never acknowledgeable,
+   *        which is belt-and-braces: `matchAck` refuses those kinds anyway.
+   */
+  private push(
+    out: WatchdogAlert[],
+    alert: WatchdogAlert,
+    dedupeKey?: string,
+    ackSubject?: string[],
+  ): void {
     const key = dedupeKey ?? `${alert.kind}::${alert.taskId ?? ''}::${alert.trial ?? ''}`;
     if (this.raised.has(key)) return;
     this.raised.add(key);
-    if (this.settings.warnOnly) alert.level = 'warn';
+
+    // Acknowledgment first, then --watchdog-warn-only. An acknowledged alert
+    // keeps the more informative level: "a human reviewed this exact signature
+    // and here is their reason" says strictly more than "warnings only today".
+    const ack =
+      alert.taskId !== undefined && this.acknowledgments.length > 0
+        ? matchAck(this.acknowledgments, {
+            kind: alert.kind,
+            taskId: alert.taskId,
+            normalizedTexts: ackSubject ?? [],
+          })
+        : undefined;
+    if (ack) {
+      alert.level = 'acknowledged';
+      alert.acknowledgment = ack;
+      alert.detail.push(
+        `ACKNOWLEDGED by --ack ${ackFlag(ack)} — reason: ${ack.reason}`,
+        `recorded ${ack.at}${ack.argv && ack.argv.length > 0 ? `  ·  ${ack.argv.join(' ')}` : ''}`,
+        'the failure is recorded as a failure; only the halt was withheld',
+      );
+    } else if (this.settings.warnOnly) {
+      alert.level = 'warn';
+    }
+
     this.all.push(alert);
     out.push(alert);
     if (alert.level === 'halt' && !this.halting) this.markHalted(alert);
@@ -769,11 +870,13 @@ export class Watchdog {
 /** The banner written to run.log and printed to stderr when a run is halted. */
 export function renderAlertBanner(file: AlertFile, runDir: string): string {
   const rule = '='.repeat(78);
+  const acknowledged = file.alerts.filter((a) => a.level === 'acknowledged').length;
   const lines: string[] = [rule];
   lines.push(
     file.halted
       ? `!! WATCHDOG HALT — run ${file.runId} stopped scheduling new cells`
-      : `!! WATCHDOG — run ${file.runId} raised ${file.alerts.length} alert(s)`,
+      : `!! WATCHDOG — run ${file.runId} raised ${file.alerts.length} alert(s)` +
+        (acknowledged > 0 ? ` (${acknowledged} acknowledged, not halted)` : ''),
   );
   lines.push(rule);
   for (const alert of file.alerts) {
@@ -784,6 +887,13 @@ export function renderAlertBanner(file: AlertFile, runDir: string): string {
     lines.push(`  ${alert.evidence}`);
     if (alert.configIds.length > 0) lines.push(`  configs: ${alert.configIds.join(', ')}`);
     for (const d of alert.detail) lines.push(`    ${d}`);
+  }
+  // Printed whether or not any of them matched: an acknowledgment that never
+  // fired is still a suppression in force, and the reader decides whether it
+  // should still be there.
+  if (file.acknowledgments && file.acknowledgments.length > 0) {
+    lines.push(rule);
+    for (const l of renderAcknowledgments(file.acknowledgments)) lines.push(l);
   }
   lines.push(rule);
   lines.push(`in-flight cells were allowed to finish and are scored; nothing was killed.`);
