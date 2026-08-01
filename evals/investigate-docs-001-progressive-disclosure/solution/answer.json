@@ -1,0 +1,10 @@
+{
+	"keyring_env_var": "NOTION_KEYRING",
+	"keyring_disable_value": "0",
+	"state_root_env_var": "NOTION_HOME",
+	"json_flag": "--json",
+	"plain_flag": "--plain",
+	"local_flag": "--local",
+	"docs_flag": "--docs",
+	"resolve_command": "ntn datasources resolve"
+}
