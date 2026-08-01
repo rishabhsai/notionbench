@@ -29,11 +29,32 @@ export {
   resume,
   trialDirFor,
   type CellCoords,
+  type CellScore,
   type CellState,
   type CellStatus,
   type RunMeta,
   type RunStateFile,
 } from './checkpoint.js';
+
+export {
+  UNSCORABLE_STATUSES,
+  isScorable,
+  scoreTrial,
+  toTrialRecord,
+  unscoredRecord,
+  type ScoreTrialOptions,
+  type ScoredTrial,
+} from './score.js';
+
+export {
+  buildPlan,
+  renderPlan,
+  type BuildPlanOptions,
+  type PlanEnv,
+  type PlannedConfig,
+  type PlannedTask,
+  type RunPlan,
+} from './plan.js';
 
 export {
   Scheduler,

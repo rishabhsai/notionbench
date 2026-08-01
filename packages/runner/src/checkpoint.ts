@@ -42,7 +42,23 @@ export interface CellState {
   apiEquivalentCostUsd?: number;
   /** Relative to the results root, so a results tree stays movable. */
   trialDir?: string;
+  /**
+   * The verifier's verdict, mirrored here purely so `notionbench status` can
+   * show progress without reading results.jsonl. results.jsonl remains the
+   * record of truth — the report is built from it, never from state.json.
+   */
+  score?: number;
+  /** False when the verifier itself failed; `score` is then meaningless. */
+  scored?: boolean;
+  scoreError?: string;
   history: Array<{ at: string; event: string; detail?: string }>;
+}
+
+/** What `markDone` records about a scored trial. */
+export interface CellScore {
+  score: number;
+  scored: boolean;
+  error?: string;
 }
 
 export interface RunMeta {
@@ -250,7 +266,7 @@ export class Checkpoint {
     return cell;
   }
 
-  async markDone(coords: CellCoords, outcome: TrialOutcome): Promise<CellState> {
+  async markDone(coords: CellCoords, outcome: TrialOutcome, score?: CellScore): Promise<CellState> {
     const cell = this.require(coords);
     cell.status = 'done';
     cell.lastTrialStatus = outcome.status;
@@ -262,7 +278,16 @@ export class Checkpoint {
     cell.apiEquivalentCostUsd = outcome.apiEquivalentCostUsd;
     cell.trialDir = path.relative(path.join(this.resultsRoot, this.runId), outcome.trialDir ?? '') || undefined;
     cell.lastError = undefined;
-    pushHistory(cell, 'done', outcome.status);
+    cell.score = score?.score;
+    cell.scored = score?.scored;
+    cell.scoreError = score?.error;
+    pushHistory(
+      cell,
+      'done',
+      score === undefined
+        ? outcome.status
+        : `${outcome.status} score=${score.scored ? score.score : `unverified (${score.error ?? 'no verdict'})`}`,
+    );
     await this.save();
     return cell;
   }
@@ -308,6 +333,12 @@ export class Checkpoint {
     done: number;
     failed: number;
     rateLimitedAttempts: number;
+    /** Done cells whose verifier returned a verdict. */
+    scored: number;
+    /** Of those, the ones that met the solve threshold (score 1). */
+    solved: number;
+    /** Done cells the verifier could not measure — neither pass nor fail. */
+    unverified: number;
     byConfig: Record<string, { total: number; done: number; failed: number; pending: number; running: number }>;
   } {
     const byConfig: Record<
@@ -319,7 +350,18 @@ export class Checkpoint {
     let done = 0;
     let failed = 0;
     let rateLimitedAttempts = 0;
+    let scored = 0;
+    let solved = 0;
+    let unverified = 0;
     for (const cell of this.cells()) {
+      if (cell.status === 'done' && cell.scored !== undefined) {
+        if (cell.scored) {
+          scored++;
+          if ((cell.score ?? 0) >= 1) solved++;
+        } else {
+          unverified++;
+        }
+      }
       const bucket = (byConfig[cell.configId] ??= {
         total: 0,
         done: 0,
@@ -342,6 +384,9 @@ export class Checkpoint {
       done,
       failed,
       rateLimitedAttempts,
+      scored,
+      solved,
+      unverified,
       byConfig,
     };
   }

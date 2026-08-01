@@ -38,6 +38,9 @@ importers:
       '@notionbench/sandbox':
         specifier: workspace:*
         version: link:../sandbox
+      '@notionbench/scoring':
+        specifier: workspace:*
+        version: link:../scoring
     devDependencies:
       '@types/node':
         specifier: ^22.10.2

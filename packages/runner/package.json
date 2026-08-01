@@ -26,7 +26,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@notionbench/sandbox": "workspace:*"
+    "@notionbench/sandbox": "workspace:*",
+    "@notionbench/scoring": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

@@ -4,12 +4,56 @@ Runs the benchmark: launches commercial agent CLIs headlessly, one process per
 trial, checkpoints every cell, and paces the grid around subscription rate windows.
 
 ```bash
+notionbench run --dry-run    # the exact plan: grid, argv per config, child env
 notionbench run --tasks 'build-nac-*' --configs claude-code-opus-5 --trials 5 --docs both
 notionbench run --resume 20260731-120000
+notionbench score results/latest
 notionbench status 20260731-120000
 notionbench configs          # roster + which harnesses have an adapter
 notionbench tasks --tasks '*nac*'
 ```
+
+## One trial: spawn → score → checkpoint
+
+`run` does all three per cell, in that order, and the order is the contract:
+
+1. **spawn** the agent CLI in a prepared trial workspace (see `@notionbench/sandbox`);
+2. **score** it by running the task's `EVAL.ts` in a child process
+   (`@notionbench/scoring`), *while the workspace still exists* — cleanup happens
+   in `finally`;
+3. **append** the merged row to `results/<runId>/results.jsonl` (fsynced), and only
+   then **checkpoint** the cell as done. A crash in between costs a re-run of one
+   cell, never a cell that claims a verdict nothing recorded.
+
+`rate_limited` and `spawn_error` trials are *not* scored — the agent never got its
+turn, and verifying the untouched fixture would write a spurious 0. `timeout` and
+`failed` trials **are** scored: the agent had its wall clock, and whether the
+workspace solves the task is the verifier's call, not the runner's. A verifier that
+crashes or hangs yields `scored: false` — an absence of measurement, kept distinct
+from a zero all the way into the report.
+
+## Reporting
+
+```bash
+notionbench score results/latest          # markdown to stdout + results/<run>/summary.md
+notionbench score 20260731-120000 --k 3   # count 3 trials per task
+notionbench score results/latest --json
+```
+
+`score` reads nothing but `results.jsonl`, so an archived results tree produces the
+same numbers years later. It prints the README config table (avg@k with a Wilson
+interval, pass^k, tool errors, tokens, API-equivalent cost, wall time) plus
+per-product-area, per-stage and per-docs-condition breakdowns. Stage comes from the
+task id prefix, the `<stage>-<area>-<nnn>-<slug>` convention docs/COVERAGE.md fixes.
+
+## Dry runs
+
+`notionbench run --dry-run` prints the full execution plan — the grid, every task
+with its real timeout and prompt size, the **exact argv** each config will be
+spawned with (prompt elided), and the environment every child will see, including
+which API-key variables are about to be stripped. It is strictly read-only: no
+`<cli> --version` probe, no run directory, no checkpoint. `--json` emits the same
+plan as data.
 
 ## Headless invocation
 

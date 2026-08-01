@@ -3,16 +3,27 @@
  * notionbench CLI.
  *
  *   notionbench run --tasks <glob> --configs <a,b> --trials 5 --docs both
+ *   notionbench run --dry-run
  *   notionbench run --resume <runId>
+ *   notionbench score <runDir>
  *   notionbench status <runId>
  *   notionbench configs
  *   notionbench tasks --tasks <glob>
  */
 
 import { parseArgs } from 'node:util';
+import { readFile, readdir, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
-import { prepareWorkspace, type DocsBundle } from '@notionbench/sandbox';
+import { DEFAULT_TEMPLATES_DIR, prepareWorkspace, type DocsBundle } from '@notionbench/sandbox';
+import {
+  DEFAULT_SCORE_TIMEOUT_MS,
+  appendResult,
+  buildReport,
+  hasScorer,
+  readResults,
+  renderReport,
+} from '@notionbench/scoring';
 import {
   Checkpoint,
   buildCells,
@@ -27,6 +38,8 @@ import { ConfigError, loadRunConfig, selectConfigs, type AgentConfig } from './c
 import { getAdapter, hasAdapter } from './parsers/index.js';
 import { Scheduler, runQueue, type CellOutcome, type QueueCell } from './queue.js';
 import { compilePatterns } from './rate-limit.js';
+import { buildPlan, renderPlan } from './plan.js';
+import { isScorable, scoreTrial, unscoredRecord } from './score.js';
 import { getCliVersion, runTrial } from './spawn.js';
 import { discoverTasks, readPrompt } from './tasks.js';
 import { TokenPool } from './token-pool.js';
@@ -36,6 +49,7 @@ const USAGE = `notionbench — run agent CLIs against the Notion developer-platf
 
 Usage:
   notionbench run [options]
+  notionbench score <runDir|runId> [--k <n>] [--results <dir>] [--json]
   notionbench status <runId> [--results <dir>] [--json]
   notionbench configs [--runconfig <path>] [--json]
   notionbench tasks [--tasks <glob>] [--evals <dir>] [--json]
@@ -57,8 +71,20 @@ run options:
   --max-attempts <n>    Attempts per cell before giving up. Default 3.
   --include-disabled    Allow selecting configs marked enabled:false.
   --keep-workspaces     Do not delete trial workspaces (debugging).
-  --dry-run             Plan the run and print the grid; launch nothing.
+  --score-timeout <sec> Per-trial verification budget. Default 600.
+  --no-score            Record rollouts without running the verifiers.
+  --dry-run             Print the execution plan and exit; spawn nothing.
   -h, --help            This message.
+
+score options:
+  --k <n>               Trials per task to count. Default: the largest k every
+                        task in the run supports.
+  --results <dir>       Results root, when a bare runId is given. Default results/
+  --json                Emit the report as JSON instead of markdown.
+
+\`run\` does spawn -> score -> checkpoint per trial and appends every scored
+rollout to results/<runId>/results.jsonl; \`score\` aggregates that file into
+results/<runId>/summary.md and prints it.
 `;
 
 type Argv = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>;
@@ -78,7 +104,10 @@ const OPTIONS = {
   'max-attempts': { type: 'string' },
   'include-disabled': { type: 'boolean' },
   'keep-workspaces': { type: 'boolean' },
+  'score-timeout': { type: 'string' },
+  'no-score': { type: 'boolean' },
   'dry-run': { type: 'boolean' },
+  k: { type: 'string' },
   json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
 } as const;
@@ -103,6 +132,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     switch (command) {
       case 'run':
         return await cmdRun(values);
+      case 'score':
+        return await cmdScore(values, positionals[1]);
       case 'status':
         return await cmdStatus(values, positionals[1]);
       case 'configs':
@@ -185,7 +216,12 @@ async function cmdStatus(values: Values, runId: string | undefined): Promise<num
   process.stdout.write(
     `  ${summary.done}/${summary.total} done (${pct}%)  pending ${summary.pending}  running ${summary.running}  failed ${summary.failed}\n`,
   );
-  process.stdout.write(`  rate-limited attempts (not charged): ${summary.rateLimitedAttempts}\n\n`);
+  process.stdout.write(`  rate-limited attempts (not charged): ${summary.rateLimitedAttempts}\n`);
+  process.stdout.write(
+    `  verified ${summary.scored}  solved ${summary.solved}` +
+      (summary.unverified > 0 ? `  unverified ${summary.unverified}` : '') +
+      '\n\n',
+  );
   for (const [configId, s] of Object.entries(summary.byConfig).sort()) {
     process.stdout.write(
       `  ${pad(configId, 28)} done ${pad(String(s.done), 5)} pending ${pad(String(s.pending), 5)} running ${pad(String(s.running), 3)} failed ${s.failed}\n`,
@@ -202,8 +238,103 @@ async function cmdStatus(values: Values, runId: string | undefined): Promise<num
   return summary.failed > 0 ? 1 : 0;
 }
 
-async function cmdRun(values: Values): Promise<number> {
+/**
+ * Aggregate a run's `results.jsonl` into the published table.
+ *
+ * Reads nothing but results.jsonl — no state.json, no transcripts — so an
+ * archived results tree scores identically years later.
+ */
+async function cmdScore(values: Values, target: string | undefined): Promise<number> {
   const rc = await loadRunConfig(await defaultRunconfigPath(values.runconfig));
+  const resultsRoot = path.resolve(values.results ?? rc.resultsRoot);
+  const runDir = await resolveRunDir(target, resultsRoot);
+  if (!runDir) {
+    process.stderr.write(
+      `score requires a run directory or run id (looked under ${resultsRoot})\n`,
+    );
+    return 2;
+  }
+
+  let records: Awaited<ReturnType<typeof readResults>>['records'];
+  let problems: Awaited<ReturnType<typeof readResults>>['problems'];
+  try {
+    ({ records, problems } = await readResults(runDir));
+  } catch (err) {
+    // A run that has not scored anything yet is an operator mistake, not a bug.
+    process.stderr.write(`${(err as Error).message}\n`);
+    return 1;
+  }
+  for (const p of problems) {
+    process.stderr.write(`warning: ${path.join(runDir, 'results.jsonl')}:${p.line}: ${p.reason}\n`);
+  }
+  if (records.length === 0) {
+    process.stderr.write(`no scored trials in ${runDir}\n`);
+    return 1;
+  }
+
+  const report = buildReport(records, {
+    runId: path.basename(await realRunDir(runDir)),
+    k: values.k ? intOpt(values.k, 0, '--k') : undefined,
+  });
+
+  if (values.json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+    return 0;
+  }
+
+  const markdown = renderReport(report);
+  const summaryPath = path.join(runDir, 'summary.md');
+  await writeFile(summaryPath, markdown, 'utf8');
+  process.stdout.write(markdown);
+  process.stdout.write(`\nwritten to ${summaryPath}\n`);
+  return 0;
+}
+
+/** Accept `results/<runId>`, a bare `<runId>`, or `results/latest`. */
+async function resolveRunDir(target: string | undefined, resultsRoot: string): Promise<string | undefined> {
+  const candidates = target
+    ? [path.resolve(target), path.join(resultsRoot, target)]
+    : [path.join(resultsRoot, 'latest')];
+  for (const candidate of candidates) {
+    if (await isDir(candidate)) return candidate;
+  }
+  // No `latest` link: fall back to the newest run directory (ids sort by time).
+  if (!target && (await isDir(resultsRoot))) {
+    const entries = (await readdir(resultsRoot, { withFileTypes: true }))
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name)
+      .sort();
+    const newest = entries[entries.length - 1];
+    if (newest) return path.join(resultsRoot, newest);
+  }
+  return undefined;
+}
+
+async function realRunDir(runDir: string): Promise<string> {
+  const { realpath } = await import('node:fs/promises');
+  try {
+    return await realpath(runDir);
+  } catch {
+    return runDir;
+  }
+}
+
+async function isDir(p: string): Promise<boolean> {
+  try {
+    return (await stat(p)).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function firstLine(text: string): string {
+  const line = text.split('\n', 1)[0] ?? '';
+  return line.length > 120 ? `${line.slice(0, 120)}…` : line;
+}
+
+async function cmdRun(values: Values): Promise<number> {
+  const runconfigPath = await defaultRunconfigPath(values.runconfig);
+  const rc = await loadRunConfig(runconfigPath);
   const resultsRoot = path.resolve(values.results ?? rc.resultsRoot);
   const evalsRoot = path.resolve(values.evals ?? rc.evalsRoot);
   const trials = intOpt(values.trials, rc.trials, '--trials');
@@ -214,6 +345,10 @@ async function cmdRun(values: Values): Promise<number> {
     ? intOpt(values['cooldown-min'], 30, '--cooldown-min') * 60_000
     : rc.rateWindow.cooldownMs;
   const docsConditions = parseDocs(values.docs);
+  const scoringEnabled = values['no-score'] !== true;
+  const scoreTimeoutMs = values['score-timeout']
+    ? intOpt(values['score-timeout'], 0, '--score-timeout') * 1000
+    : DEFAULT_SCORE_TIMEOUT_MS;
 
   const tasks = await discoverTasks(evalsRoot, splitList(values.tasks));
   if (tasks.length === 0) {
@@ -240,6 +375,43 @@ async function cmdRun(values: Values): Promise<number> {
   }
 
   const taskById = new Map(tasks.map((t) => [t.id, t]));
+  const tokens = TokenPool.fromEnv();
+
+  // --dry-run answers "what exactly is about to happen" and must therefore
+  // change nothing: no `<cli> --version` probes, no run directory, no state.
+  if (values['dry-run']) {
+    const prompts = new Map<string, string>();
+    const verifiers = new Set<string>();
+    for (const task of tasks) {
+      prompts.set(task.id, await readPrompt(task));
+      if (await hasScorer(task.dir)) verifiers.add(task.id);
+    }
+    const plan = buildPlan({
+      tasks,
+      configs,
+      docsConditions,
+      trials,
+      concurrency,
+      maxAttempts,
+      defaultTimeoutSec,
+      cooldownMs,
+      evalsRoot,
+      resultsRoot,
+      runconfigPath,
+      scoring: { enabled: scoringEnabled, timeoutMs: scoreTimeoutMs },
+      prompts,
+      verifiers,
+      notionTokens: tokens.size,
+      templatesDir: DEFAULT_TEMPLATES_DIR,
+    });
+    if (values.json) {
+      process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
+    } else {
+      process.stdout.write(`${renderPlan(plan)}\n`);
+    }
+    return 0;
+  }
+
   // Built per config so a config that pins itself to one docs condition (the
   // `docsCondition` field) contributes only that half of the grid.
   const cells = configs.flatMap((c) =>
@@ -287,6 +459,8 @@ async function cmdRun(values: Values): Promise<number> {
     cp = await Checkpoint.create({ runId, resultsRoot, meta, cells });
     process.stdout.write(`run ${runId}\n`);
   }
+  await linkLatest(resultsRoot, cp.runId);
+  const runDir = path.join(resultsRoot, cp.runId);
 
   const summary = cp.summary();
   process.stdout.write(
@@ -294,16 +468,7 @@ async function cmdRun(values: Values): Promise<number> {
       `= ${summary.total} cell(s); ${summary.done} already done, ${summary.pending} pending\n`,
   );
 
-  if (values['dry-run']) {
-    for (const cell of cp.pending().slice(0, 50)) {
-      process.stdout.write(`  would run ${cellKey(cell)}\n`);
-    }
-    if (summary.pending > 50) process.stdout.write(`  … and ${summary.pending - 50} more\n`);
-    return 0;
-  }
-
   const patterns = compilePatterns(rc.rateWindow.patterns);
-  const tokens = TokenPool.fromEnv();
   const needsLive = tasks.some((t) => t.runtime === 'live');
   if (needsLive && tokens.isEmpty) {
     process.stderr.write(
@@ -339,6 +504,9 @@ async function cmdRun(values: Values): Promise<number> {
         config: configById.get(cell.configId)!,
         task: taskById.get(cell.taskId)!,
         resultsRoot,
+        runDir,
+        scoringEnabled,
+        scoreTimeoutMs,
         defaultTimeoutSec,
         killGraceMs: rc.killGraceMs,
         cooldownMs,
@@ -353,17 +521,52 @@ async function cmdRun(values: Values): Promise<number> {
   const final = cp.summary();
   process.stdout.write(
     `\ndone: ${final.done}/${final.total}  failed ${final.failed}  pending ${final.pending}\n` +
-      `resume with: notionbench run --resume ${cp.runId}\n`,
+      `scored: ${final.solved}/${final.scored} solved` +
+      (final.unverified > 0 ? `  (${final.unverified} unverified)` : '') +
+      '\n' +
+      `resume with: notionbench run --resume ${cp.runId}\n` +
+      `report with: notionbench score ${path.relative(process.cwd(), runDir) || runDir}\n`,
   );
   return final.failed > 0 ? 1 : 0;
 }
 
+/**
+ * `results/latest` -> the run just started, so the README's
+ * `notionbench score results/latest` works without copying a run id around.
+ * Best effort: a filesystem without symlinks is not a reason to abort a run.
+ */
+async function linkLatest(resultsRoot: string, runId: string): Promise<void> {
+  const link = path.join(resultsRoot, 'latest');
+  try {
+    await unlink(link);
+  } catch {
+    /* nothing to replace */
+  }
+  try {
+    await symlink(runId, link, 'dir');
+  } catch {
+    /* symlinks unavailable; `notionbench score <runId>` still works */
+  }
+}
+
+/**
+ * One cell, start to finish: **spawn → score → checkpoint**.
+ *
+ * The order is the contract. The verifier needs the trial workspace, which is
+ * deleted in `finally`, so scoring happens before cleanup; and the results row
+ * is appended before the cell is marked done, so an interrupted run never
+ * leaves a cell claiming a verdict that was never written.
+ */
 async function executeCell(args: {
   cell: QueueCell;
   cp: Checkpoint;
   config: AgentConfig;
   task: TaskSpec;
   resultsRoot: string;
+  /** `results/<runId>` — where results.jsonl is appended. */
+  runDir: string;
+  scoringEnabled: boolean;
+  scoreTimeoutMs: number;
   defaultTimeoutSec: number;
   killGraceMs: number;
   cooldownMs: number;
@@ -424,9 +627,48 @@ async function executeCell(args: {
 
     // A non-zero exit or a timeout is still a *recorded trial*: the agent got its
     // wall clock and produced a trajectory, and the verifier — not the runner —
-    // decides whether that trajectory solved the task. Marking it done here means
-    // "we have a transcript to score", not "the model passed".
-    await cp.markDone(coords, outcome);
+    // decides whether that trajectory solved the task.
+    if (!args.scoringEnabled || !isScorable(outcome.status)) {
+      await appendResult(
+        args.runDir,
+        unscoredRecord({
+          task,
+          config,
+          outcome,
+          runId: cp.runId,
+          runDir: args.runDir,
+          reason: args.scoringEnabled ? `not scored: status ${outcome.status}` : 'scoring disabled (--no-score)',
+        }),
+      );
+      await cp.markDone(coords, outcome);
+      return { kind: 'done' };
+    }
+
+    const { score } = await scoreTrial({
+      task,
+      config,
+      outcome,
+      workspaceDir: workspace.dir,
+      runId: cp.runId,
+      runDir: args.runDir,
+      timeoutMs: args.scoreTimeoutMs,
+      signal: args.signal,
+    });
+
+    process.stdout.write(
+      `  ${pad(score.ok ? (score.score >= 1 ? 'PASS' : 'FAIL') : 'UNVERIFIED', 13)} ${cellKey(coords)}  ` +
+        `score=${score.ok ? score.score : '?'}  ${(score.durationMs / 1000).toFixed(0)}s verify` +
+        (score.ok ? '' : `  ${firstLine(score.error ?? '')}`) +
+        '\n',
+    );
+
+    // Checkpoint last: the results row is already durable, so a crash here costs
+    // a re-run of the cell, never a cell that claims a verdict nothing recorded.
+    await cp.markDone(coords, outcome, {
+      score: score.score,
+      scored: score.ok,
+      error: score.error,
+    });
     return { kind: 'done' };
   } catch (err) {
     await cp.markFailed(coords, (err as Error).message);
