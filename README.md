@@ -12,12 +12,11 @@ An open benchmark that runs coding agents — Claude Code, Codex, and friends �
 
 | Agent config | Score (avg@5) | pass^5 | Tool errors | Tokens | API-equiv cost | Time |
 |---|---|---|---|---|---|---|
-| Claude Code × Opus 5 | – | – | – | – | – | – |
-| Claude Code × Fable 5 | – | – | – | – | – | – |
-| Codex × GPT-5.6 Sol (med) | – | – | – | – | – | – |
-| Codex × GPT-5.6 Sol (high) | – | – | – | – | – | – |
-| Tera | – | – | – | – | – | – |
-| Luna | – | – | – | – | – | – |
+| OpenCode × Kimi K3 | – | – | – | – | – | – |
+| Claude Code × Opus 5 (high) | – | – | – | – | – | – |
+| Claude Code × Sonnet 5 (high) | – | – | – | – | – | – |
+| Codex × GPT-5.6 Sol (medium) | – | – | – | – | – | – |
+| Codex × GPT-5.6 Luna (high) | – | – | – | – | – | – |
 
 Grouped by product area, stage (build / investigate / resolve / operate), and docs condition.
 
