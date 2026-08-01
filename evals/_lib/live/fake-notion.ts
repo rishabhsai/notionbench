@@ -1543,7 +1543,12 @@ function resolveUploadRefs(value: unknown, store: Store): unknown {
 
 function renderMarkdown(pageId: string, store: Store): string {
   const page = requirePage(pageId, store)
-  const lines: string[] = [`# ${page.title}`, ""]
+  // Real Notion does NOT render the page title into the markdown body — a page
+  // whose first block is `## Overview` comes back starting at `## Overview`.
+  // Emitting a `# <title>` line here made a leading title look normal, which is
+  // exactly the round-trip mistake build-pages-001 exists to catch.
+  void page
+  const lines: string[] = []
   const walk = (ids: string[], depth: number): void => {
     for (const id of ids) {
       const block = store.blocks.get(id)
@@ -1579,11 +1584,23 @@ function renderMarkdown(pageId: string, store: Store): string {
   return `${lines.join("\n")}\n`
 }
 
-/** Whole-page replace. Enough to exercise a markdown-clobber task's verifier. */
+/**
+ * Whole-page replace. Enough to exercise a markdown-clobber task's verifier.
+ *
+ * The real endpoint takes a discriminated union — `{type: "replace_content",
+ * replace_content: {new_str}}` and three siblings — and rejects a bare
+ * `{markdown}` with "body.type should be defined". Accepting the loose shape
+ * here let an oracle ship that could never run against api.notion.com.
+ */
 function updateMarkdown(pageId: string, body: Record<string, unknown>, store: Store): unknown {
   const page = requirePage(pageId, store)
-  const markdown = typeof body.markdown === "string" ? body.markdown : undefined
-  if (markdown === undefined) throw badRequest("markdown is required")
+  if (typeof body.type !== "string") throw badRequest("body.type should be defined")
+  if (body.type !== "replace_content") {
+    throw badRequest(`fake-notion implements only type="replace_content", got "${body.type}"`)
+  }
+  const replace = (body.replace_content ?? {}) as { new_str?: unknown }
+  const markdown = typeof replace.new_str === "string" ? replace.new_str : undefined
+  if (markdown === undefined) throw badRequest("replace_content.new_str is required")
   for (const id of page.children) {
     const block = store.blocks.get(id)
     if (block) store.blocks.delete(id)

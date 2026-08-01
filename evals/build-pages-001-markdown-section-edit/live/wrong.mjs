@@ -26,4 +26,7 @@ const document = [
   "If the run is still red after two retries, page the on-call data engineer.",
 ].join("\n")
 
-await api("patch", `pages/${pageId}/markdown`, { markdown: document })
+await api("patch", `pages/${pageId}/markdown`, {
+  type: "replace_content",
+  replace_content: { new_str: document, allow_deleting_content: true },
+})

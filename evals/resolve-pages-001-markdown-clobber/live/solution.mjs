@@ -13,9 +13,8 @@ const BROKEN = "const payload = APPENDIX"
 
 const FIXED = [
   "const { markdown: current } = await api(\"get\", `pages/${pageId}/markdown`)",
-  "// The first line is the page title, rendered for readability — not body content.",
-  "const lines = current.split(\"\\n\")",
-  "const existing = (lines[0].startsWith(\"# \") ? lines.slice(1) : lines).join(\"\\n\").replace(/\\n+$/, \"\")",
+  "// The endpoint replaces the whole document, so send the old body back with it.",
+  "const existing = current.replace(/\\n+$/, \"\")",
   "const payload = `${existing}\\n${APPENDIX}`",
 ].join("\n")
 

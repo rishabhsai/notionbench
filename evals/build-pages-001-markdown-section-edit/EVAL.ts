@@ -80,11 +80,9 @@ interface Section {
 }
 
 interface Parsed {
-  /** Everything before the first `## `, after the rendered title line is removed. */
+  /** Everything before the first `## `. Must be empty on an untouched page. */
   preamble: string
   sections: Section[]
-  /** True when the document opened with the expected `# <page title>` line. */
-  titleLineSeen: boolean
 }
 
 /**
@@ -94,10 +92,8 @@ interface Parsed {
  * end of the document is not reported as a content change — the renderer's own
  * terminator is not something an agent controls.
  */
-function parseDocument(markdown: string, pageTitleText: string): Parsed {
-  const lines = markdown.split("\n")
-  const titleLineSeen = lines[0] === `# ${pageTitleText}`
-  const rest = titleLineSeen ? lines.slice(1) : lines
+function parseDocument(markdown: string): Parsed {
+  const rest = markdown.split("\n")
 
   const preamble: string[] = []
   const sections: Section[] = []
@@ -114,7 +110,7 @@ function parseDocument(markdown: string, pageTitleText: string): Parsed {
   }
   if (current) sections.push({ heading: current.heading, body: trimBlank(current.body).join("\n") })
 
-  return { preamble: trimBlank(preamble).join("\n"), sections, titleLineSeen }
+  return { preamble: trimBlank(preamble).join("\n"), sections }
 }
 
 function trimBlank(lines: string[]): string[] {
@@ -158,12 +154,7 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
     return { score: 0, subscores, diagnostics }
   }
 
-  const doc = parseDocument(markdown, PAGE_TITLE)
-  if (!doc.titleLineSeen) {
-    diagnostics.push(
-      `the rendered document does not start with "# ${PAGE_TITLE}" — the page title changed, which the task did not ask for`,
-    )
-  }
+  const doc = parseDocument(markdown)
 
   // ---- structure: the same three headings, in the same order ---------------
   const wantHeadings = EXPECTED_SECTIONS.map((s) => s.heading)
@@ -172,7 +163,7 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
     gotHeadings.length === wantHeadings.length && wantHeadings.every((h, i) => gotHeadings[i] === h)
   const preambleOk = doc.preamble === ""
 
-  if (headingsOk && preambleOk && doc.titleLineSeen) {
+  if (headingsOk && preambleOk) {
     subscores.structure = 1
     diagnostics.push(`sections present and in order: ${gotHeadings.join(", ")}`)
   } else {

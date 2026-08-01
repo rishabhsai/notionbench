@@ -38,4 +38,7 @@ for (const line of body) {
   if (!inSteps) out.push(line)
 }
 
-await api("patch", `pages/${pageId}/markdown`, { markdown: out.join("\n") })
+await api("patch", `pages/${pageId}/markdown`, {
+  type: "replace_content",
+  replace_content: { new_str: out.join("\n"), allow_deleting_content: true },
+})

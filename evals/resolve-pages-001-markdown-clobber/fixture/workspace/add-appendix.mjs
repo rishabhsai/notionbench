@@ -76,6 +76,9 @@ const pageId = await findPage(pointer.root_page_id)
 
 const payload = APPENDIX
 
-await api("patch", `pages/${pageId}/markdown`, { markdown: payload })
+await api("patch", `pages/${pageId}/markdown`, {
+  type: "replace_content",
+  replace_content: { new_str: payload, allow_deleting_content: true },
+})
 
 console.log(`appendix written to ${pageId}`)
