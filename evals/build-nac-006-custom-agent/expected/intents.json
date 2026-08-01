@@ -1,0 +1,147 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "customer-success-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Customer Success",
+    "accessLevel": "open"
+  },
+  {
+    "type": "database",
+    "resourceId": "customer-feedback-db",
+    "name": "Customer Feedback",
+    "dataSources": [
+      {
+        "resourceId": "customer-feedback-ds",
+        "name": "Customer Feedback",
+        "properties": [
+          {
+            "resourceId": "feedback-title-prop",
+            "name": "Summary",
+            "type": "title"
+          },
+          {
+            "resourceId": "feedback-account-prop",
+            "name": "Account",
+            "type": "text"
+          },
+          {
+            "resourceId": "feedback-theme-prop",
+            "name": "Theme",
+            "type": "select",
+            "options": [
+              {
+                "name": "Onboarding",
+                "color": "blue"
+              },
+              {
+                "name": "Reliability",
+                "color": "red"
+              },
+              {
+                "name": "Pricing",
+                "color": "yellow"
+              }
+            ]
+          },
+          {
+            "resourceId": "feedback-received-prop",
+            "name": "Received",
+            "type": "date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "customer-success-teamspace"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "acme-sso-feedback",
+    "properties": {
+      "Summary": [
+        [
+          "SSO setup took three calls"
+        ]
+      ],
+      "Account": [
+        [
+          "Acme Corp"
+        ]
+      ],
+      "Theme": "Onboarding",
+      "Received": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-09"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "customer-feedback-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "helio-timeout-feedback",
+    "properties": {
+      "Summary": [
+        [
+          "Exports time out on large workspaces"
+        ]
+      ],
+      "Account": [
+        [
+          "Helio Labs"
+        ]
+      ],
+      "Theme": "Reliability",
+      "Received": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-17"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "customer-feedback-ds"
+    }
+  },
+  {
+    "type": "custom_agent",
+    "resourceId": "feedback-triage-agent",
+    "name": "Feedback Triage",
+    "icon": {
+      "type": "emoji",
+      "emoji": "🛟"
+    },
+    "model": "almond-croissant-low",
+    "instructions": "You triage incoming customer feedback for the Customer Success team.\n\nWhen someone gives you a piece of feedback:\n\n1. Search the Customer Feedback database for an existing entry about the same problem before creating a new one.\n2. Fill in **Account**, **Theme** and **Received** on every entry you create. Never leave Theme empty.\n3. If the feedback does not fit an existing Theme, say so in your reply instead of inventing a new option.\n\nAlways quote the customer's own words in the Summary. Do not paraphrase complaints into something softer than what was said.",
+    "sharedResources": [
+      "customer-feedback-db"
+    ]
+  }
+]
