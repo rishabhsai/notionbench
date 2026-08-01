@@ -44,6 +44,7 @@ packages/scoring/      verification layers: intents canonicalizer, exec-local dr
                        EVAL.ts subprocess driver, results.jsonl, the report tables,
                        live-state assertion helpers, stats (pass^k, Wilson)
 docs/                  COVERAGE.md (task × dimension matrix), methodology notes
+web/                   results site + live run dashboard (static, Cloudflare Pages)
 .github/workflows/     CI: build, test, and the per-task QC gate — offline, no tokens
 ```
 
