@@ -138,6 +138,14 @@ export const DEFAULT_RATE_LIMIT_PATTERNS: string[] = [
   'quota exceeded',
   'insufficient_quota',
   'too many requests',
+  // OpenCode Go. Taken from the English strings in opencode 1.18.10:
+  // dialog.usageExceeded.accountRateLimit.title = "Go limit reached" (its
+  // .description = "Usage limit reached. …" is already covered above), the structured
+  // reason that accompanies it, and ui.sessionTurn.error.freeUsageExceeded.
+  // Additive only — none of the patterns above changed.
+  'go limit reached',
+  'account_rate_limit',
+  'free usage exceeded',
   // Generic HTTP surface both CLIs bubble up
   '\\b429\\b',
   'retry[- ]after',

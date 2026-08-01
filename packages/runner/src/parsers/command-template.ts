@@ -7,11 +7,11 @@
  * treats the CLI as a black box that reads a prompt and leaves files behind.
  *
  *   {
- *     "id": "opencode-sonnet",
+ *     "id": "some-other-cli",
  *     "harness": "command-template",
- *     "command": "opencode",
+ *     "command": "my-agent-cli",
  *     "argsTemplate": ["run", "--model", "{model}", "--cwd", "{workspace}", "{prompt}"],
- *     "model": "anthropic/claude-sonnet-5"
+ *     "model": "vendor/some-model"
  *   }
  *
  * Placeholders: {prompt} {workspace} {model} {effort} {configId}
@@ -20,7 +20,8 @@
  * Token accounting is BEST EFFORT. Unlike the claude-code/codex adapters — which
  * are written against captured output from a known format — this one guesses, so it
  * reports what it found and why in `parseWarnings` and always preserves the raw
- * object. A config whose numbers matter should get a real adapter.
+ * object. A config whose numbers matter should get a real adapter; `opencode` started
+ * life here and moved to src/parsers/opencode.ts for exactly that reason.
  */
 
 import type { AgentConfig } from '../config.js';

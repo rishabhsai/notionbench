@@ -71,26 +71,9 @@
     {
       "id": "opencode-kimi-k3",
       "label": "OpenCode \u00d7 Kimi K3",
-      "harness": "command-template",
+      "harness": "opencode",
       "model": "opencode-go/kimi-k3",
       "enabled": true,
-      "command": "opencode",
-      "argsTemplate": [
-        "run",
-        "{prompt}",
-        "-m",
-        "{model}",
-        "--format",
-        "json",
-        "--dir",
-        "{workspace}",
-        "--title",
-        "notionbench-{configId}"
-      ],
-      "promptVia": "argv",
-      "versionArgs": [
-        "--version"
-      ],
       "pricing": {
         "inputPerMTok": 2.9,
         "outputPerMTok": 14

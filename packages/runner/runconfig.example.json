@@ -28,6 +28,18 @@
     "'set NOTION_PARENT_PAGE_ID' message rather than a 404 from a placeholder id."
   ],
   "notion": {},
+  "_rateWindow_comment": [
+    "Setting `patterns` REPLACES the built-in list in src/config.ts wholesale — it is",
+    "not merged — so copy the defaults you still want. The list below is the built-in",
+    "one, trimmed. The last three are OpenCode Go's usage-window wording, read out of",
+    "the English strings in the shipped opencode binary (1.18.10):",
+    "  dialog.usageExceeded.accountRateLimit.title       -> \"Go limit reached\"",
+    "  dialog.usageExceeded.accountRateLimit.description -> \"Usage limit reached. …\"",
+    "  ui.sessionTurn.error.freeUsageExceeded            -> \"Free usage exceeded\"",
+    "plus the structured reason:\"account_rate_limit\" that rides along with them.",
+    "These are unverified against a live throttled OpenCode run — no trial has hit the",
+    "window yet — so widen them if you see a phrasing they miss."
+  ],
   "rateWindow": {
     "cooldownMs": 1800000,
     "patterns": [
@@ -37,7 +49,10 @@
       "usage limit (reached|exceeded)",
       "you'?ve (hit|reached) your usage limit",
       "quota exceeded",
-      "\\b429\\b"
+      "\\b429\\b",
+      "go limit reached",
+      "account_rate_limit",
+      "free usage exceeded"
     ]
   },
   "configs": [
@@ -86,14 +101,26 @@
       "note": "Budget config for the cost-Pareto story."
     },
     {
-      "id": "opencode-sonnet",
-      "label": "OpenCode × Sonnet 5 (command template)",
+      "id": "opencode-kimi-k3",
+      "label": "OpenCode × Kimi K3",
+      "harness": "opencode",
+      "model": "opencode-go/kimi-k3",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 2.9,
+        "outputPerMTok": 14
+      },
+      "note": "First-class adapter (src/parsers/opencode.ts) — it owns the argv, including the --dir flag OpenCode needs to stay inside the trial workspace, and reads exact per-step token counts plus the provider-reported cost. Model is provider/model as OpenCode spells it. Kimi K3 on the Go plan is capped at 110 requests/5h, so schedule this lane first and let it trickle."
+    },
+    {
+      "id": "some-other-cli",
+      "label": "Some other CLI (command template)",
       "harness": "command-template",
-      "command": "opencode",
+      "command": "my-agent-cli",
       "argsTemplate": ["run", "--model", "{model}", "--cwd", "{workspace}", "{prompt}"],
-      "model": "anthropic/claude-sonnet-5",
+      "model": "vendor/some-model",
       "enabled": false,
-      "note": "Example of the generic harness: any prompt-in/files-out CLI. Placeholders are {prompt} {workspace} {model} {effort} {configId}; use promptVia:\"stdin\" for CLIs that read the prompt from stdin. Token accounting is heuristic — write a dedicated adapter in src/parsers/ if the numbers must be exact."
+      "note": "Example of the generic harness: any prompt-in/files-out CLI. Placeholders are {prompt} {workspace} {model} {effort} {configId}; use promptVia:\"stdin\" for CLIs that read the prompt from stdin. Token accounting is heuristic (the tokens column reads \"? tok\" when nothing usage-shaped turns up) — write a dedicated adapter in src/parsers/ if the numbers must be exact, as claude-code, codex and opencode all do."
     }
   ]
 }

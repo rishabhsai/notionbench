@@ -2,11 +2,13 @@ import type { HarnessId } from '../types.js';
 import { claudeCodeAdapter } from './claude-code.js';
 import { codexAdapter } from './codex.js';
 import { commandTemplateAdapter } from './command-template.js';
+import { opencodeAdapter } from './opencode.js';
 import type { HarnessAdapter } from './types.js';
 
 export * from './types.js';
 export { claudeCodeAdapter, normalizeClaudeUsage } from './claude-code.js';
 export { codexAdapter, normalizeCodexUsage, reconcileCodexUsages } from './codex.js';
+export { opencodeAdapter, sumOpencodeSteps } from './opencode.js';
 export {
   CommandTemplateError,
   commandTemplateAdapter,
@@ -16,6 +18,7 @@ export {
 const ADAPTERS = new Map<string, HarnessAdapter>([
   [claudeCodeAdapter.id, claudeCodeAdapter],
   [codexAdapter.id, codexAdapter],
+  [opencodeAdapter.id, opencodeAdapter],
   // Any other prompt-in/files-out CLI goes through the generic template harness.
   [commandTemplateAdapter.id, commandTemplateAdapter],
   // TODO(tera/luna): give these first-class adapters once their headless CLIs are

@@ -98,7 +98,19 @@ export interface TrialOutcome {
   workspaceDir: string;
   parsed: ParsedTranscript;
   usage: TokenUsage | null;
-  /** Published-price estimate; subscription runs have no real per-run $. */
+  /**
+   * Published-price estimate; subscription runs have no real per-run $.
+   *
+   * TODO(cost): some harnesses report a cost the *provider* computed —
+   * `parsed.reportedCostUsd` (claude-code's `total_cost_usd`, opencode's summed
+   * per-step `cost`). That is strictly better than a list-price estimate and the cost
+   * column should prefer it when present. Not wired here because it is not a one-line
+   * change: it touches this field's meaning, checkpoint.ts's cell aggregate,
+   * serve.ts's run total and scoring's report, and claude-code's figure is
+   * deliberately ignored today for subscription runs (see ParsedTranscript.reportedCostUsd).
+   * `parsed.reportedCostUsd` is already persisted into result.json, so no data is lost
+   * in the meantime.
+   */
   apiEquivalentCostUsd?: number;
   rateLimit: {
     detected: boolean;
