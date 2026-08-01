@@ -1,0 +1,32 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "engineering-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Engineering",
+    "accessLevel": "open"
+  },
+  {
+    "type": "page",
+    "resourceId": "on-call-handbook-page",
+    "properties": {
+      "title": [
+        [
+          "On-call handbook"
+        ]
+      ]
+    },
+    "icon": {
+      "type": "emoji",
+      "emoji": "📟"
+    },
+    "content": "<callout icon=\"🚨\">\n\tPage the incident lead **before** you touch production.\n</callout>\n\n## Severity ladder\n\n<table header-row=\"true\">\n\t<tr>\n\t\t<td>Severity</td>\n\t\t<td>Response time</td>\n\t\t<td>Who to wake</td>\n\t</tr>\n\t<tr>\n\t\t<td>Sev 1</td>\n\t\t<td>5 minutes</td>\n\t\t<td>Incident lead and platform on-call</td>\n\t</tr>\n\t<tr>\n\t\t<td>Sev 2</td>\n\t\t<td>30 minutes</td>\n\t\t<td>Platform on-call</td>\n\t</tr>\n\t<tr>\n\t\t<td>Sev 3</td>\n\t\t<td>Next business day</td>\n\t\t<td>Nobody, file a ticket</td>\n\t</tr>\n</table>\n\n## First fifteen minutes\n\n- Acknowledge the page in the alerting channel\n\t- Say your name so nobody double-responds\n\t- Start a thread for the timeline\n- Read the status dashboard before you read any code\n\t- Error rate\n\t- Latency p99\n\t- Queue depth\n- Say the severity out loud and write it in the thread\n\n## When you are stuck\n\n<details>\n<summary>You cannot reach the incident lead</summary>\n\tEscalate to the engineering manager on the rotation, then to the VP. Do not sit on a Sev 1 waiting for a reply.\n</details>\n\n<details>\n<summary>The dashboard itself is down</summary>\n\tTreat it as a Sev 2 until proven otherwise and fall back to the raw metrics endpoint.\n</details>\n\n<callout icon=\"📝\">\n\tWrite the timeline as you go. Reconstructing it afterwards always loses the detail that mattered.\n</callout>\n",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "engineering-teamspace"
+    }
+  }
+]
