@@ -1,0 +1,79 @@
+#!/bin/sh
+# Fake `claude` CLI used by the runner's spawn tests.
+#
+# Mirrors the real headless contract: `--version` prints a version line, and
+# `-p <prompt> --output-format stream-json` writes JSONL to stdout. Behaviour is
+# selected with FAKE_CLAUDE_MODE so a single script can stand in for success,
+# rate-window exhaustion, hard failure and a hung process.
+#
+# Introspection hooks (all optional):
+#   FAKE_CLI_ARGV_OUT  — write received argv, one element per line
+#   FAKE_CLI_ENV_OUT   — dump the child environment
+#   FAKE_CLI_CWD_OUT   — write the working directory
+#   FAKE_CLI_STDIN_OUT — drain stdin into this file (hangs if stdin is left open)
+#   FAKE_CLI_PID_OUT   — write a background grandchild's pid (process-group kill test)
+
+if [ "$1" = "--version" ]; then
+  echo "2.1.220 (Claude Code)"
+  exit 0
+fi
+
+if [ -n "$FAKE_CLI_ARGV_OUT" ]; then
+  : > "$FAKE_CLI_ARGV_OUT"
+  for arg in "$@"; do printf '%s\n' "$arg" >> "$FAKE_CLI_ARGV_OUT"; done
+fi
+[ -n "$FAKE_CLI_ENV_OUT" ] && env > "$FAKE_CLI_ENV_OUT"
+[ -n "$FAKE_CLI_CWD_OUT" ] && pwd > "$FAKE_CLI_CWD_OUT"
+[ -n "$FAKE_CLI_STDIN_OUT" ] && cat > "$FAKE_CLI_STDIN_OUT"
+
+FIXTURES="${FAKE_FIXTURES:-$(dirname "$0")/../fixtures}"
+
+case "${FAKE_CLAUDE_MODE:-success}" in
+  success)
+    cat "$FIXTURES/claude-code-success.jsonl"
+    exit 0
+    ;;
+  rate-limit)
+    cat "$FIXTURES/claude-code-rate-limited.jsonl"
+    exit 1
+    ;;
+  rate-limit-stderr)
+    # Same window exhaustion, but only visible as free text on stderr.
+    echo "Claude usage limit reached. Your limit will reset at 3:30pm." >&2
+    exit 1
+    ;;
+  mentions-rate-limit)
+    # A SUCCESSFUL trial whose output merely talks about rate limits — the
+    # operate-batch-001 task does exactly this. Must NOT be treated as throttled.
+    cat "$FIXTURES/claude-code-success.jsonl"
+    echo "note: implemented a 3 req/s pacer to avoid 429 rate limit responses" >&2
+    exit 0
+    ;;
+  fail)
+    echo "Error: workspace trust dialog could not be skipped" >&2
+    exit 3
+    ;;
+  hang)
+    cat "$FIXTURES/claude-code-truncated.jsonl"
+    # A grandchild, to prove the runner kills the whole process group.
+    sh -c 'while :; do sleep 1; done' &
+    [ -n "$FAKE_CLI_PID_OUT" ] && echo $! > "$FAKE_CLI_PID_OUT"
+    while :; do sleep 1; done
+    ;;
+  ignore-term)
+    # Ignores SIGTERM so the test exercises the SIGKILL escalation path.
+    trap '' TERM
+    echo '{"type":"system","subtype":"init","session_id":"stubborn","uuid":"i"}'
+    while :; do sleep 1; done
+    ;;
+  garbage)
+    echo "not json at all"
+    echo '{"type":"assistant","message":{"content":[],"usage":{"input_tokens":1,"output_tokens":2,"cache_read_input_tokens":0,"cache_creation_input_tokens":0}}}'
+    echo "trailing garbage without a newline\c"
+    exit 0
+    ;;
+  *)
+    echo "unknown FAKE_CLAUDE_MODE: $FAKE_CLAUDE_MODE" >&2
+    exit 64
+    ;;
+esac

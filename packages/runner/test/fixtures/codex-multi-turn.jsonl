@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"019fbb19-df7c-7d33-9eb4-db5c2a6262e2"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"npm ci","exit_code":0}}
+{"type":"turn.completed","usage":{"input_tokens":40000,"cached_input_tokens":30000,"output_tokens":1000,"reasoning_output_tokens":600}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"npm run build","exit_code":0}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"Build passes."}}
+{"type":"turn.completed","usage":{"input_tokens":95000,"cached_input_tokens":70000,"output_tokens":2400,"reasoning_output_tokens":1500}}

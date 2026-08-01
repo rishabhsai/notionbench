@@ -1,0 +1,4 @@
+{"type":"system","subtype":"init","cwd":"/tmp/nb-x/workspace","session_id":"trunc-0001","tools":["Bash"],"model":"claude-fable-5","permissionMode":"bypassPermissions","claude_code_version":"2.1.220","uuid":"i1"}
+{"type":"assistant","message":{"model":"claude-fable-5","id":"msg_t1","type":"message","role":"assistant","content":[{"type":"tool_use","id":"toolu_t1","name":"Bash","input":{"command":"npm test"}}],"stop_reason":null,"usage":{"input_tokens":11,"cache_creation_input_tokens":9000,"cache_read_input_tokens":1200,"output_tokens":88,"service_tier":"standard"}},"session_id":"trunc-0001","uuid":"a1"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_t1","content":"still running…"}]},"session_id":"trunc-0001","uuid":"a2"}
+{"type":"assistant","message":{"model":"claude-fable-5","id":"msg_t2","typ

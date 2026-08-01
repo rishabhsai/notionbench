@@ -1,0 +1,5 @@
+{"type":"thread.started","thread_id":"019fbb19-ffff-7d33-9eb4-db5c2a6262e2"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Skill descriptions were shortened to fit the 2% skills context budget."}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"ntn workers exec --local","exit_code":2,"aggregated_output":"TypeError: tool.outputSchema is not a function"}}
+{"type":"turn.failed","error":{"message":"You've hit your usage limit. Try again after 4:15 PM."}}

@@ -1,0 +1,73 @@
+{
+  "_comment": [
+    "Copy to ./runconfig.json at the repo root and edit. Everything is optional;",
+    "omitted keys fall back to the built-in v1 roster and defaults in src/config.ts.",
+    "Pricing is USD per 1M tokens and is only used for the API-equivalent cost column —",
+    "subscription runs have no real per-run dollar figure (docs/PLAN.md)."
+  ],
+  "concurrency": 2,
+  "trials": 5,
+  "timeoutSec": 900,
+  "killGraceMs": 10000,
+  "maxAttempts": 3,
+  "resultsRoot": "results",
+  "evalsRoot": "evals",
+  "rateWindow": {
+    "cooldownMs": 1800000,
+    "patterns": [
+      "rate[ _-]?limit(ed|ing)?\\b",
+      "\\b(five|5)[- ]hour limit",
+      "weekly limit (reached|exceeded)",
+      "usage limit (reached|exceeded)",
+      "you'?ve (hit|reached) your usage limit",
+      "quota exceeded",
+      "\\b429\\b"
+    ]
+  },
+  "configs": [
+    {
+      "id": "claude-code-opus-5",
+      "label": "Claude Code × Opus 5",
+      "harness": "claude-code",
+      "model": "opus",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 5,
+        "outputPerMTok": 25,
+        "cacheReadPerMTok": 0.5,
+        "cacheWritePerMTok": 6.25
+      }
+    },
+    {
+      "id": "claude-code-fable-5",
+      "label": "Claude Code × Fable 5",
+      "harness": "claude-code",
+      "model": "fable",
+      "enabled": true
+    },
+    {
+      "id": "codex-gpt-5.6-sol-medium",
+      "label": "Codex × GPT-5.6 Sol (medium)",
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "medium",
+      "enabled": true
+    },
+    {
+      "id": "codex-gpt-5.6-sol-high",
+      "label": "Codex × GPT-5.6 Sol (high)",
+      "harness": "codex",
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "high",
+      "enabled": true
+    },
+    {
+      "id": "claude-code-haiku-4-5",
+      "label": "Claude Code × Haiku 4.5 (budget)",
+      "harness": "claude-code",
+      "model": "haiku",
+      "enabled": false,
+      "note": "Budget config for the cost-Pareto story."
+    }
+  ]
+}

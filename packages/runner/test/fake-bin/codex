@@ -1,0 +1,47 @@
+#!/bin/sh
+# Fake `codex` CLI used by the runner's spawn tests. See fake-bin/claude for the
+# introspection hooks; behaviour here is selected with FAKE_CODEX_MODE.
+
+if [ "$1" = "--version" ]; then
+  echo "codex-cli 0.144.6"
+  exit 0
+fi
+
+if [ -n "$FAKE_CLI_ARGV_OUT" ]; then
+  : > "$FAKE_CLI_ARGV_OUT"
+  for arg in "$@"; do printf '%s\n' "$arg" >> "$FAKE_CLI_ARGV_OUT"; done
+fi
+[ -n "$FAKE_CLI_ENV_OUT" ] && env > "$FAKE_CLI_ENV_OUT"
+[ -n "$FAKE_CLI_CWD_OUT" ] && pwd > "$FAKE_CLI_CWD_OUT"
+[ -n "$FAKE_CLI_STDIN_OUT" ] && cat > "$FAKE_CLI_STDIN_OUT"
+
+FIXTURES="${FAKE_FIXTURES:-$(dirname "$0")/../fixtures}"
+
+case "${FAKE_CODEX_MODE:-success}" in
+  success)
+    # The real CLI emits MCP tracing on stderr even on success.
+    echo "2026-07-31T02:14:01Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed" >&2
+    cat "$FIXTURES/codex-success.jsonl"
+    exit 0
+    ;;
+  multi-turn)
+    cat "$FIXTURES/codex-multi-turn.jsonl"
+    exit 0
+    ;;
+  rate-limit)
+    cat "$FIXTURES/codex-failed.jsonl"
+    cat "$FIXTURES/codex-stderr-rate-limit.txt" >&2
+    exit 1
+    ;;
+  fail)
+    echo "error: model gpt-5.6-sol is not available to this account" >&2
+    exit 1
+    ;;
+  hang)
+    while :; do sleep 1; done
+    ;;
+  *)
+    echo "unknown FAKE_CODEX_MODE: $FAKE_CODEX_MODE" >&2
+    exit 64
+    ;;
+esac
