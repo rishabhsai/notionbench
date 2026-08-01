@@ -510,8 +510,16 @@ export function createStatusServer(opts: ServeOptions & { key: string }): { serv
       res.writeHead(204).end();
       return;
     }
-    const url = new URL(req.url ?? '/', 'http://localhost');
-    const pathname = decodeURIComponent(url.pathname);
+    let pathname: string;
+    try {
+      // `//foo` is scheme-relative to `new URL`, and a bad %-escape throws:
+      // neither is worth a 500. Collapse the leading slashes, reject the rest.
+      const target = (req.url ?? '/').replace(/^\/{2,}/, '/');
+      pathname = decodeURIComponent(new URL(target, 'http://localhost').pathname);
+    } catch {
+      send(res, 400, { error: 'malformed request URL' });
+      return;
+    }
 
     if (pathname === '/api/status') {
       if (req.method !== 'GET' && req.method !== 'HEAD') {

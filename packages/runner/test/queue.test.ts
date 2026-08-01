@@ -1,6 +1,18 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildCells, cellKey, type CellCoords } from '../src/checkpoint.js';
-import { Scheduler, runQueue, type CellOutcome, type QueueCell, type SchedulerEvent } from '../src/queue.js';
+import {
+  Scheduler,
+  readRateWindowState,
+  runQueue,
+  writeRateWindowState,
+  type CellOutcome,
+  type QueueCell,
+  type RateWindowState,
+  type SchedulerEvent,
+} from '../src/queue.js';
 
 const MIN = 60_000;
 
@@ -360,5 +372,77 @@ describe('runQueue driver', () => {
 
     expect(started).toBeLessThan(5);
     expect(s.stats(Date.now()).pending).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * The scheduler's paused-config map is the only source for the dashboard's
+ * `cooldown` / `blocked` statuses, and `notionbench serve` reads it from a
+ * different process. The mirror is opt-in: a Scheduler built without the hook
+ * must behave exactly as it did before (every other test in this file).
+ */
+describe('rate-window mirror', () => {
+  it('publishes cooldowns as they open and close', () => {
+    const seen: RateWindowState[] = [];
+    const s = new Scheduler({ concurrency: 1, cooldownMs: 30 * MIN, onRateWindowChange: (st) => seen.push(st) });
+    s.enqueue(cells({ configs: ['a'], trials: 2 }));
+
+    const first = drain(s, 0)[0]!;
+    expect(seen).toHaveLength(0); // nothing published until something happens
+
+    s.settle(first.key, { kind: 'rate-limited' }, 0);
+    expect(seen.at(-1)!.cooldowns).toEqual([{ configId: 'a', untilMs: 30 * MIN }]);
+    expect(seen.at(-1)!.blocked).toEqual([]);
+
+    // Reaped once the window reopens.
+    s.next(31 * MIN);
+    expect(seen.at(-1)!.cooldowns).toEqual([]);
+  });
+
+  it('publishes a config the permanently-blocked backstop gave up on', () => {
+    const seen: RateWindowState[] = [];
+    const s = new Scheduler({
+      concurrency: 1,
+      maxRateLimitedAttempts: 2,
+      onRateWindowChange: (st) => seen.push(st),
+    });
+    s.enqueue(cells({ configs: ['a'], trials: 1 }));
+
+    let clock = 0;
+    for (let i = 0; i < 2; i++) {
+      const cell = drain(s, clock)[0]!;
+      s.settle(cell.key, { kind: 'rate-limited' }, clock);
+      clock += 31 * MIN;
+    }
+    expect(seen.at(-1)!.blocked).toEqual(['a']);
+    expect(s.rateWindowState(clock).blocked).toEqual(['a']);
+  });
+
+  it('never lets a failing mirror take the run down', () => {
+    const s = new Scheduler({
+      concurrency: 1,
+      onRateWindowChange: () => {
+        throw new Error('disk full');
+      },
+    });
+    s.enqueue(cells({ configs: ['a'], trials: 1 }));
+    const cell = drain(s, 0)[0]!;
+    expect(() => s.settle(cell.key, { kind: 'rate-limited' }, 0)).not.toThrow();
+  });
+
+  it('round-trips through the run directory, and reads as empty when absent', async () => {
+    const dir = await mkdtemp(path.join(os.tmpdir(), 'nb-ratewin-'));
+    try {
+      expect(await readRateWindowState(dir)).toEqual({ updatedAt: '', cooldowns: [], blocked: [] });
+      const state: RateWindowState = {
+        updatedAt: '2026-07-31T09:45:00.000Z',
+        cooldowns: [{ configId: 'a', untilMs: 1_700_000_000_000 }],
+        blocked: ['b'],
+      };
+      await writeRateWindowState(dir, state);
+      expect(await readRateWindowState(dir)).toEqual(state);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

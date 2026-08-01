@@ -568,3 +568,12 @@ describe('startup URL', () => {
     expect((await getStatus(`http://127.0.0.1:${handle.port}`, handle.key)).status).toBe(200);
   });
 });
+
+describe('malformed requests', () => {
+  it('does not 500 on a scheme-relative path or a bad %-escape', async () => {
+    const base = await start();
+    // `//` parses as scheme-relative to WHATWG URL; `%zz` throws in decodeURIComponent.
+    expect((await fetch(`${base}//`)).status).toBe(200);
+    expect((await fetch(`${base}/%zz`)).status).toBe(400);
+  });
+});
