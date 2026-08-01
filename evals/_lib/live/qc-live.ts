@@ -37,7 +37,7 @@
 import { promises as fs } from "node:fs"
 import * as os from "node:os"
 import * as path from "node:path"
-import { copyDir, exists, head, run } from "../proc.ts"
+import { NPM, copyDir, exists, head, run } from "../proc.ts"
 import type { EvalResult } from "../types.ts"
 import { startFakeNotion, type FakeNotionServer } from "./fake-notion.ts"
 import { NotionClient, isTrashed } from "./notion.ts"
@@ -123,6 +123,27 @@ interface Check {
   apiCalls: number
 }
 
+/**
+ * One `npm install` per task, shared by its three variants — the same warm
+ * cache `_lib/qc.ts` keeps, because a *live* task can also ship a code
+ * workspace (the Workers tasks provision a Notion fixture *and* hand the agent
+ * the worker template). Tasks whose `fixture/workspace/` has no package.json —
+ * every CLI task — never reach this and are unaffected.
+ */
+async function warmDeps(taskDir: string, fixtureWorkspace: string): Promise<string | undefined> {
+  if (!(await exists(path.join(fixtureWorkspace, "package.json")))) return undefined
+  const cache = path.join(qcRoot, path.basename(taskDir), "_deps")
+  const modules = path.join(cache, "node_modules")
+  if (await exists(modules)) return modules
+  await fs.mkdir(cache, { recursive: true })
+  await copyDir(fixtureWorkspace, cache)
+  const result = await run(NPM, ["install", "--no-audit", "--no-fund"], { cwd: cache, timeoutMs: 600_000 })
+  if (result.code !== 0) {
+    throw new Error(`npm install failed for ${path.basename(taskDir)}:\n${head(result.stderr || result.stdout)}`)
+  }
+  return modules
+}
+
 async function runVariant(taskDir: string, variant: Variant, keep: boolean): Promise<Check> {
   const task = path.basename(taskDir)
   const started = Date.now()
@@ -153,7 +174,11 @@ async function runVariant(taskDir: string, variant: Variant, keep: boolean): Pro
     await fs.rm(trial, { recursive: true, force: true })
     await fs.mkdir(trial, { recursive: true })
     const fixtureWorkspace = path.join(taskDir, "fixture", "workspace")
-    if (await exists(fixtureWorkspace)) await copyDir(fixtureWorkspace, trial)
+    if (await exists(fixtureWorkspace)) {
+      await copyDir(fixtureWorkspace, trial)
+      const modules = await warmDeps(taskDir, fixtureWorkspace)
+      if (modules) await fs.symlink(modules, path.join(trial, "node_modules"), "dir")
+    }
     await writeWorkspacePointer(trial, fixture)
 
     const scriptEnv: NodeJS.ProcessEnv = {

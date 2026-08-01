@@ -44,14 +44,25 @@ import {
   materializeRows,
   toIcon,
   validateSpec,
+  type CommentSpec,
   type DatabaseSpec,
   type FixtureSpec,
   type PageSpec,
   type PropertySpec,
+  type ViewSpec,
 } from "./spec.ts"
 
 /** Filename dropped into the trial workspace so the agent can find its sandbox. */
 export const POINTER_FILENAME = "notionbench.json"
+
+/** What a seeded file turned into, once uploaded. */
+export interface ProvisionedFile {
+  /** `file_upload` id. Also registered in `idMap` under the spec key. */
+  id: string
+  filename: string
+  /** Byte length as the API reports it — ground truth for a file-audit task. */
+  size: number
+}
 
 export interface ProvisionResult {
   /** Page id of the per-trial fixture root. Teardown target. */
@@ -60,8 +71,18 @@ export interface ProvisionResult {
   idMap: Record<string, string>
   /** Data-source ids by database spec key — the lookup verifiers actually want. */
   dataSourceIds: Record<string, string>
+  /** Uploaded fixture files by spec key. */
+  files: Record<string, ProvisionedFile>
   /** How many objects were created, for the run log. */
-  created: { pages: number; databases: number; rows: number; blocks: number }
+  created: {
+    pages: number
+    databases: number
+    rows: number
+    blocks: number
+    files: number
+    comments: number
+    views: number
+  }
   specId: string
 }
 
@@ -118,7 +139,8 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
   const seed = spec.seed ?? 1
   const idMap: Record<string, string> = {}
   const dataSourceIds: Record<string, string> = {}
-  const created = { pages: 0, databases: 0, rows: 0, blocks: 0 }
+  const files: Record<string, ProvisionedFile> = {}
+  const created = { pages: 0, databases: 0, rows: 0, blocks: 0, files: 0, comments: 0, views: 0 }
 
   // ---- root ----------------------------------------------------------------
   const rootTitle = `${spec.root?.title ?? `NotionBench · ${spec.id}`}${opts.label ? ` · ${opts.label}` : ""}`
@@ -130,6 +152,28 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
   if (typeof root.id !== "string") throw new ProvisionError("root page creation returned no id")
   idMap[ROOT_KEY] = root.id
   created.pages++
+
+  // ---- files, before anything can reference them ----------------------------
+  // Real two-step uploads, not external URLs: an attachment seeded as a link
+  // reads back as `type: "external"` and would let a solution that never
+  // uploaded anything look identical to one that did.
+  for (const file of spec.files ?? []) {
+    const upload = await client.uploadFile({
+      data: file.text,
+      filename: file.name,
+      ...(file.contentType ? { contentType: file.contentType } : {}),
+    })
+    if (upload.status !== "uploaded") {
+      throw new ProvisionError(`file "${file.key}" finished in status "${upload.status}", expected "uploaded"`)
+    }
+    files[file.key] = {
+      id: upload.id,
+      filename: upload.filename ?? file.name,
+      size: upload.content_length ?? Buffer.byteLength(file.text, "utf8"),
+    }
+    idMap[file.key] = upload.id
+    created.files++
+  }
 
   // ---- pages, parents before children --------------------------------------
   for (const page of orderPages(spec.pages ?? [])) {
@@ -145,6 +189,45 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
     idMap[page.key] = result.id
     created.pages++
     created.blocks += blocks.length
+
+    const attachments = page.attachments ?? []
+    if (attachments.length > 0) {
+      await client.appendBlockChildren(
+        result.id,
+        attachments.map((key) => {
+          const file = files[key]
+          if (!file) throw new ProvisionError(`page "${page.key}" attaches unprovisioned file "${key}"`)
+          return {
+            object: "block",
+            type: "file",
+            file: { type: "file_upload", file_upload: { id: file.id }, name: file.filename, caption: [] },
+          }
+        }),
+      )
+      created.blocks += attachments.length
+    }
+
+    created.comments += await seedComments(client, "page_id", result.id, page.comments)
+
+    // Inline discussions hang off individual blocks, so the blocks have to be
+    // read back to learn their ids. Positional: the page's own blocks were
+    // written first and in order, ahead of any attachments.
+    const needsBlockComments = (page.blocks ?? []).some((b) => (b.comments ?? []).length > 0)
+    if (needsBlockComments) {
+      const children = await client.listAllBlockChildren(result.id)
+      const specBlocks = page.blocks ?? []
+      for (let i = 0; i < specBlocks.length; i++) {
+        const comments = specBlocks[i].comments ?? []
+        if (comments.length === 0) continue
+        const block = children[i]
+        if (!block) {
+          throw new ProvisionError(
+            `page "${page.key}": block ${i} carries comments but only ${children.length} block(s) came back`,
+          )
+        }
+        created.comments += await seedComments(client, "block_id", block.id, comments)
+      }
+    }
   }
 
   // ---- databases + rows ----------------------------------------------------
@@ -175,15 +258,30 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
     idMap[dsKey] = dataSourceId
     dataSourceIds[db.key] = dataSourceId
 
+    // Extra views, on top of the default table view the API creates itself.
+    for (const view of db.views ?? []) {
+      const created_ = await client.createView({
+        parent: { type: "database_id", database_id: database.id },
+        data_source_id: dataSourceId,
+        ...toViewPayload(view, db),
+      })
+      if (view.key) idMap[view.key] = created_.id
+      created.views++
+    }
+
     const rows = materializeRows(db, seed)
+    const explicit = Array.isArray(db.rows) ? db.rows : []
     const limit = Math.max(1, opts.concurrency ?? 8)
     for (let start = 0; start < rows.length; start += limit) {
       const batch = rows.slice(start, start + limit)
       const results = await Promise.all(
-        batch.map((row) =>
+        batch.map((row, offset) =>
           client.createPage({
             parent: { type: "data_source_id", data_source_id: dataSourceId },
-            properties: encodeRow(db.properties, row.properties, db.key),
+            properties: {
+              ...encodeRow(db.properties, row.properties, db.key),
+              ...encodeRowFiles(explicit[start + offset]?.files, files, db.key),
+            },
           }),
         ),
       )
@@ -195,7 +293,81 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
     }
   }
 
-  return { rootId: root.id, idMap, dataSourceIds, created, specId: spec.id }
+  return { rootId: root.id, idMap, dataSourceIds, files, created, specId: spec.id }
+}
+
+/** Post one thread's opening comment, then its replies into that discussion. */
+async function seedComments(
+  client: NotionClient,
+  parentType: "page_id" | "block_id",
+  parentId: string,
+  threads: CommentSpec[] | undefined,
+): Promise<number> {
+  let count = 0
+  for (const thread of threads ?? []) {
+    const opening = await client.createComment({
+      parent: { [parentType]: parentId },
+      rich_text: richText(thread.text),
+    })
+    count++
+    for (const reply of thread.replies ?? []) {
+      await client.createComment({ discussion_id: opening.discussion_id, rich_text: richText(reply) })
+      count++
+    }
+  }
+  return count
+}
+
+/** Expand the spec's declarative view shorthand into the API's payload. */
+function toViewPayload(view: ViewSpec, db: DatabaseSpec): Record<string, unknown> {
+  const configuration: Record<string, unknown> = { type: view.type }
+  if (view.groupBy) {
+    const prop = db.properties[view.groupBy]
+    configuration.group_by = {
+      type: prop?.type ?? "select",
+      property_name: view.groupBy,
+      sort: { type: "manual" },
+      hide_empty_groups: false,
+    }
+  }
+  let filter: Record<string, unknown> | null = null
+  if (view.filter) {
+    const prop = db.properties[view.filter.property]
+    const condition =
+      view.filter.isNotEmpty === true
+        ? { is_not_empty: true }
+        : { equals: view.filter.equals as string | number | boolean }
+    filter = { property: view.filter.property, [prop?.type ?? "rich_text"]: condition }
+  }
+  return {
+    name: view.name,
+    type: view.type,
+    filter,
+    sorts:
+      view.sorts && view.sorts.length > 0
+        ? view.sorts.map((s) => ({ property: s.property, direction: s.direction ?? "ascending" }))
+        : null,
+    configuration,
+  }
+}
+
+/** `files` property values for one explicit row, resolved from spec keys. */
+function encodeRowFiles(
+  spec: Record<string, string[]> | undefined,
+  files: Record<string, ProvisionedFile>,
+  dbKey: string,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [name, keys] of Object.entries(spec ?? {})) {
+    out[name] = {
+      files: keys.map((key) => {
+        const file = files[key]
+        if (!file) throw new ProvisionError(`database "${dbKey}": row attaches unprovisioned file "${key}"`)
+        return { type: "file_upload", file_upload: { id: file.id }, name: file.filename }
+      }),
+    }
+  }
+  return out
 }
 
 /**
@@ -306,6 +478,7 @@ export function toSchema(properties: Record<string, PropertySpec>): Record<strin
       case "url":
       case "email":
       case "phone_number":
+      case "files":
         schema[name] = { [prop.type]: {} }
         break
       default:

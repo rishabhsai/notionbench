@@ -57,6 +57,33 @@ export async function api(method, path, body) {
   return parsed
 }
 
+/**
+ * The two-step file upload, longhand: create, then POST the bytes as
+ * `multipart/form-data` to the `upload_url` the create call handed back.
+ *
+ * Written out here rather than borrowed from `notion.ts` for the same reason as
+ * everything else in this file — an oracle must not share an implementation
+ * with the verifier that grades it.
+ */
+export async function upload(filename, data, contentType = "application/octet-stream") {
+  const { base, token } = env()
+  const created = await api("post", "file_uploads", { filename, content_type: contentType })
+  const form = new FormData()
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data
+  form.append("file", new Blob([bytes], { type: contentType }), filename)
+  const response = await fetch(created.upload_url ?? `${base}/v1/file_uploads/${created.id}/send`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Notion-Version": NOTION_VERSION },
+    body: form,
+  })
+  const text = await response.text()
+  const parsed = text ? JSON.parse(text) : {}
+  if (!response.ok) {
+    throw new Error(`POST /v1/file_uploads/${created.id}/send → ${response.status} ${parsed.code}: ${parsed.message}`)
+  }
+  return parsed
+}
+
 /** `[{type:"text",…}]` from a plain string. */
 export function rt(text) {
   return text ? [{ type: "text", text: { content: text } }] : []

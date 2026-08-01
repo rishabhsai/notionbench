@@ -106,8 +106,8 @@ export async function cleanupDriver(workspaceDir: string): Promise<void> {
   await fs.rm(path.join(workspaceDir, DRIVER_NAME), { force: true })
 }
 
-async function ntnCommand(): Promise<{ cmd: string; prefix: string[] } | undefined> {
-  const mode = process.env.NOTIONBENCH_EXEC_MODE
+async function ntnCommand(forced?: ExecMode): Promise<{ cmd: string; prefix: string[] } | undefined> {
+  const mode = forced ?? process.env.NOTIONBENCH_EXEC_MODE
   if (mode === "driver") return undefined
   const probe = await run(process.platform === "win32" ? "where" : "which", ["ntn"], {
     cwd: process.cwd(),
@@ -126,16 +126,29 @@ export async function execCapability(
   workspaceDir: string,
   key: string,
   input: unknown,
-  opts: { timeoutMs?: number } = {},
+  opts: {
+    timeoutMs?: number
+    /**
+     * Extra environment for the capability process.
+     *
+     * A *live* Workers task needs `NOTION_API_TOKEN` and `NOTION_API_BASE_URL`
+     * — the two variables `createCapabilityContext` reads to build
+     * `context.notion` — pointed at the per-trial fixture, and those are
+     * per-invocation values, not ambient ones.
+     */
+    env?: NodeJS.ProcessEnv
+    /** Pin the execution path instead of probing for `ntn`. */
+    mode?: ExecMode
+  } = {},
 ): Promise<ExecOutcome> {
   const timeoutMs = opts.timeoutMs ?? 120_000
   const data = JSON.stringify(input)
 
-  const ntn = await ntnCommand()
+  const ntn = await ntnCommand(opts.mode)
   if (ntn) {
     const args = [...ntn.prefix, "workers", "exec", key, "--local", "-d", data]
     const command = `${ntn.cmd} ${args.join(" ")}`
-    const result = await run(ntn.cmd, args, { cwd: workspaceDir, timeoutMs })
+    const result = await run(ntn.cmd, args, { cwd: workspaceDir, timeoutMs, env: opts.env })
     if (result.code === 0) {
       try {
         return { ok: true, output: JSON.parse(result.stdout), mode: "ntn", command, raw: result }
@@ -162,7 +175,7 @@ export async function execCapability(
   const encoded = Buffer.from(data, "utf8").toString("base64")
   const args = ["tsx", path.basename(driver), "exec", key, encoded]
   const command = `${NPX} ${args.join(" ")}`
-  const result = await run(NPX, args, { cwd: workspaceDir, timeoutMs })
+  const result = await run(NPX, args, { cwd: workspaceDir, timeoutMs, env: opts.env })
   const parsed = parseSentinel(result.stdout)
   if (!parsed) {
     return {

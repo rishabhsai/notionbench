@@ -18,14 +18,36 @@
  *  - **trashing**: `in_trash` (and the legacy `archived`) cascades to a page's
  *    subtree, so fixture teardown is testable and trashed rows leave query results.
  *
- * What it does not model: permissions, users beyond `users/me`, comments, file
- * uploads, views, relations/rollups/formulas, rate limits. Add endpoints when a
- * task needs them, not before.
+ * Since the second wave of live tasks it also models, at 2026-03-11 semantics:
+ *
+ *  - **views** — `GET /v1/views?database_id=` returns `{object, id}` *stubs*
+ *    (the real list endpoint does too, which is the whole reason
+ *    `investigate-views-001` is a two-request task), `GET /v1/views/{id}`
+ *    returns the full object with `type`/`filter`/`sorts`/`configuration`;
+ *  - **comments** — `POST /v1/comments` (new discussion via `parent`, reply via
+ *    `discussion_id`) and `GET /v1/comments?block_id=`, which returns the
+ *    comments whose parent is *exactly* that block and does not recurse into
+ *    children — the trap `investigate-comments-001` is built on;
+ *  - **users** — `GET /v1/users` (bot first, then the workspace's people) and
+ *    `GET /v1/users/{id}`, so "which id is the integration?" is answerable and
+ *    gettable wrong;
+ *  - **file uploads** — `POST /v1/file_uploads`, the multipart
+ *    `POST /v1/file_uploads/{id}/send`, retrieve and list; attaching an
+ *    `{type: "file_upload"}` reference to a `files` property, a block payload or
+ *    a page icon/cover rewrites it into the `{type: "file", file: {url}}` shape
+ *    the API hands back, exactly as the real service does.
+ *
+ * What it still does not model: permissions, relations/rollups/formulas, rate
+ * limits, multi-part uploads beyond a single part. Add endpoints when a task
+ * needs them, not before.
  *
  * Determinism: ids come from a counter (never `crypto.randomUUID`), timestamps
  * from a virtual clock that advances 1 ms per mutation (never `Date.now`), and
  * the listener binds to port 0. Nothing here reads the wall clock, so QC output
- * is byte-stable and no test ever sleeps.
+ * is byte-stable and no test ever sleeps. Objects added after the first wave
+ * (views, comments, file uploads) draw ids from their own counters in their own
+ * uuid variant slot, so switching them on cannot shift a single page or block id
+ * that an earlier task's QC already depends on.
  *
  *   const server = await startFakeNotion()
  *   process.env.NOTION_API_BASE = server.url
@@ -119,6 +141,54 @@ interface DataSourceRecord {
   lastEditedTime: string
 }
 
+interface ViewRecord {
+  id: string
+  kind: "view"
+  databaseId: string
+  dataSourceId: string | null
+  name: string
+  type: string
+  filter: unknown
+  sorts: unknown
+  configuration: unknown
+  createdTime: string
+  lastEditedTime: string
+}
+
+interface CommentRecord {
+  id: string
+  kind: "comment"
+  /** `page_id` for a page-level discussion, `block_id` for an inline one. */
+  parentType: "page_id" | "block_id"
+  parentId: string
+  discussionId: string
+  richText: unknown[]
+  displayName: unknown
+  createdTime: string
+  lastEditedTime: string
+}
+
+interface FileUploadRecord {
+  id: string
+  kind: "file_upload"
+  mode: string
+  filename: string | null
+  contentType: string | null
+  contentLength: number | null
+  status: "pending" | "uploaded" | "expired" | "failed"
+  externalUrl: string | null
+  createdTime: string
+  lastEditedTime: string
+}
+
+interface UserRecord {
+  id: string
+  kind: "user"
+  name: string
+  type: "person" | "bot"
+  email?: string
+}
+
 type Record_ = PageRecord | BlockRecord | DatabaseRecord | DataSourceRecord
 
 /**
@@ -147,14 +217,41 @@ export class Store {
   blocks = new Map<string, BlockRecord>()
   databases = new Map<string, DatabaseRecord>()
   dataSources = new Map<string, DataSourceRecord>()
+  views = new Map<string, ViewRecord>()
+  comments = new Map<string, CommentRecord>()
+  fileUploads = new Map<string, FileUploadRecord>()
+  /**
+   * The server's own origin, filled in once the listener has a port.
+   *
+   * Only `upload_url` needs it: the reference says that field is an absolute
+   * URL, and a client that POSTs the bytes to whatever it was handed must reach
+   * this server, not api.notion.com.
+   */
+  baseUrl = ""
   #seq = 0
   #tick = 0
+  /**
+   * One counter per late-added object kind, in its own uuid variant slot.
+   *
+   * Sharing `#seq` would have been simpler and wrong: creating a database now
+   * also creates its default view, and if that consumed a `#seq` tick every
+   * page and block id minted afterwards would shift. Tasks written against the
+   * first wave of endpoints must keep observing byte-identical ids.
+   */
+  #auxSeq = new Map<string, number>()
 
   /** Deterministic uuid-shaped id: counter in the last 12 hex digits. */
   nextId(): string {
     const n = ++this.#seq
     const hex = n.toString(16).padStart(12, "0")
     return `00000000-0000-4000-8000-${hex}`
+  }
+
+  /** Same shape, but namespaced by `variant` so `nextId()`'s stream is untouched. */
+  nextAuxId(variant: "a" | "b" | "c"): string {
+    const n = (this.#auxSeq.get(variant) ?? 0) + 1
+    this.#auxSeq.set(variant, n)
+    return `00000000-0000-4000-${variant}000-${n.toString(16).padStart(12, "0")}`
   }
 
   nextPropertyId(): string {
@@ -175,8 +272,12 @@ export class Store {
     this.blocks.clear()
     this.databases.clear()
     this.dataSources.clear()
+    this.views.clear()
+    this.comments.clear()
+    this.fileUploads.clear()
     this.#seq = 0
     this.#tick = 0
+    this.#auxSeq.clear()
   }
 }
 
@@ -252,6 +353,7 @@ export async function startFakeNotion(opts: FakeNotionOptions = {}): Promise<Fak
 
   const address = server.address() as AddressInfo
   const url = `http://${address.address === "::" ? "127.0.0.1" : address.address}:${address.port}`
+  store.baseUrl = url
 
   return {
     url,
@@ -295,6 +397,14 @@ async function handle(
     if (auth !== `Bearer ${ctx.token}`) {
       throw new ApiError(401, "unauthorized", "API token is invalid.")
     }
+    // `POST /v1/file_uploads/{id}/send` is the one endpoint whose body is not
+    // JSON, so it is answered before the JSON reader ever sees the stream.
+    const segments = url.pathname.split("/").filter(Boolean)
+    if (method === "POST" && segments[0] === "v1" && segments[1] === "file_uploads" && segments[3] === "send") {
+      const raw = await readRawBody(req)
+      send(res, 200, sendFileUpload(segments[2], raw, req.headers["content-type"], ctx.store))
+      return
+    }
     const body = await readJsonBody(req)
     const result = route(method, url, body, ctx.store)
     send(res, 200, result)
@@ -325,6 +435,12 @@ function send(res: ServerResponse, status: number, payload: unknown): void {
     "Content-Length": String(Buffer.byteLength(text)),
   })
   res.end(text)
+}
+
+async function readRawBody(req: IncomingMessage): Promise<Buffer> {
+  const chunks: Buffer[] = []
+  for await (const chunk of req) chunks.push(chunk as Buffer)
+  return Buffer.concat(chunks)
 }
 
 async function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
@@ -396,9 +512,29 @@ function route(method: string, url: URL, body: Record<string, unknown>, store: S
 
     case "users":
       if (id === "me" && method === "GET") return botUser()
-      if (!id && method === "GET") {
-        return list([botUser()], null, false)
-      }
+      if (!id && method === "GET") return listUsers(url)
+      if (id && method === "GET") return retrieveUser(id)
+      break
+
+    case "views":
+      // No `POST /v1/views` in the public reference; provisioning needs one, so
+      // it lives here as an explicitly fake-only affordance. Nothing an agent is
+      // graded on may call it — tasks only ever read views.
+      if (method === "POST" && !id) return createView(body, store)
+      if (!id && method === "GET") return listViews(url, store)
+      if (id && method === "GET") return serializeView(requireView(id, store))
+      break
+
+    case "comments":
+      if (method === "POST" && !id) return createComment(body, store)
+      if (!id && method === "GET") return listComments(url, store)
+      if (id && method === "GET") return serializeComment(requireComment(id, store))
+      break
+
+    case "file_uploads":
+      if (method === "POST" && !id) return createFileUpload(body, store)
+      if (!id && method === "GET") return listFileUploads(url, store)
+      if (id && method === "GET") return serializeFileUpload(requireFileUpload(id, store), store)
       break
   }
   throw notFound(`${method} ${url.pathname} is not implemented by the fake Notion server`)
@@ -447,6 +583,24 @@ function requireBlock(id: string, store: Store): BlockRecord {
   return block
 }
 
+function requireView(id: string, store: Store): ViewRecord {
+  const view = store.views.get(id)
+  if (!view) throw notFound(`Could not find view with ID: ${id}.`)
+  return view
+}
+
+function requireComment(id: string, store: Store): CommentRecord {
+  const comment = store.comments.get(id)
+  if (!comment) throw notFound(`Could not find comment with ID: ${id}.`)
+  return comment
+}
+
+function requireFileUpload(id: string, store: Store): FileUploadRecord {
+  const upload = store.fileUploads.get(id)
+  if (!upload) throw notFound(`Could not find file upload with ID: ${id}.`)
+  return upload
+}
+
 // ---------------------------------------------------------------------------
 // Pages
 // ---------------------------------------------------------------------------
@@ -466,8 +620,8 @@ function createPage(body: Record<string, unknown>, store: Store): unknown {
       parent: { type: "data_source_id", data_source_id: ds.id, database_id: ds.databaseId },
       values,
       title: titleOfValues(values, ds),
-      icon: body.icon ?? null,
-      cover: body.cover ?? null,
+      icon: resolveUploadRefs(body.icon, store),
+      cover: resolveUploadRefs(body.cover, store),
       inTrash: false,
       children: [],
       createdTime: time,
@@ -496,8 +650,8 @@ function createPage(body: Record<string, unknown>, store: Store): unknown {
     parent: parentPageId ? { type: "page_id", page_id: container } : { type: "block_id", block_id: container },
     values: {},
     title: extractTitleText(body.properties),
-    icon: body.icon ?? null,
-    cover: body.cover ?? null,
+    icon: resolveUploadRefs(body.icon, store),
+    cover: resolveUploadRefs(body.cover, store),
     inTrash: false,
     children: [],
     createdTime: time,
@@ -527,8 +681,8 @@ function updatePage(id: string, body: Record<string, unknown>, store: Store): un
     const trashed = body.in_trash === true || body.archived === true
     setTrashed(page, trashed, store)
   }
-  if ("icon" in body) page.icon = body.icon
-  if ("cover" in body) page.cover = body.cover
+  if ("icon" in body) page.icon = resolveUploadRefs(body.icon, store)
+  if ("cover" in body) page.cover = resolveUploadRefs(body.cover, store)
   if (body.properties && typeof body.properties === "object") {
     if (page.dataSourceId) {
       const ds = requireDataSource(page.dataSourceId, store)
@@ -627,6 +781,18 @@ function createDatabase(body: Record<string, unknown>, store: Store): unknown {
   store.databases.set(dbId, db)
   store.dataSources.set(dsId, ds)
   parentPage.children.push(dbId)
+  // Real Notion gives every new database a default table view. A task whose
+  // wrong answer is "reported the default view only" needs that default to
+  // exist without anyone asking for it.
+  addView(store, {
+    databaseId: dbId,
+    dataSourceId: dsId,
+    name: ds.name,
+    type: "table",
+    filter: null,
+    sorts: null,
+    configuration: { type: "table" },
+  })
   return serializeDatabase(db, store)
 }
 
@@ -801,7 +967,10 @@ function appendBlocks(
     const spec = (raw ?? {}) as Record<string, unknown>
     const type = typeof spec.type === "string" ? spec.type : detectBlockType(spec)
     if (!type) throw badRequest("block is missing a type")
-    const payload = (spec[type] ?? {}) as Record<string, unknown>
+    const payload = resolveUploadRefs((spec[type] ?? {}) as Record<string, unknown>, store) as Record<
+      string,
+      unknown
+    >
     const time = store.now()
     const blockId = store.nextId()
     const nested = payload.children
@@ -881,14 +1050,491 @@ function search(body: Record<string, unknown>, store: Store): unknown {
   return list(slice, nextCursor, hasMore, { type: "page_or_data_source", page_or_data_source: {} })
 }
 
+// ---------------------------------------------------------------------------
+// Users
+//
+// The workspace has one bot (the integration itself) and a handful of people.
+// The distinction is the entire subject of `investigate-users-001`: `users/me`
+// answers "which user am I", `GET /v1/users` answers "who else is here", and
+// picking a row out of the second when the question was the first is the
+// mistake the task is built to catch. People are seeded unconditionally because
+// a workspace with no members is not a workspace.
+// ---------------------------------------------------------------------------
+
+const BOT_ID = "00000000-0000-4000-9000-00000000bot0"
+const WORKSPACE_ID = "00000000-0000-4000-9000-0000000wksp"
+const WORKSPACE_NAME = "NotionBench Fake Workspace"
+
+/** Fixed, ordered, and never regenerated — ids are part of the QC contract. */
+const PEOPLE: UserRecord[] = [
+  { id: "00000000-0000-4000-9000-000000000p01", kind: "user", name: "Ada Okonkwo", type: "person", email: "ada@notionbench.test" },
+  { id: "00000000-0000-4000-9000-000000000p02", kind: "user", name: "Bruno Salas", type: "person", email: "bruno@notionbench.test" },
+  { id: "00000000-0000-4000-9000-000000000p03", kind: "user", name: "Chen Wei", type: "person", email: "chen@notionbench.test" },
+]
+
 function botUser(): Record<string, unknown> {
   return {
     object: "user",
-    id: "00000000-0000-4000-9000-00000000bot0",
+    id: BOT_ID,
     name: "NotionBench Fixture Bot",
+    avatar_url: null,
     type: "bot",
-    bot: { owner: { type: "workspace", workspace: true }, workspace_name: "NotionBench Fake Workspace" },
+    bot: {
+      owner: { type: "workspace", workspace: true },
+      workspace_name: WORKSPACE_NAME,
+      workspace_id: WORKSPACE_ID,
+    },
   }
+}
+
+function serializeUser(user: UserRecord): Record<string, unknown> {
+  return {
+    object: "user",
+    id: user.id,
+    name: user.name,
+    avatar_url: null,
+    type: "person",
+    person: { email: user.email ?? null },
+  }
+}
+
+/** The bot first, then the people — the order the real endpoint happens to use. */
+function allUsers(): Array<Record<string, unknown>> {
+  return [botUser(), ...PEOPLE.map(serializeUser)]
+}
+
+function listUsers(url: URL): unknown {
+  const pageSize = url.searchParams.get("page_size")
+  const { slice, nextCursor, hasMore } = paginate(
+    allUsers(),
+    pageSize === null ? undefined : Number(pageSize),
+    url.searchParams.get("start_cursor") ?? undefined,
+  )
+  return list(slice, nextCursor, hasMore, { type: "user", user: {} })
+}
+
+function retrieveUser(id: string): unknown {
+  const found = allUsers().find((u) => u.id === id)
+  if (!found) throw notFound(`Could not find user with ID: ${id}.`)
+  return found
+}
+
+// ---------------------------------------------------------------------------
+// Views
+//
+// `GET /v1/views` returns **stubs** — `{object, id}` and nothing else. That is
+// not a shortcut here; it is what the published reference specifies, and it is
+// why reporting on a database's views is a list-then-retrieve loop rather than
+// one call. `investigate-views-001` grades exactly that.
+// ---------------------------------------------------------------------------
+
+interface ViewInit {
+  databaseId: string
+  dataSourceId: string | null
+  name: string
+  type: string
+  filter?: unknown
+  sorts?: unknown
+  configuration?: unknown
+}
+
+function addView(store: Store, init: ViewInit): ViewRecord {
+  const time = store.now()
+  const view: ViewRecord = {
+    id: store.nextAuxId("a"),
+    kind: "view",
+    databaseId: init.databaseId,
+    dataSourceId: init.dataSourceId,
+    name: init.name,
+    type: init.type,
+    filter: init.filter ?? null,
+    sorts: init.sorts ?? null,
+    configuration: init.configuration ?? null,
+    createdTime: time,
+    lastEditedTime: time,
+  }
+  store.views.set(view.id, view)
+  return view
+}
+
+function createView(body: Record<string, unknown>, store: Store): unknown {
+  const parent = (body.parent ?? {}) as Record<string, unknown>
+  const databaseId =
+    typeof body.database_id === "string"
+      ? body.database_id
+      : typeof parent.database_id === "string"
+        ? parent.database_id
+        : undefined
+  let dataSourceId = typeof body.data_source_id === "string" ? body.data_source_id : undefined
+  if (!databaseId && !dataSourceId) throw badRequest("a view needs a database_id or a data_source_id")
+
+  const db = databaseId
+    ? requireDatabase(databaseId, store)
+    : requireDatabase(requireDataSource(dataSourceId as string, store).databaseId, store)
+  if (!dataSourceId) dataSourceId = db.dataSourceIds[0]
+  if (dataSourceId) requireDataSource(dataSourceId, store)
+
+  const type = typeof body.type === "string" ? body.type : "table"
+  const name = typeof body.name === "string" ? body.name : plainText(body.title) || type
+  return serializeView(
+    addView(store, {
+      databaseId: db.id,
+      dataSourceId: dataSourceId ?? null,
+      name,
+      type,
+      filter: body.filter ?? null,
+      sorts: body.sorts ?? null,
+      configuration: body.configuration ?? { type },
+    }),
+  )
+}
+
+function listViews(url: URL, store: Store): unknown {
+  const databaseId = url.searchParams.get("database_id")
+  const dataSourceId = url.searchParams.get("data_source_id")
+  if (!databaseId && !dataSourceId) {
+    throw badRequest("GET /v1/views requires either database_id or data_source_id")
+  }
+  if (databaseId) requireDatabase(databaseId, store)
+  if (dataSourceId) requireDataSource(dataSourceId, store)
+
+  const matches = [...store.views.values()].filter(
+    (v) =>
+      (!databaseId || v.databaseId === databaseId) && (!dataSourceId || v.dataSourceId === dataSourceId),
+  )
+  const pageSize = url.searchParams.get("page_size")
+  const { slice, nextCursor, hasMore } = paginate(
+    // Stubs, deliberately: the caller must retrieve each id to learn anything.
+    matches.map((v) => ({ object: "view", id: v.id })),
+    pageSize === null ? undefined : Number(pageSize),
+    url.searchParams.get("start_cursor") ?? undefined,
+  )
+  return list(slice, nextCursor, hasMore, { type: "view", view: {} })
+}
+
+function serializeView(view: ViewRecord): Record<string, unknown> {
+  return {
+    object: "view",
+    id: view.id,
+    parent: { type: "database_id", database_id: view.databaseId },
+    data_source_id: view.dataSourceId,
+    name: view.name,
+    type: view.type,
+    filter: view.filter,
+    sorts: view.sorts,
+    configuration: view.configuration,
+    created_time: view.createdTime,
+    last_edited_time: view.lastEditedTime,
+    created_by: { object: "user", id: BOT_ID },
+    last_edited_by: { object: "user", id: BOT_ID },
+    url: `https://www.notion.so/${view.databaseId.replace(/-/g, "")}?v=${view.id.replace(/-/g, "")}`,
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Comments
+//
+// `GET /v1/comments?block_id=X` returns every comment whose parent is *X*, in
+// creation order, replies included — and it does **not** walk into X's children.
+// So "all the comments on this page" is a tree walk plus one request per block,
+// not one request. That asymmetry is the subject of
+// `investigate-comments-001`; do not "helpfully" recurse here.
+// ---------------------------------------------------------------------------
+
+function createComment(body: Record<string, unknown>, store: Store): unknown {
+  const parent = (body.parent ?? {}) as Record<string, unknown>
+  const discussionId = typeof body.discussion_id === "string" ? body.discussion_id : undefined
+  const parentPageId = typeof parent.page_id === "string" ? parent.page_id : undefined
+  const parentBlockId = typeof parent.block_id === "string" ? parent.block_id : undefined
+  const given = [discussionId, parentPageId, parentBlockId].filter(Boolean).length
+  if (given !== 1) {
+    throw badRequest("exactly one of parent.page_id, parent.block_id or discussion_id must be provided")
+  }
+
+  const rich = Array.isArray(body.rich_text)
+    ? (body.rich_text as unknown[])
+    : typeof body.markdown === "string"
+      ? richText(body.markdown)
+      : undefined
+  if (!rich) throw badRequest("a comment needs rich_text or markdown")
+
+  let parentType: "page_id" | "block_id"
+  let parentId: string
+  let discussion: string
+  if (discussionId) {
+    const sibling = [...store.comments.values()].find((c) => c.discussionId === discussionId)
+    if (!sibling) throw notFound(`Could not find discussion with ID: ${discussionId}.`)
+    parentType = sibling.parentType
+    parentId = sibling.parentId
+    discussion = discussionId
+  } else if (parentPageId) {
+    requirePage(parentPageId, store)
+    parentType = "page_id"
+    parentId = parentPageId
+    discussion = store.nextAuxId("b")
+  } else {
+    // A block id, but a page *is* a block as far as parenting goes.
+    const blockId = parentBlockId as string
+    if (!store.blocks.has(blockId) && !store.pages.has(blockId)) {
+      throw notFound(`Could not find block with ID: ${blockId}.`)
+    }
+    parentType = "block_id"
+    parentId = blockId
+    discussion = store.nextAuxId("b")
+  }
+
+  const time = store.now()
+  const comment: CommentRecord = {
+    id: store.nextAuxId("b"),
+    kind: "comment",
+    parentType,
+    parentId,
+    discussionId: discussion,
+    richText: rich,
+    displayName: { type: "integration" },
+    createdTime: time,
+    lastEditedTime: time,
+  }
+  store.comments.set(comment.id, comment)
+  return serializeComment(comment)
+}
+
+function listComments(url: URL, store: Store): unknown {
+  const blockId = url.searchParams.get("block_id")
+  if (!blockId) throw badRequest("GET /v1/comments requires a block_id")
+  if (!store.blocks.has(blockId) && !store.pages.has(blockId)) {
+    throw notFound(`Could not find block with ID: ${blockId}.`)
+  }
+  // Insertion order is creation order, which is the ascending chronological
+  // order the reference promises.
+  const matches = [...store.comments.values()].filter((c) => c.parentId === blockId)
+  const pageSize = url.searchParams.get("page_size")
+  const { slice, nextCursor, hasMore } = paginate(
+    matches.map(serializeComment),
+    pageSize === null ? undefined : Number(pageSize),
+    url.searchParams.get("start_cursor") ?? undefined,
+  )
+  return list(slice, nextCursor, hasMore, { type: "comment", comment: {} })
+}
+
+function serializeComment(comment: CommentRecord): Record<string, unknown> {
+  return {
+    object: "comment",
+    id: comment.id,
+    parent: { type: comment.parentType, [comment.parentType]: comment.parentId },
+    discussion_id: comment.discussionId,
+    created_time: comment.createdTime,
+    last_edited_time: comment.lastEditedTime,
+    created_by: { object: "user", id: BOT_ID },
+    rich_text: comment.richText,
+    display_name: comment.displayName,
+    attachments: [],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// File uploads
+//
+// Three steps, exactly as documented: create the upload (status `pending`,
+// carrying an `upload_url`), POST the bytes as `multipart/form-data` to that
+// url (status becomes `uploaded`), then reference `{type: "file_upload", id}`
+// wherever a file goes. The reference is rewritten on write into the
+// `{type: "file", file: {url, expiry_time}}` shape reads hand back — an
+// attachment that still says `file_upload` after a round-trip would let a
+// verifier pass a solution that never actually uploaded anything.
+// ---------------------------------------------------------------------------
+
+/** One hour after creation, derived — never `Date.now()`. */
+function expiryOf(created: string): string {
+  return new Date(Date.parse(created) + 3600_000).toISOString().replace(/\.\d{3}Z$/, ".000Z")
+}
+
+function createFileUpload(body: Record<string, unknown>, store: Store): unknown {
+  const mode = typeof body.mode === "string" ? body.mode : "single_part"
+  if (mode !== "single_part" && mode !== "external_url") {
+    throw badRequest(`file upload mode "${mode}" is not modelled by the fake Notion server`)
+  }
+  const externalUrl = typeof body.external_url === "string" ? body.external_url : null
+  if (mode === "external_url" && !externalUrl) throw badRequest("external_url mode requires external_url")
+
+  const time = store.now()
+  const upload: FileUploadRecord = {
+    id: store.nextAuxId("c"),
+    kind: "file_upload",
+    mode,
+    filename: typeof body.filename === "string" ? body.filename : null,
+    contentType: typeof body.content_type === "string" ? body.content_type : null,
+    contentLength: null,
+    // An imported URL needs no `send` step, so it lands ready to attach.
+    status: mode === "external_url" ? "uploaded" : "pending",
+    externalUrl,
+    createdTime: time,
+    lastEditedTime: time,
+  }
+  store.fileUploads.set(upload.id, upload)
+  return serializeFileUpload(upload, store)
+}
+
+/**
+ * `POST /v1/file_uploads/{id}/send`.
+ *
+ * Accepts `multipart/form-data` with a single `file` part (what the reference
+ * specifies and what `ntn files create` sends) and, as a courtesy to hand-rolled
+ * clients, a raw body.
+ */
+function sendFileUpload(
+  id: string,
+  raw: Buffer,
+  contentType: string | undefined,
+  store: Store,
+): unknown {
+  const upload = requireFileUpload(id, store)
+  if (upload.status === "uploaded") throw badRequest(`file upload ${id} has already been sent`)
+
+  const part = parseMultipart(raw, contentType)
+  upload.contentLength = part.content.length
+  if (part.filename) upload.filename = part.filename
+  if (part.contentType) upload.contentType = part.contentType
+  upload.status = "uploaded"
+  upload.lastEditedTime = store.now()
+  return serializeFileUpload(upload, store)
+}
+
+interface MultipartPart {
+  content: Buffer
+  filename?: string
+  contentType?: string
+}
+
+function parseMultipart(raw: Buffer, contentType: string | undefined): MultipartPart {
+  const boundaryMatch = /boundary="?([^";]+)"?/i.exec(contentType ?? "")
+  if (!boundaryMatch) return { content: raw }
+  const delimiter = Buffer.from(`--${boundaryMatch[1]}`, "utf8")
+
+  let cursor = raw.indexOf(delimiter)
+  while (cursor !== -1) {
+    const start = cursor + delimiter.length
+    if (raw.slice(start, start + 2).toString("utf8") === "--") break // closing delimiter
+    const headerEnd = raw.indexOf("\r\n\r\n", start)
+    if (headerEnd === -1) break
+    const headers = raw.slice(start, headerEnd).toString("utf8")
+    const next = raw.indexOf(delimiter, headerEnd)
+    // Content runs up to the CRLF that introduces the next delimiter.
+    const contentEnd = next === -1 ? raw.length : next - 2
+    const content = raw.slice(headerEnd + 4, Math.max(headerEnd + 4, contentEnd))
+    if (/name="?file"?/i.test(headers)) {
+      return {
+        content,
+        filename: /filename="([^"]*)"/i.exec(headers)?.[1] || undefined,
+        contentType: /content-type:\s*([^\r\n;]+)/i.exec(headers)?.[1]?.trim() || undefined,
+      }
+    }
+    cursor = next
+  }
+  return { content: raw }
+}
+
+function listFileUploads(url: URL, store: Store): unknown {
+  const wantStatus = url.searchParams.get("status")
+  const matches = [...store.fileUploads.values()].filter((u) => !wantStatus || u.status === wantStatus)
+  const pageSize = url.searchParams.get("page_size")
+  const { slice, nextCursor, hasMore } = paginate(
+    matches.map((u) => serializeFileUpload(u, store)),
+    pageSize === null ? undefined : Number(pageSize),
+    url.searchParams.get("start_cursor") ?? undefined,
+  )
+  return list(slice, nextCursor, hasMore, { type: "file_upload", file_upload: {} })
+}
+
+function serializeFileUpload(upload: FileUploadRecord, store: Store): Record<string, unknown> {
+  return {
+    object: "file_upload",
+    id: upload.id,
+    created_time: upload.createdTime,
+    last_edited_time: upload.lastEditedTime,
+    created_by: { id: BOT_ID, type: "bot" },
+    status: upload.status,
+    mode: upload.mode,
+    filename: upload.filename,
+    content_type: upload.contentType,
+    content_length: upload.contentLength,
+    expiry_time: upload.status === "pending" ? expiryOf(upload.createdTime) : null,
+    ...(upload.status === "pending"
+      ? { upload_url: `${store.baseUrl}/v1/file_uploads/${upload.id}/send` }
+      : {}),
+    number_of_parts: { total: 1, sent: upload.status === "uploaded" ? 1 : 0 },
+  }
+}
+
+/** The `{name, type: "file", file: {url, expiry_time}}` an attached upload reads back as. */
+function fileObjectFor(upload: FileUploadRecord, name: string | undefined, store: Store): Record<string, unknown> {
+  const filename = name ?? upload.filename ?? "untitled"
+  if (upload.externalUrl) {
+    return { name: filename, type: "external", external: { url: upload.externalUrl } }
+  }
+  const time = store.now()
+  return {
+    name: filename,
+    type: "file",
+    file: {
+      url: `https://prod-files-secure.s3.us-west-2.amazonaws.com/${upload.id}/${encodeURIComponent(filename)}`,
+      expiry_time: expiryOf(time),
+    },
+  }
+}
+
+/** A `files` property value: a list of external links and/or uploaded files. */
+function attachFiles(value: unknown, store: Store): unknown {
+  if (!Array.isArray(value)) return value
+  return value.map((entry) => {
+    const e = (entry ?? {}) as Record<string, unknown>
+    if (e.type !== "file_upload" && !e.file_upload) return entry
+    const ref = (e.file_upload ?? {}) as { id?: unknown }
+    const uploadId = typeof ref.id === "string" ? ref.id : undefined
+    if (!uploadId) throw badRequest("a file_upload attachment needs file_upload.id")
+    const upload = requireFileUpload(uploadId, store)
+    if (upload.status !== "uploaded") {
+      throw badRequest(
+        `file upload ${uploadId} is ${upload.status}; only an uploaded file can be attached ` +
+          `(send the bytes to /v1/file_uploads/${uploadId}/send first)`,
+      )
+    }
+    return fileObjectFor(upload, typeof e.name === "string" ? e.name : undefined, store)
+  })
+}
+
+/**
+ * Rewrite every `{type: "file_upload", …}` reference anywhere inside a payload.
+ * Used for block payloads, page icons and page covers; the `files` property goes
+ * through `attachFiles` instead, because a property value is a bare array.
+ */
+function resolveUploadRefs(value: unknown, store: Store): unknown {
+  if (value === undefined) return null
+  if (value === null || typeof value !== "object") return value
+  // Cheap bail-out: the overwhelming majority of payloads mention no upload at
+  // all, and rebuilding every rich-text array on every block append is waste.
+  if (!JSON.stringify(value).includes("file_upload")) return value
+  if (Array.isArray(value)) return value.map((v) => resolveUploadRefs(v, store))
+
+  const obj = value as Record<string, unknown>
+  if (obj.type === "file_upload" && obj.file_upload && typeof obj.file_upload === "object") {
+    const uploadId = (obj.file_upload as { id?: unknown }).id
+    if (typeof uploadId !== "string") throw badRequest("a file_upload reference needs file_upload.id")
+    const upload = requireFileUpload(uploadId, store)
+    if (upload.status !== "uploaded") {
+      throw badRequest(
+        `file upload ${uploadId} is ${upload.status}; only an uploaded file can be attached ` +
+          `(send the bytes to /v1/file_uploads/${uploadId}/send first)`,
+      )
+    }
+    const attached = fileObjectFor(upload, typeof obj.name === "string" ? obj.name : undefined, store)
+    // Block payloads carry a caption alongside the file; keep it.
+    return obj.caption === undefined ? attached : { ...attached, caption: obj.caption }
+  }
+
+  const out: Record<string, unknown> = {}
+  for (const [key, inner] of Object.entries(obj)) out[key] = resolveUploadRefs(inner, store)
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -1197,7 +1843,7 @@ function normalizeProperties(
     if (inner === undefined) {
       throw badRequest(`property "${def.name}" is a ${def.type}; payload must carry a \`${def.type}\` key`)
     }
-    out[def.name] = inner
+    out[def.name] = def.type === "files" ? attachFiles(inner, _store) : inner
     if (def.type === "select" && inner !== null) {
       ensureOption(def, (inner as { name?: string }).name)
     }

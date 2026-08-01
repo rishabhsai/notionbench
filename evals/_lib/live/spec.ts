@@ -65,6 +65,7 @@ export interface SelectOption {
 
 export type PropertySpec =
   | { type: "title" }
+  | { type: "files" }
   | { type: "rich_text" }
   | { type: "number"; format?: string }
   | { type: "select"; options: SelectOption[] }
@@ -79,12 +80,43 @@ export type PropertySpec =
 /** Emoji shorthand (`"📌"`) or an explicit icon object. */
 export type IconSpec = string | { type: "emoji"; emoji: string } | { type: "external"; url: string }
 
+/**
+ * A file the fixture uploads before anything references it.
+ *
+ * Seeding attachments through the real two-step upload — rather than pasting
+ * external URLs — is what makes them indistinguishable from files a person
+ * dragged in, and it is the only way `content_length` is a real number an audit
+ * task can be graded against.
+ */
+export interface FileSpec {
+  key: string
+  /** Uploaded filename, extension included. */
+  name: string
+  contentType?: string
+  /** The file's contents. Literal text, so the byte count is inspectable in the spec. */
+  text: string
+}
+
+/**
+ * One discussion thread: an opening comment and its replies, in order.
+ *
+ * Threads attached to a *page* and threads attached to a *block inside* it are
+ * different queries against `GET /v1/comments`, which is the distinction
+ * `investigate-comments-001` grades — so both are expressible.
+ */
+export interface CommentSpec {
+  text: string
+  replies?: string[]
+}
+
 export interface BlockSpec {
   /** Any block type whose payload is `{rich_text}` — paragraph, heading_1..3, to_do, … */
   type?: string
   text: string
   /** `to_do` only. */
   checked?: boolean
+  /** Inline discussions anchored to this block. */
+  comments?: CommentSpec[]
 }
 
 export interface PageSpec {
@@ -94,12 +126,37 @@ export interface PageSpec {
   parent?: string
   icon?: IconSpec
   blocks?: BlockSpec[]
+  /** Spec keys from `files`, appended to the page as `file` blocks. */
+  attachments?: string[]
+  /** Page-level discussions. */
+  comments?: CommentSpec[]
 }
 
 /** Rows written out one by one, with optional keys for the id map. */
 export interface ExplicitRowSpec {
   key?: string
   properties: Record<string, PropValue>
+  /** `{propertyName → file spec keys}` for `files` properties. */
+  files?: Record<string, string[]>
+}
+
+/**
+ * A saved view on a database.
+ *
+ * Declarative on purpose: a spec says `groupBy: "Status"`, and provisioning
+ * expands it into the `configuration.group_by` the API wants, so a fixture never
+ * carries a hand-written view payload that only one reader understands.
+ */
+export interface ViewSpec {
+  key?: string
+  name: string
+  /** `table` | `board` | `calendar` | `gallery` | `list` | `timeline` … */
+  type: string
+  /** Property to group by. Board and gallery views want one. */
+  groupBy?: string
+  /** A single-condition filter, expanded into the API's filter object. */
+  filter?: { property: string; equals?: PropValue; isNotEmpty?: boolean }
+  sorts?: Array<{ property: string; direction?: "ascending" | "descending" }>
 }
 
 /**
@@ -152,6 +209,11 @@ export interface DatabaseSpec {
   /** Exactly one property must be `{type: "title"}`. */
   properties: Record<string, PropertySpec>
   rows?: RowsSpec
+  /**
+   * Extra saved views. Every database already has the default table view the
+   * API creates for it, so this is what a fixture adds *on top* of that.
+   */
+  views?: ViewSpec[]
 }
 
 export interface FixtureSpec {
@@ -161,6 +223,8 @@ export interface FixtureSpec {
   /** PRNG seed. Same seed ⇒ same rows. Defaults to 1. */
   seed?: number
   root?: { title?: string; icon?: IconSpec }
+  /** Uploaded before anything else, so pages and rows can reference them by key. */
+  files?: FileSpec[]
   pages?: PageSpec[]
   databases?: DatabaseSpec[]
 }
@@ -212,13 +276,43 @@ export function validateSpec(value: unknown, source = "<spec>"): FixtureSpec {
     keys.add(key)
   }
 
+  const fileKeys = new Set<string>()
+  for (const file of spec.files ?? []) {
+    if (typeof file.name !== "string" || file.name === "") {
+      throw new SpecError(`${source}: file "${file.key}" needs a name`)
+    }
+    if (typeof file.text !== "string") {
+      throw new SpecError(`${source}: file "${file.key}" needs literal \`text\` contents`)
+    }
+    claim(file.key, "file")
+    fileKeys.add(file.key)
+  }
+  const requireFile = (key: string, what: string): void => {
+    if (!fileKeys.has(key)) throw new SpecError(`${source}: ${what} references unknown file "${key}"`)
+  }
+
   for (const page of spec.pages ?? []) {
     if (typeof page.title !== "string") throw new SpecError(`${source}: page "${page.key}" needs a title`)
     claim(page.key, "page")
+    for (const key of page.attachments ?? []) requireFile(key, `page "${page.key}"`)
   }
   for (const db of spec.databases ?? []) {
     claim(db.key, "database")
     claim(db.dataSource?.key ?? `${db.key}.ds`, "data source")
+
+    for (const view of db.views ?? []) {
+      if (typeof view.name !== "string" || typeof view.type !== "string") {
+        throw new SpecError(`${source}: every view of "${db.key}" needs a name and a type`)
+      }
+      if (view.key) claim(view.key, "view")
+      for (const name of [view.groupBy, view.filter?.property, ...(view.sorts ?? []).map((s) => s.property)]) {
+        if (name !== undefined && !(name in (db.properties ?? {}))) {
+          throw new SpecError(
+            `${source}: view "${view.name}" of "${db.key}" references unknown property "${name}"`,
+          )
+        }
+      }
+    }
 
     const props = db.properties ?? {}
     const titles = Object.entries(props).filter(([, p]) => p.type === "title")
@@ -250,6 +344,14 @@ export function validateSpec(value: unknown, source = "<spec>"): FixtureSpec {
           if (!(name in props)) {
             throw new SpecError(`${source}: row of "${db.key}" sets unknown property "${name}"`)
           }
+        }
+        for (const [name, keys] of Object.entries(row.files ?? {})) {
+          if (props[name]?.type !== "files") {
+            throw new SpecError(
+              `${source}: row of "${db.key}" attaches files to "${name}", which is not a files property`,
+            )
+          }
+          for (const key of keys) requireFile(key, `row of "${db.key}"`)
         }
       }
     }

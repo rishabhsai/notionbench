@@ -148,6 +148,60 @@ export interface NotionBlock {
   [key: string]: unknown
 }
 
+/** `GET /v1/views` hands back `{object, id}` and nothing else — retrieve for the rest. */
+export interface NotionViewStub {
+  object: "view"
+  id: string
+}
+
+export interface NotionView extends NotionViewStub {
+  name: string
+  /** `table` | `board` | `calendar` | `timeline` | `gallery` | `list` | … */
+  type: string
+  data_source_id: string | null
+  filter: unknown
+  sorts: unknown
+  configuration: unknown
+  parent?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface NotionComment {
+  object: "comment"
+  id: string
+  parent: Record<string, unknown>
+  discussion_id: string
+  rich_text: unknown[]
+  created_time?: string
+  created_by?: { id?: string }
+  [key: string]: unknown
+}
+
+export interface NotionUser {
+  object: "user"
+  id: string
+  name?: string
+  type?: "person" | "bot"
+  person?: { email?: string | null }
+  bot?: {
+    owner?: { type?: string; workspace?: boolean }
+    workspace_name?: string
+    workspace_id?: string
+  }
+  [key: string]: unknown
+}
+
+export interface NotionFileUpload {
+  object: "file_upload"
+  id: string
+  status: "pending" | "uploaded" | "expired" | "failed"
+  filename: string | null
+  content_type: string | null
+  content_length: number | null
+  upload_url?: string
+  [key: string]: unknown
+}
+
 export class NotionClient {
   readonly baseUrl: string
   readonly notionVersion: string
@@ -405,14 +459,233 @@ export class NotionClient {
     })
   }
 
+  // ---- views ---------------------------------------------------------------
+
+  /**
+   * `GET /v1/views?database_id=…`.
+   *
+   * Returns **stubs** — `{object: "view", id}` — not view objects. Reporting on
+   * a database's views is therefore always list-then-retrieve; see `getView`
+   * and, for the whole job in one call, `listAllViewsFor`.
+   */
+  listViews(
+    query: { database_id?: string; data_source_id?: string; start_cursor?: string; page_size?: number },
+  ): Promise<Paginated<NotionViewStub>> {
+    return this.request<Paginated<NotionViewStub>>("get", "views", { query })
+  }
+
+  getView(viewId: string): Promise<NotionView> {
+    return this.request<NotionView>("get", `views/${viewId}`)
+  }
+
+  /** Create a view. Not part of the public reference — provisioning only. */
+  createView(body: Record<string, unknown>): Promise<NotionView> {
+    return this.request<NotionView>("post", "views", { body })
+  }
+
+  /** Every view of a database or data source, resolved from stubs to objects. */
+  async listAllViewsFor(
+    scope: { database_id?: string; data_source_id?: string },
+  ): Promise<NotionView[]> {
+    const stubs: NotionViewStub[] = []
+    let cursor: string | undefined
+    for (let page = 0; page < 100; page++) {
+      const res = await this.listViews({
+        ...scope,
+        page_size: MAX_PAGE_SIZE,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      })
+      stubs.push(...res.results)
+      if (!res.has_more || !res.next_cursor) break
+      cursor = res.next_cursor
+    }
+    const views: NotionView[] = []
+    for (const stub of stubs) views.push(await this.getView(stub.id))
+    return views
+  }
+
+  // ---- comments ------------------------------------------------------------
+
+  createComment(body: Record<string, unknown>): Promise<NotionComment> {
+    return this.request<NotionComment>("post", "comments", { body })
+  }
+
+  /**
+   * `GET /v1/comments?block_id=…`.
+   *
+   * Scoped to comments whose parent is *exactly* `blockId`: page-level
+   * discussions when it is a page id, inline ones when it is a block id. It
+   * does not recurse, so "every comment on this page" means walking the block
+   * tree and asking once per block.
+   */
+  listComments(
+    blockId: string,
+    query: { start_cursor?: string; page_size?: number } = {},
+  ): Promise<Paginated<NotionComment>> {
+    return this.request<Paginated<NotionComment>>("get", "comments", {
+      query: { block_id: blockId, ...query },
+    })
+  }
+
+  async listAllComments(blockId: string): Promise<NotionComment[]> {
+    const all: NotionComment[] = []
+    let cursor: string | undefined
+    for (let page = 0; page < 100; page++) {
+      const res = await this.listComments(blockId, {
+        page_size: MAX_PAGE_SIZE,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      })
+      all.push(...res.results)
+      if (!res.has_more || !res.next_cursor) return all
+      cursor = res.next_cursor
+    }
+    throw new Error(`listAllComments(${blockId}): pagination did not terminate`)
+  }
+
+  // ---- users ---------------------------------------------------------------
+
+  listUsers(query: { start_cursor?: string; page_size?: number } = {}): Promise<Paginated<NotionUser>> {
+    return this.request<Paginated<NotionUser>>("get", "users", { query })
+  }
+
+  async listAllUsers(): Promise<NotionUser[]> {
+    const all: NotionUser[] = []
+    let cursor: string | undefined
+    for (let page = 0; page < 100; page++) {
+      const res = await this.listUsers({
+        page_size: MAX_PAGE_SIZE,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      })
+      all.push(...res.results)
+      if (!res.has_more || !res.next_cursor) return all
+      cursor = res.next_cursor
+    }
+    throw new Error("listAllUsers: pagination did not terminate")
+  }
+
+  getUser(userId: string): Promise<NotionUser> {
+    return this.request<NotionUser>("get", `users/${userId}`)
+  }
+
+  // ---- file uploads --------------------------------------------------------
+
+  /**
+   * Step 1 of 2. Returns a `pending` upload carrying an `upload_url`; the bytes
+   * go there next, and only an `uploaded` upload can be attached to anything.
+   */
+  createFileUpload(body: Record<string, unknown> = {}): Promise<NotionFileUpload> {
+    return this.request<NotionFileUpload>("post", "file_uploads", { body })
+  }
+
+  /**
+   * Step 2 of 2: `POST /v1/file_uploads/{id}/send` as `multipart/form-data`.
+   *
+   * The only non-JSON request in the whole client, hence `#multipart` rather
+   * than `request` — `Content-Type` must carry the boundary `FormData` picked,
+   * so it is deliberately *not* set by hand.
+   */
+  sendFileUpload(
+    fileUploadId: string,
+    file: { data: Uint8Array | string; filename: string; contentType?: string },
+  ): Promise<NotionFileUpload> {
+    const form = new FormData()
+    const bytes = typeof file.data === "string" ? new TextEncoder().encode(file.data) : file.data
+    form.append(
+      "file",
+      new Blob([bytes as BlobPart], { type: file.contentType ?? "application/octet-stream" }),
+      file.filename,
+    )
+    return this.#multipart<NotionFileUpload>(`file_uploads/${fileUploadId}/send`, form)
+  }
+
+  /** Create + send in one step, for a small in-memory payload. */
+  async uploadFile(file: {
+    data: Uint8Array | string
+    filename: string
+    contentType?: string
+  }): Promise<NotionFileUpload> {
+    const created = await this.createFileUpload({
+      filename: file.filename,
+      ...(file.contentType ? { content_type: file.contentType } : {}),
+    })
+    return this.sendFileUpload(created.id, file)
+  }
+
+  getFileUpload(fileUploadId: string): Promise<NotionFileUpload> {
+    return this.request<NotionFileUpload>("get", `file_uploads/${fileUploadId}`)
+  }
+
+  listFileUploads(
+    query: { status?: string; start_cursor?: string; page_size?: number } = {},
+  ): Promise<Paginated<NotionFileUpload>> {
+    return this.request<Paginated<NotionFileUpload>>("get", "file_uploads", { query })
+  }
+
+  async listAllFileUploads(): Promise<NotionFileUpload[]> {
+    const all: NotionFileUpload[] = []
+    let cursor: string | undefined
+    for (let page = 0; page < 100; page++) {
+      const res = await this.listFileUploads({
+        page_size: MAX_PAGE_SIZE,
+        ...(cursor ? { start_cursor: cursor } : {}),
+      })
+      all.push(...res.results)
+      if (!res.has_more || !res.next_cursor) return all
+      cursor = res.next_cursor
+    }
+    throw new Error("listAllFileUploads: pagination did not terminate")
+  }
+
+  async #multipart<T>(path: string, form: FormData): Promise<T> {
+    const url = `${this.baseUrl}/v1/${path.replace(/^\/+/, "")}`
+    await this.#pace()
+    this.requestCount++
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), this.#timeoutMs)
+    let response: Response
+    try {
+      response = await this.#fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.#auth}`,
+          "Notion-Version": this.notionVersion,
+          Accept: "application/json",
+        },
+        body: form,
+        signal: controller.signal,
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+    const text = await response.text()
+    let parsed: unknown = undefined
+    if (text.length > 0) {
+      try {
+        parsed = JSON.parse(text)
+      } catch {
+        parsed = text
+      }
+    }
+    if (response.ok) return parsed as T
+    const bodyObj = (parsed ?? {}) as { code?: string; message?: string }
+    throw new NotionApiError({
+      status: response.status,
+      code: bodyObj.code ?? `http_${response.status}`,
+      message: bodyObj.message ?? String(text).slice(0, 400),
+      body: parsed,
+      method: "post",
+      path,
+    })
+  }
+
   // ---- misc ----------------------------------------------------------------
 
   search(body: Record<string, unknown> = {}): Promise<Paginated<NotionPage | NotionDataSource>> {
     return this.request("post", "search", { body })
   }
 
-  me(): Promise<Record<string, unknown>> {
-    return this.request("get", "users/me")
+  me(): Promise<NotionUser> {
+    return this.request<NotionUser>("get", "users/me")
   }
 }
 
@@ -507,6 +780,9 @@ export function readPropertyValue(prop: unknown): PropValue {
     case "email":
     case "phone_number":
       return (p[p.type as string] as string | null) ?? null
+    case "files":
+      // Names only; `readFilesProperty` is the one that keeps kind and url.
+      return readFilesProperty(p).map((f) => f.name)
     default:
       return null
   }
@@ -535,6 +811,56 @@ export function pageIconEmoji(page: NotionPage): string | null {
   const icon = page.icon as { type?: string; emoji?: string } | null | undefined
   if (!icon || icon.type !== "emoji") return null
   return icon.emoji ?? null
+}
+
+/** The visible text of a comment. */
+export function commentText(comment: { rich_text?: unknown }): string {
+  return plainText(comment.rich_text)
+}
+
+export interface FileAttachment {
+  name: string
+  /** `file` = uploaded to Notion, `external` = a link Notion never stored. */
+  kind: "file" | "external"
+  url: string
+}
+
+/**
+ * Decode one file object — a `files` property entry, or the payload of a
+ * `file`/`image`/`pdf` block.
+ *
+ * The `kind` matters more than it looks: a solution that pastes a public URL
+ * instead of performing the two-step upload produces a perfectly plausible
+ * attachment that is `external`, and the difference is the only thing that
+ * distinguishes the two on read-back.
+ */
+export function readFileObject(value: unknown): FileAttachment | undefined {
+  if (!value || typeof value !== "object") return undefined
+  const v = value as Record<string, unknown>
+  const name = typeof v.name === "string" ? v.name : ""
+  if (v.type === "external" || v.external) {
+    const url = (v.external as { url?: string } | undefined)?.url ?? ""
+    return { name, kind: "external", url }
+  }
+  if (v.type === "file" || v.file) {
+    const url = (v.file as { url?: string } | undefined)?.url ?? ""
+    return { name, kind: "file", url }
+  }
+  return undefined
+}
+
+/** Every attachment in a `files` property value. */
+export function readFilesProperty(prop: unknown): FileAttachment[] {
+  if (!prop || typeof prop !== "object") return []
+  const files = (prop as { files?: unknown }).files
+  if (!Array.isArray(files)) return []
+  return files.map(readFileObject).filter((f): f is FileAttachment => f !== undefined)
+}
+
+/** The attachment carried by a `file` / `image` / `pdf` / `audio` / `video` block. */
+export function readFileBlock(block: NotionBlock): FileAttachment | undefined {
+  const payload = block[block.type]
+  return readFileObject(payload)
 }
 
 /** Plain text of a block's rich-text payload, whatever its type. */
