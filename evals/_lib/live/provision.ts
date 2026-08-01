@@ -271,8 +271,11 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
       )
     }
     for (const view of db.views ?? []) {
+      // Shape per the published createViewRequest schema: database_id is a
+      // TOP-LEVEL field (there is no `parent`), and data_source_id/name/type
+      // are required. fake-notion accepted a parent object; the real API does not.
       const created_ = await client.createView({
-        parent: { type: "database_id", database_id: database.id },
+        database_id: database.id,
         data_source_id: dataSourceId,
         ...toViewPayload(view, db, propertyIds),
       })
@@ -338,13 +341,12 @@ function toViewPayload(
   const configuration: Record<string, unknown> = { type: view.type }
   if (view.groupBy) {
     const prop = db.properties[view.groupBy]
+    // groupByConfigRequest requires exactly {type, property_id, sort}; there is no
+    // property_name field on the real API even though fake-notion accepted one.
     const gid = propertyIds[view.groupBy]
     configuration.group_by = {
       type: prop?.type ?? "select",
-      // Real API: property_id (required). fake-notion also accepts property_name,
-      // which is why qc:live never caught this — keep both for compatibility.
-      ...(gid ? { property_id: gid } : {}),
-      property_name: view.groupBy,
+      ...(gid ? { property_id: gid } : { property_name: view.groupBy }),
       sort: { type: "manual" },
       hide_empty_groups: false,
     }
