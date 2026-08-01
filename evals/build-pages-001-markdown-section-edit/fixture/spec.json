@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "id": "build-pages-001-markdown-section-edit",
+  "seed": 20260805,
+  "root": { "title": "NotionBench · build-pages-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "runbooks",
+      "title": "Runbooks",
+      "icon": "📗",
+      "blocks": [{ "type": "paragraph", "text": "One page per scheduled job." }]
+    },
+    {
+      "key": "runbook",
+      "title": "Nightly Export Runbook",
+      "parent": "runbooks",
+      "icon": "🌙",
+      "blocks": [
+        { "type": "heading_2", "text": "Overview" },
+        {
+          "type": "paragraph",
+          "text": "The nightly export copies the orders table into the warehouse at 02:00 UTC."
+        },
+        { "type": "heading_2", "text": "Steps" },
+        { "type": "bulleted_list_item", "text": "Check that yesterday's run finished" },
+        { "type": "bulleted_list_item", "text": "Start the export job" },
+        { "type": "bulleted_list_item", "text": "Spot-check the row count" },
+        { "type": "heading_2", "text": "Escalation" },
+        {
+          "type": "paragraph",
+          "text": "If the run is still red after two retries, page the on-call data engineer."
+        },
+        {
+          "type": "paragraph",
+          "text": "Do not restart the job by hand; it is not idempotent."
+        }
+      ]
+    }
+  ]
+}
