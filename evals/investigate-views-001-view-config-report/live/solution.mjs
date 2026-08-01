@@ -27,8 +27,20 @@ for (;;) {
 // the schema once and translate. Values already spelled as names pass through.
 const database = await api("get", `databases/${databaseId}`)
 const dataSource = await api("get", `data_sources/${database.data_sources[0].id}`)
+// The schema percent-encodes property ids ("C~m%7C"); views reference them raw
+// ("C~m|"). Index both so either spelling resolves.
+const decode = (id) => {
+  try {
+    return decodeURIComponent(id)
+  } catch {
+    return id
+  }
+}
 const nameById = Object.fromEntries(
-  Object.entries(dataSource.properties ?? {}).map(([name, prop]) => [prop.id, name]),
+  Object.entries(dataSource.properties ?? {}).flatMap(([name, prop]) => [
+    [prop.id, name],
+    [decode(prop.id), name],
+  ]),
 )
 const nameOf = (v) => (typeof v === "string" ? (nameById[v] ?? v) : null)
 

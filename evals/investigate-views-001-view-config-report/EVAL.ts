@@ -99,10 +99,26 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
     const dsId = (await client.getDatabase(databaseId)).data_sources?.[0]?.id
     if (dsId) {
       const ds = await client.getDataSource(dsId)
+      // The schema reports property ids percent-encoded ("C~m%7C") while views
+      // reference them raw ("C~m|"), so index both spellings. Ids without a
+      // character needing escaping are identical either way — which is why this
+      // divergence only bites some properties, and looked intermittent.
       propertyNames = Object.fromEntries(
         Object.entries(ds.properties ?? {}).flatMap(([name, prop]) => {
           const id = (prop as { id?: unknown })?.id
-          return typeof id === "string" ? [[id, name] as const] : []
+          if (typeof id !== "string") return []
+          let decoded = id
+          try {
+            decoded = decodeURIComponent(id)
+          } catch {
+            // A literal "%" that is not an escape — keep the id as-is.
+          }
+          return decoded === id
+            ? [[id, name] as const]
+            : [
+                [id, name] as const,
+                [decoded, name] as const,
+              ]
         }),
       )
     }
