@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "build-cli-002-filtered-export",
+  "seed": 20260802,
+  "root": { "title": "NotionBench · build-cli-002", "icon": "🧪" },
+  "databases": [
+    {
+      "key": "tickets",
+      "title": "Support Tickets",
+      "dataSource": { "name": "Support Tickets" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Open", "color": "blue" },
+            { "name": "In progress", "color": "yellow" },
+            { "name": "Closed", "color": "green" }
+          ]
+        },
+        "Priority": {
+          "type": "select",
+          "options": [
+            { "name": "Low", "color": "gray" },
+            { "name": "Medium", "color": "yellow" },
+            { "name": "High", "color": "orange" },
+            { "name": "Urgent", "color": "red" }
+          ]
+        },
+        "Points": { "type": "number" },
+        "Opened": { "type": "date" }
+      },
+      "rows": {
+        "count": 40,
+        "properties": {
+          "Name": { "template": "TCK-{i:3}" },
+          "Status": { "cycle": ["Open", "In progress", "Closed", "Open"] },
+          "Priority": { "cycle": ["Low", "Medium", "High", "Urgent", "Medium"] },
+          "Points": { "randint": { "min": 1, "max": 13 } },
+          "Opened": { "dateSeq": { "start": "2026-06-01", "stepDays": 1 } }
+        }
+      }
+    }
+  ]
+}

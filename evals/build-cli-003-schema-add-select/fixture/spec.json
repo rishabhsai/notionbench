@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "id": "build-cli-003-schema-add-select",
+  "seed": 20260803,
+  "root": { "title": "NotionBench · build-cli-003", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "brief",
+      "title": "Content Ops",
+      "icon": "📣",
+      "blocks": [{ "type": "paragraph", "text": "Everything the content team plans lives below." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "calendar",
+      "title": "Content Calendar",
+      "parent": "brief",
+      "dataSource": { "name": "Content Calendar" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Owner": { "type": "rich_text" },
+        "Publish Date": { "type": "date" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Draft", "color": "gray" },
+            { "name": "Scheduled", "color": "blue" },
+            { "name": "Published", "color": "green" }
+          ]
+        }
+      },
+      "rows": {
+        "count": 12,
+        "properties": {
+          "Name": { "template": "Post {i:2}" },
+          "Owner": { "cycle": ["Ada", "Grace", "Alan", "Radia"] },
+          "Publish Date": { "dateSeq": { "start": "2026-08-03", "stepDays": 3 } },
+          "Status": { "cycle": ["Published", "Scheduled", "Draft"] }
+        }
+      }
+    }
+  ]
+}

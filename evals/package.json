@@ -6,7 +6,8 @@
   "description": "The NotionBench task suite. Each subdirectory is one task: PROMPT.md, EVAL.ts, fixture/, solution/, wrong/.",
   "license": "MIT",
   "scripts": {
-    "qc": "node _lib/qc.ts"
+    "qc": "node _lib/qc.ts",
+    "qc:live": "node _lib/live/qc-live.ts"
   },
   "dependencies": {
     "@notionbench/scoring": "workspace:*"

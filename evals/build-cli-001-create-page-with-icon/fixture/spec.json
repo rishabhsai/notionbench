@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "id": "build-cli-001-create-page-with-icon",
+  "seed": 20260801,
+  "root": { "title": "NotionBench · build-cli-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "handbook",
+      "title": "Team Handbook",
+      "icon": "📘",
+      "blocks": [
+        { "type": "heading_2", "text": "How we work" },
+        { "type": "paragraph", "text": "Everything a new teammate needs, in one place." }
+      ]
+    },
+    {
+      "key": "archive",
+      "title": "Archive",
+      "icon": "🗄️",
+      "blocks": [{ "type": "paragraph", "text": "Superseded material. Nothing here is current." }]
+    },
+    {
+      "key": "handbook-tools",
+      "title": "Tooling",
+      "parent": "handbook",
+      "blocks": [{ "type": "paragraph", "text": "Which tools we use and why." }]
+    }
+  ]
+}

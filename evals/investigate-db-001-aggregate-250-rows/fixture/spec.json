@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "id": "investigate-db-001-aggregate-250-rows",
+  "seed": 20260804,
+  "root": { "title": "NotionBench · investigate-db-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "finance",
+      "title": "Finance",
+      "icon": "💰",
+      "blocks": [{ "type": "paragraph", "text": "Quarterly order records live below." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "orders",
+      "title": "Q3 Orders",
+      "parent": "finance",
+      "dataSource": { "name": "Q3 Orders" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Amount": { "type": "number" },
+        "Region": {
+          "type": "select",
+          "options": [
+            { "name": "NA", "color": "blue" },
+            { "name": "EU", "color": "green" },
+            { "name": "APAC", "color": "purple" }
+          ]
+        },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Paid", "color": "green" },
+            { "name": "Pending", "color": "yellow" },
+            { "name": "Refunded", "color": "red" }
+          ]
+        },
+        "Ordered": { "type": "date" }
+      },
+      "rows": {
+        "count": 250,
+        "properties": {
+          "Name": { "template": "ORD-{i:4}" },
+          "Amount": { "randint": { "min": 10, "max": 999 } },
+          "Region": { "cycle": ["NA", "EU", "APAC"] },
+          "Status": { "cycle": ["Paid", "Paid", "Pending", "Refunded"] },
+          "Ordered": { "dateSeq": { "start": "2026-07-01", "stepDays": 1 } }
+        }
+      }
+    }
+  ]
+}
