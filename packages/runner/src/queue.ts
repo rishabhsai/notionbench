@@ -17,8 +17,11 @@
  * async driver on top.
  */
 
+import path from 'node:path';
+import { readFile } from 'node:fs/promises';
 import type { CellCoords } from './checkpoint.js';
 import { cellKey } from './checkpoint.js';
+import { writeJsonAtomic } from './spawn.js';
 
 export interface QueueCell extends CellCoords {
   key: string;
@@ -40,6 +43,70 @@ export type Decision =
   /** Queue drained. */
   | { kind: 'done' };
 
+/**
+ * Rate-limited aborts tolerated on one cell before its config is called blocked.
+ * 20 × 30min ≈ 10h, comfortably longer than a legitimate 5-hour window.
+ */
+export const DEFAULT_MAX_RATE_LIMITED_ATTEMPTS = 20;
+
+/** File the rate-window state is mirrored to, inside `results/<runId>/`. */
+export const RATE_WINDOW_STATE_FILENAME = 'rate-window.json';
+
+/**
+ * The scheduler's rate-window state, in a form another process can read.
+ *
+ * `state.json` records per-cell facts; *which config is cooling down right now*
+ * is scheduler state, and it only ever lived in memory. `notionbench serve`
+ * runs out-of-process, so the two statuses that are pure scheduler state —
+ * `cooldown` and `blocked` — would otherwise be unobservable. Mirroring is
+ * strictly additive and opt-in (`onRateWindowChange`): a Scheduler constructed
+ * without it behaves exactly as before and writes nothing.
+ */
+export interface RateWindowState {
+  updatedAt: string;
+  /** Configs paused by a usage window, with the epoch ms they resume at. */
+  cooldowns: Array<{ configId: string; untilMs: number }>;
+  /**
+   * Configs the permanently-blocked backstop gave up on (expired subscription,
+   * revoked login) — not merely inside a usage window.
+   */
+  blocked: string[];
+}
+
+export function rateWindowStatePath(runDir: string): string {
+  return path.join(runDir, RATE_WINDOW_STATE_FILENAME);
+}
+
+/** Mirror the scheduler's rate-window state next to the run's state.json. */
+export async function writeRateWindowState(runDir: string, state: RateWindowState): Promise<void> {
+  await writeJsonAtomic(rateWindowStatePath(runDir), state);
+}
+
+/** Read the mirror back. Missing or unreadable file → no cooldowns, none blocked. */
+export async function readRateWindowState(runDir: string): Promise<RateWindowState> {
+  const empty: RateWindowState = { updatedAt: '', cooldowns: [], blocked: [] };
+  let raw: string;
+  try {
+    raw = await readFile(rateWindowStatePath(runDir), 'utf8');
+  } catch {
+    return empty;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<RateWindowState>;
+    return {
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
+      cooldowns: (parsed.cooldowns ?? []).filter(
+        (c): c is { configId: string; untilMs: number } =>
+          !!c && typeof c.configId === 'string' && Number.isFinite(c.untilMs),
+      ),
+      blocked: (parsed.blocked ?? []).filter((b): b is string => typeof b === 'string'),
+    };
+  } catch {
+    // A torn write is not worth failing a status request over.
+    return empty;
+  }
+}
+
 export interface SchedulerOptions {
   /** Global in-flight cap across all configs. */
   concurrency?: number;
@@ -54,6 +121,14 @@ export interface SchedulerOptions {
    * longer than a legitimate 5-hour window. Default 20.
    */
   maxRateLimitedAttempts?: number;
+  /**
+   * Called whenever a config starts cooling down, resumes, or is declared
+   * permanently blocked, with the full current state (not a delta). Optional and
+   * best-effort — the scheduler never awaits it and never fails because of it.
+   * `notionbench run` wires it to `results/<runId>/rate-window.json` so
+   * `notionbench serve` can report `cooldown` / `blocked`.
+   */
+  onRateWindowChange?: (state: RateWindowState) => void;
 }
 
 export interface SchedulerEvent {
@@ -82,13 +157,34 @@ export class Scheduler {
   private readonly inFlight = new Set<string>();
   private readonly inFlightConfigs = new Set<string>();
   private readonly pausedUntil = new Map<string, number>();
+  private readonly blocked = new Set<string>();
   private readonly listeners: Array<(e: SchedulerEvent) => void> = [];
+  private readonly onRateWindowChange?: (state: RateWindowState) => void;
 
   constructor(opts: SchedulerOptions = {}) {
     this.concurrency = Math.max(1, opts.concurrency ?? 2);
     this.cooldownMs = Math.max(0, opts.cooldownMs ?? 30 * 60 * 1000);
     this.maxAttempts = Math.max(1, opts.maxAttempts ?? 3);
-    this.maxRateLimitedAttempts = Math.max(1, opts.maxRateLimitedAttempts ?? 20);
+    this.maxRateLimitedAttempts = Math.max(1, opts.maxRateLimitedAttempts ?? DEFAULT_MAX_RATE_LIMITED_ATTEMPTS);
+    this.onRateWindowChange = opts.onRateWindowChange;
+  }
+
+  /** The rate-window facts an out-of-process reader needs. */
+  rateWindowState(now: number = Date.now()): RateWindowState {
+    return {
+      updatedAt: new Date(now).toISOString(),
+      cooldowns: this.pausedConfigs(now),
+      blocked: [...this.blocked],
+    };
+  }
+
+  private publishRateWindow(now: number): void {
+    if (!this.onRateWindowChange) return;
+    try {
+      this.onRateWindowChange(this.rateWindowState(now));
+    } catch {
+      /* a status mirror must never take the run down */
+    }
   }
 
   on(listener: (e: SchedulerEvent) => void): void {
@@ -115,11 +211,12 @@ export class Scheduler {
   }
 
   /** Pause a config directly (e.g. an out-of-band 429 seen by a fixture provisioner). */
-  pauseConfig(configId: string, untilMs: number): void {
+  pauseConfig(configId: string, untilMs: number, now: number = Date.now()): void {
     const current = this.pausedUntil.get(configId);
     if (current !== undefined && current >= untilMs) return;
     this.pausedUntil.set(configId, untilMs);
     this.emit({ type: 'config-paused', configId, untilMs });
+    this.publishRateWindow(now);
   }
 
   isPaused(configId: string, now: number): boolean {
@@ -192,6 +289,7 @@ export class Scheduler {
         // cell loudly instead of sleeping forever on an unattended multi-day run.
         rec.state = 'settled';
         rec.settledAs = 'failed';
+        this.blocked.add(rec.configId);
         this.emit({
           type: 'failed',
           cell: toCell(rec),
@@ -199,6 +297,7 @@ export class Scheduler {
             `rate-limited ${rec.rateLimitedAttempts}× without ever succeeding — ` +
             `config "${rec.configId}" looks permanently blocked, not merely inside a usage window`,
         });
+        this.publishRateWindow(now);
         return;
       }
       // Not the model's fault: refund the attempt, requeue at the FRONT of the
@@ -207,7 +306,7 @@ export class Scheduler {
       rec.state = 'pending';
       this.pendingKeys.unshift(key);
       const until = now + (outcome.cooldownMs ?? this.cooldownMs);
-      this.pauseConfig(rec.configId, until);
+      this.pauseConfig(rec.configId, until, now);
       this.emit({ type: 'rate-limited', cell: toCell(rec), detail: outcome.detail, untilMs: until });
       return;
     }
@@ -256,12 +355,15 @@ export class Scheduler {
   }
 
   private reapPauses(now: number): void {
+    let reaped = false;
     for (const [configId, until] of this.pausedUntil) {
       if (until <= now) {
         this.pausedUntil.delete(configId);
         this.emit({ type: 'config-resumed', configId });
+        reaped = true;
       }
     }
+    if (reaped) this.publishRateWindow(now);
   }
 }
 
