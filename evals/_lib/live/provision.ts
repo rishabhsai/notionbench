@@ -339,16 +339,15 @@ function toViewPayload(view: ViewSpec, db: DatabaseSpec): Record<string, unknown
         : { equals: view.filter.equals as string | number | boolean }
     filter = { property: view.filter.property, [prop?.type ?? "rich_text"]: condition }
   }
-  return {
-    name: view.name,
-    type: view.type,
-    filter,
-    sorts:
-      view.sorts && view.sorts.length > 0
-        ? view.sorts.map((s) => ({ property: s.property, direction: s.direction ?? "ascending" }))
-        : null,
-    configuration,
+  // The real API rejects an explicit null here ("body.filter should be an object
+  // or `undefined`, instead was `null`") while fake-notion accepts it — so omit the
+  // keys entirely rather than sending null. Found by a live run, not by qc:live.
+  const payload: Record<string, unknown> = { name: view.name, type: view.type, configuration }
+  if (filter) payload.filter = filter
+  if (view.sorts && view.sorts.length > 0) {
+    payload.sorts = view.sorts.map((s) => ({ property: s.property, direction: s.direction ?? "ascending" }))
   }
+  return payload
 }
 
 /** `files` property values for one explicit row, resolved from spec keys. */
