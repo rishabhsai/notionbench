@@ -157,6 +157,9 @@ export interface ViewSpec {
   /** A single-condition filter, expanded into the API's filter object. */
   filter?: { property: string; equals?: PropValue; isNotEmpty?: boolean }
   sorts?: Array<{ property: string; direction?: "ascending" | "descending" }>
+  /** Date property a calendar/timeline view is laid out on. Defaults to the
+   *  database's first `date` property. Required by the real API for those types. */
+  dateProperty?: string
 }
 
 /**

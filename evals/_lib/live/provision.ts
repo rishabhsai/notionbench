@@ -339,6 +339,17 @@ function toViewPayload(
   propertyIds: Record<string, string> = {},
 ): Record<string, unknown> {
   const configuration: Record<string, unknown> = { type: view.type }
+  // Per-type required config, from the published *ViewConfigRequest schemas:
+  //   board    -> group_by            calendar -> date_property_id
+  //   timeline -> date_property_id    chart    -> chart_type
+  // fake-notion required none of these, so qc:live passed while the real API 400'd.
+  if (view.type === "calendar" || view.type === "timeline") {
+    const dateProp =
+      view.dateProperty ??
+      Object.entries(db.properties).find(([, p]) => p.type === "date")?.[0]
+    const did = dateProp ? propertyIds[dateProp] : undefined
+    if (did) configuration.date_property_id = did
+  }
   if (view.groupBy) {
     const prop = db.properties[view.groupBy]
     // groupByConfigRequest requires exactly {type, property_id, sort}; there is no
