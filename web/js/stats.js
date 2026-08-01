@@ -18,13 +18,21 @@
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   }
 
+  /** Observed k: the max trials any (task, config) cell completed in this run. */
+  function observedK(data) {
+    let k = 0;
+    for (const r of data.results) k = Math.max(k, r.trials.length);
+    return k || 1;
+  }
+
   /** Leaderboard rows: one per config, from trial-level results. */
   function perConfig(data) {
+    const k = observedK(data);
     return data.configs.map((cfg) => {
       const rs = data.results.filter((r) => r.config === cfg.id);
       const trials = rs.flatMap((r) => r.trials);
       const solved = trials.filter((t) => t.solved).length;
-      const full = rs.filter((r) => r.trials.length === 3);
+      const full = rs.filter((r) => r.trials.length >= k);
       return {
         cfg,
         tasks: rs.length,
@@ -32,7 +40,8 @@
         avg: mean(trials.map((t) => t.score)),
         ciHalf: wilsonHalf(solved, trials.length),
         solveRate: trials.length ? solved / trials.length : 0,
-        pass3: full.length ? full.filter((r) => r.trials.every((t) => t.solved)).length / full.length : 0,
+        pass3: full.length ? full.filter((r) => r.trials.slice(0, k).every((t) => t.solved)).length / full.length : 0,
+        k,
         toolErrs: mean(trials.map((t) => t.toolErrors)),
         tokens: cfg.tokens,
         cost: cfg.apiEquivCostUsd,
@@ -106,6 +115,6 @@
     },
   };
 
-  NB.stats = { wilsonHalf, mean, median, perConfig, matrix, taskRows, etaMs };
+  NB.stats = { observedK, wilsonHalf, mean, median, perConfig, matrix, taskRows, etaMs };
   NB.fmt = fmt;
 })();

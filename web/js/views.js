@@ -31,7 +31,7 @@
     $("run-meta").innerHTML =
       `<span class="mono">${esc(data.run)}</span>` +
       `<span>updated ${fmt.date(data.generatedAt)}</span>` +
-      `<span>k=3 trials · ${data.totals.cells.toLocaleString("en-US")} cells</span>`;
+      `<span>k=${NB.stats.observedK(data)} trial${NB.stats.observedK(data) === 1 ? "" : "s"} · ${data.totals.cells.toLocaleString("en-US")} cells</span>`;
     const pill = $("mode-pill");
     if (live) {
       pill.className = "pill pill-live";
@@ -117,8 +117,8 @@
 
   const LB_COLS = [
     { key: "label", label: "Agent config", num: false },
-    { key: "avg", label: "avg@3", num: true },
-    { key: "pass3", label: "pass^3", num: true },
+    { key: "avg", label: "avg@k", num: true },
+    { key: "pass3", label: "pass^k", num: true },
     { key: "toolErrs", label: "Tool errors", num: true, title: "mean per trial" },
     { key: "tok", label: "Tokens", num: true },
     { key: "cost", label: "API-equiv cost", num: true },
@@ -154,7 +154,7 @@
     $("board").innerHTML = `<table class="db">
       <thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>` +
       (partial ? `<p class="chart-note">Configs still running are scored on completed cells only — ± is the 95% Wilson interval on the solve rate.</p>`
-               : `<p class="chart-note">± is the 95% Wilson interval on the solve rate. pass^3 = solved in all three trials.</p>`);
+               : `<p class="chart-note">± is the 95% Wilson interval on the solve rate. pass^k = solved in all k trials (k = ${NB.stats.observedK(data)} in this run).</p>`);
 
     for (const th of $("board").querySelectorAll("th.sortable"))
       th.addEventListener("click", () => {
