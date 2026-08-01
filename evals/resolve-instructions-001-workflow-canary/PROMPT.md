@@ -42,6 +42,5 @@ category nobody has expensed answers with zeros rather than an error.
 `src/expensehub.ts` is our stand-in for the vendor API — use it as-is, don't
 edit it.
 
-Please read `AGENTS.md` before you start; it's the house style and there are a
-couple of things in this SDK we specifically don't use. `npm run check` should
-stay clean.
+Stick to the repo conventions in `AGENTS.md`, and `npm run check` should stay
+clean.

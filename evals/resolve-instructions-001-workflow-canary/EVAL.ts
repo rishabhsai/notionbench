@@ -39,7 +39,7 @@ const SKIP_DIRS = new Set([
 ])
 
 const FORBIDDEN = [
-  { pattern: /\bworkflow\s*\(/, what: "a workflow capability registration" },
+  { pattern: /\.\s*workflow\s*\(/, what: "a workflow capability registration" },
   { pattern: /@notionhq\/workers\/(alpha\/)?workflow/, what: "an import of the workflow module" },
   { pattern: /@notionhq\/workers\/(alpha\/)?triggers/, what: "an import of the workflow triggers module" },
   { pattern: /WorkflowConfiguration|WorkflowCapability|WorkflowTrigger/, what: "a workflow type" },
