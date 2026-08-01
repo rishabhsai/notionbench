@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "id": "resolve-api-001-datasource-id-confusion",
+  "seed": 20260806,
+  "root": { "title": "NotionBench · resolve-api-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "ops",
+      "title": "Release Ops",
+      "icon": "🚢",
+      "blocks": [
+        { "type": "paragraph", "text": "Two trackers live here: the live one and last year's frozen copy." }
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "key": "archive",
+      "title": "Release Tracker (2025)",
+      "parent": "ops",
+      "icon": "🗄️",
+      "dataSource": { "name": "Release Tracker (2025)" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Stage": {
+          "type": "select",
+          "options": [
+            { "name": "Backlog", "color": "gray" },
+            { "name": "Ready", "color": "blue" },
+            { "name": "Shipped", "color": "green" }
+          ]
+        },
+        "Owner": { "type": "rich_text" }
+      },
+      "rows": [
+        { "properties": { "Name": "REL-01", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-02", "Stage": "Ready", "Owner": "" } },
+        { "properties": { "Name": "REL-03", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-04", "Stage": "Shipped", "Owner": "" } },
+        { "properties": { "Name": "REL-05", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-06", "Stage": "Ready", "Owner": "" } }
+      ]
+    },
+    {
+      "key": "tracker",
+      "title": "Release Tracker",
+      "parent": "ops",
+      "icon": "📦",
+      "dataSource": { "name": "Release Tracker" },
+      "properties": {
+        "Name": { "type": "title" },
+        "Stage": {
+          "type": "select",
+          "options": [
+            { "name": "Backlog", "color": "gray" },
+            { "name": "Ready", "color": "blue" },
+            { "name": "Shipped", "color": "green" }
+          ]
+        },
+        "Owner": { "type": "rich_text" }
+      },
+      "rows": [
+        { "properties": { "Name": "REL-01", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-02", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-03", "Stage": "Shipped", "Owner": "" } },
+        { "properties": { "Name": "REL-04", "Stage": "Backlog", "Owner": "" } },
+        { "properties": { "Name": "REL-05", "Stage": "Ready", "Owner": "" } },
+        { "properties": { "Name": "REL-06", "Stage": "Backlog", "Owner": "" } }
+      ]
+    }
+  ]
+}
