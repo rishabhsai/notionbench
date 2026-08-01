@@ -1,0 +1,16 @@
+export {
+  DEFAULT_TEMPLATES_DIR,
+  DOC_ARTIFACT_DIRS,
+  DOC_ARTIFACT_FILES,
+  TEMPLATE_DIRS,
+  exists,
+  fixtureDocsDir,
+  fixtureWorkspaceDir,
+  injectDocs,
+  prepareWorkspace,
+  stripDocs,
+  type DocsBundle,
+  type DocsCondition,
+  type PrepareWorkspaceOptions,
+  type PreparedWorkspace,
+} from './workspace.js';
