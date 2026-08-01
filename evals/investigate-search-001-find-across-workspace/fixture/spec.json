@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "id": "investigate-search-001-find-across-workspace",
+  "seed": 20260810,
+  "root": { "title": "NotionBench · investigate-search-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "eng",
+      "title": "Engineering",
+      "icon": "🛠️",
+      "blocks": [{ "type": "paragraph", "text": "Team space for everything that ships." }]
+    },
+    {
+      "key": "deploy",
+      "title": "Deploy Runbook",
+      "parent": "eng",
+      "blocks": [
+        { "type": "paragraph", "text": "Ships the API to production behind a canary." },
+        { "type": "paragraph", "text": "Owner: Ada Lovelace" }
+      ]
+    },
+    {
+      "key": "platform",
+      "title": "Platform",
+      "parent": "eng",
+      "blocks": [{ "type": "paragraph", "text": "Storage, cache and the bits underneath." }]
+    },
+    {
+      "key": "failover",
+      "title": "Database Failover Runbook",
+      "parent": "platform",
+      "blocks": [
+        { "type": "paragraph", "text": "Promote the replica, then repoint the writer." },
+        { "type": "paragraph", "text": "Expect 90 seconds of write errors." }
+      ]
+    },
+    {
+      "key": "cache",
+      "title": "Cache Warmup Runbook",
+      "parent": "platform",
+      "blocks": [
+        { "type": "paragraph", "text": "Warms the edge cache after a cold start." },
+        { "type": "paragraph", "text": "Owner: Radia Perlman" }
+      ]
+    },
+    {
+      "key": "legacy",
+      "title": "Legacy Cache Runbook",
+      "parent": "cache",
+      "blocks": [
+        { "type": "paragraph", "text": "Only the 2023 stack still needs this." },
+        { "type": "paragraph", "text": "Kept for the two customers who have not migrated." }
+      ]
+    },
+    {
+      "key": "support",
+      "title": "Support",
+      "icon": "🎧",
+      "blocks": [{ "type": "paragraph", "text": "Front line, and what they escalate." }]
+    },
+    {
+      "key": "escalation",
+      "title": "Escalation Runbook",
+      "parent": "support",
+      "blocks": [
+        { "type": "paragraph", "text": "Who to wake, and how long to wait first." },
+        { "type": "paragraph", "text": "Sev1 goes straight to the on-call engineer." }
+      ]
+    },
+    {
+      "key": "notes",
+      "title": "Notes",
+      "icon": "🗒️",
+      "blocks": [{ "type": "paragraph", "text": "Odds and ends." }]
+    },
+    {
+      "key": "style",
+      "title": "Runbook Style Guide",
+      "parent": "notes",
+      "blocks": [
+        { "type": "paragraph", "text": "House style: one action per line, no jargon." },
+        { "type": "paragraph", "text": "Owner: Grace Hopper" }
+      ]
+    },
+    {
+      "key": "sync",
+      "title": "Weekly Sync Notes",
+      "parent": "notes",
+      "blocks": [
+        { "type": "paragraph", "text": "Standing agenda for the Monday call." },
+        { "type": "paragraph", "text": "No owner line here either." }
+      ]
+    }
+  ]
+}
