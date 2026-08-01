@@ -1,0 +1,272 @@
+[
+  {
+    "type": "space",
+    "resourceId": "sp",
+    "name": "Probe WS",
+    "icon": {
+      "type": "emoji",
+      "emoji": "🚀"
+    },
+    "members": [
+      {
+        "role": "member",
+        "email": "a@b.com"
+      },
+      {
+        "role": "owner",
+        "userId": "u-1"
+      }
+    ]
+  },
+  {
+    "type": "teamspace",
+    "resourceId": "ts",
+    "name": "T",
+    "accessLevel": "closed",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "sp"
+    }
+  },
+  {
+    "type": "database",
+    "resourceId": "db",
+    "name": "DB",
+    "cover": {
+      "type": "url",
+      "url": "https://x/y.png",
+      "position": 0.25
+    },
+    "dataSources": [
+      {
+        "resourceId": "ds",
+        "name": "DS",
+        "defaultTemplate": "tmpl",
+        "pageLayout": {
+          "type": "simpleWithPropertiesInSidebar",
+          "fullWidth": true,
+          "showTemplates": false,
+          "properties": [
+            {
+              "property": "p-title",
+              "position": "pinned"
+            },
+            {
+              "property": "p-txt",
+              "position": "standalone"
+            }
+          ]
+        },
+        "properties": [
+          {
+            "resourceId": "p-title",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "p-txt",
+            "name": "Notes",
+            "type": "text"
+          },
+          {
+            "resourceId": "p-rel",
+            "name": "Rel",
+            "type": "relation",
+            "targetDataSourceResourceId": "ds2",
+            "targetDataSourcePropertyResourceId": "p-rel2",
+            "limit": 1
+          },
+          {
+            "resourceId": "p-roll",
+            "name": "Roll",
+            "type": "rollup",
+            "relationPropertyResourceId": "p-rel",
+            "targetPropertyResourceId": "p-num2",
+            "targetPropertyType": "number",
+            "aggregation": "sum"
+          },
+          {
+            "resourceId": "p-f",
+            "name": "F",
+            "type": "formula",
+            "expression": "prop(\"p-txt\")"
+          },
+          {
+            "resourceId": "p-auto",
+            "name": "ID",
+            "type": "auto_increment_id",
+            "prefix": "TASK"
+          },
+          {
+            "resourceId": "p-file",
+            "name": "Files",
+            "type": "file"
+          },
+          {
+            "resourceId": "p-person",
+            "name": "Owner",
+            "type": "person",
+            "limit": 1
+          }
+        ]
+      }
+    ],
+    "views": [
+      {
+        "resourceId": "v-inline",
+        "type": "table",
+        "dataSourceResourceId": "ds"
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ts"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "db",
+    "view": {
+      "resourceId": "v1",
+      "name": "Board",
+      "type": "board",
+      "dataSourceResourceId": "ds",
+      "groupBy": {
+        "property": "p-txt",
+        "type": "text",
+        "emptyGroupVisibility": "hide"
+      },
+      "columns": [
+        {
+          "property": "p-txt",
+          "hidden": false,
+          "value": {
+            "type": "select",
+            "value": "A"
+          }
+        }
+      ],
+      "cover": {
+        "type": "page_cover"
+      },
+      "coverSize": "large",
+      "coverAspect": "cover",
+      "wrap": true,
+      "properties": [
+        {
+          "property": "p-title",
+          "visible": true,
+          "width": 200,
+          "visibility": "show"
+        }
+      ],
+      "sorts": [
+        {
+          "propertyId": "p-title",
+          "direction": "ascending"
+        }
+      ],
+      "filters": [
+        {
+          "propertyId": "p-txt",
+          "propertyType": "text",
+          "operator": "string_contains",
+          "value": "x"
+        },
+        {
+          "propertyId": "p-person",
+          "propertyType": "person",
+          "operator": "person_contains",
+          "value": {
+            "type": "relative",
+            "value": "me"
+          }
+        }
+      ],
+      "defaultTemplate": "tmpl",
+      "ephemeral": true
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "tmpl",
+    "template": true,
+    "properties": {
+      "Name": [
+        [
+          "T"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "row1",
+    "properties": {
+      "Name": [
+        [
+          "R"
+        ]
+      ],
+      "Rel": [
+        "tmpl"
+      ],
+      "Files": [
+        {
+          "type": "file",
+          "resourceId": "f1"
+        }
+      ],
+      "Notes": [
+        [
+          "hi"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ds"
+    }
+  },
+  {
+    "type": "custom_agent",
+    "resourceId": "ag",
+    "name": "Helper",
+    "icon": {
+      "type": "emoji",
+      "emoji": "🛟"
+    },
+    "instructions": "# Be nice",
+    "model": "ambrosia-tart-high",
+    "sharedResources": [
+      "db",
+      "tmpl"
+    ]
+  },
+  {
+    "type": "page",
+    "resourceId": "pg",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ts"
+    },
+    "updateExisting": true,
+    "properties": {
+      "title": [
+        [
+          "P"
+        ]
+      ]
+    },
+    "content": "x <page url=\"{{pg2}}\">C</page>",
+    "cover": {
+      "type": "file",
+      "resourceId": "f1",
+      "position": 0.1
+    }
+  }
+]

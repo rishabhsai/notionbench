@@ -28,6 +28,34 @@ importers:
         version: 2.1.9(@types/node@22.20.1)
 
   packages/runner:
+    dependencies:
+      '@notionbench/sandbox':
+        specifier: workspace:*
+        version: link:../sandbox
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/sandbox:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.2
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.1)
+
+  packages/scoring:
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
