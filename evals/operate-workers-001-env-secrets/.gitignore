@@ -1,0 +1,4 @@
+# The repo root ignores every `.env`, which is right everywhere except here:
+# this task's oracle *is* a `.env` file, and the "credential" in it is a
+# made-up sandbox string for a vendor that does not exist. Track it.
+!solution/.env
