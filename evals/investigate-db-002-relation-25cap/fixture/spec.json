@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "id": "investigate-db-002-relation-25cap",
+  "seed": 20260809,
+  "root": {
+    "title": "NotionBench · investigate-db-002",
+    "icon": "🧪"
+  },
+  "pages": [
+    {
+      "key": "portfolio",
+      "title": "Portfolio",
+      "icon": "🗂️",
+      "blocks": [
+        {
+          "type": "paragraph",
+          "text": "Programs roll up the initiatives that fund them."
+        }
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "key": "initiatives",
+      "title": "Initiatives",
+      "parent": "portfolio",
+      "icon": "🧱",
+      "dataSource": {
+        "name": "Initiatives"
+      },
+      "properties": {
+        "Name": {
+          "type": "title"
+        },
+        "Status": {
+          "type": "select",
+          "options": [
+            {
+              "name": "On track",
+              "color": "green"
+            },
+            {
+              "name": "At risk",
+              "color": "red"
+            },
+            {
+              "name": "Done",
+              "color": "blue"
+            }
+          ]
+        },
+        "Effort (points)": {
+          "type": "number"
+        }
+      },
+      "rows": {
+        "count": 60,
+        "properties": {
+          "Name": {
+            "template": "INIT-{i:3}"
+          },
+          "Status": {
+            "cycle": [
+              "On track",
+              "At risk",
+              "On track",
+              "Done",
+              "At risk"
+            ]
+          },
+          "Effort (points)": {
+            "seq": {
+              "start": 3,
+              "step": 2
+            }
+          }
+        }
+      }
+    },
+    {
+      "key": "programs",
+      "title": "Programs",
+      "parent": "portfolio",
+      "icon": "🏗️",
+      "dataSource": {
+        "name": "Programs"
+      },
+      "properties": {
+        "Name": {
+          "type": "title"
+        },
+        "Owner": {
+          "type": "rich_text"
+        },
+        "Linked Initiatives": {
+          "type": "multi_select",
+          "options": [
+            {
+              "name": "INIT-001",
+              "color": "default"
+            },
+            {
+              "name": "INIT-002",
+              "color": "default"
+            },
+            {
+              "name": "INIT-003",
+              "color": "default"
+            },
+            {
+              "name": "INIT-004",
+              "color": "default"
+            },
+            {
+              "name": "INIT-005",
+              "color": "default"
+            },
+            {
+              "name": "INIT-006",
+              "color": "default"
+            },
+            {
+              "name": "INIT-007",
+              "color": "default"
+            },
+            {
+              "name": "INIT-008",
+              "color": "default"
+            },
+            {
+              "name": "INIT-009",
+              "color": "default"
+            },
+            {
+              "name": "INIT-010",
+              "color": "default"
+            },
+            {
+              "name": "INIT-011",
+              "color": "default"
+            },
+            {
+              "name": "INIT-012",
+              "color": "default"
+            },
+            {
+              "name": "INIT-013",
+              "color": "default"
+            },
+            {
+              "name": "INIT-014",
+              "color": "default"
+            },
+            {
+              "name": "INIT-015",
+              "color": "default"
+            },
+            {
+              "name": "INIT-016",
+              "color": "default"
+            },
+            {
+              "name": "INIT-017",
+              "color": "default"
+            },
+            {
+              "name": "INIT-018",
+              "color": "default"
+            },
+            {
+              "name": "INIT-019",
+              "color": "default"
+            },
+            {
+              "name": "INIT-020",
+              "color": "default"
+            },
+            {
+              "name": "INIT-021",
+              "color": "default"
+            },
+            {
+              "name": "INIT-022",
+              "color": "default"
+            },
+            {
+              "name": "INIT-023",
+              "color": "default"
+            },
+            {
+              "name": "INIT-024",
+              "color": "default"
+            },
+            {
+              "name": "INIT-025",
+              "color": "default"
+            },
+            {
+              "name": "INIT-026",
+              "color": "default"
+            },
+            {
+              "name": "INIT-027",
+              "color": "default"
+            },
+            {
+              "name": "INIT-028",
+              "color": "default"
+            },
+            {
+              "name": "INIT-029",
+              "color": "default"
+            },
+            {
+              "name": "INIT-030",
+              "color": "default"
+            },
+            {
+              "name": "INIT-031",
+              "color": "default"
+            },
+            {
+              "name": "INIT-032",
+              "color": "default"
+            },
+            {
+              "name": "INIT-033",
+              "color": "default"
+            },
+            {
+              "name": "INIT-034",
+              "color": "default"
+            },
+            {
+              "name": "INIT-035",
+              "color": "default"
+            },
+            {
+              "name": "INIT-036",
+              "color": "default"
+            },
+            {
+              "name": "INIT-037",
+              "color": "default"
+            },
+            {
+              "name": "INIT-038",
+              "color": "default"
+            },
+            {
+              "name": "INIT-039",
+              "color": "default"
+            },
+            {
+              "name": "INIT-040",
+              "color": "default"
+            },
+            {
+              "name": "INIT-041",
+              "color": "default"
+            },
+            {
+              "name": "INIT-042",
+              "color": "default"
+            },
+            {
+              "name": "INIT-043",
+              "color": "default"
+            },
+            {
+              "name": "INIT-044",
+              "color": "default"
+            },
+            {
+              "name": "INIT-045",
+              "color": "default"
+            },
+            {
+              "name": "INIT-046",
+              "color": "default"
+            },
+            {
+              "name": "INIT-047",
+              "color": "default"
+            },
+            {
+              "name": "INIT-048",
+              "color": "default"
+            },
+            {
+              "name": "INIT-049",
+              "color": "default"
+            },
+            {
+              "name": "INIT-050",
+              "color": "default"
+            },
+            {
+              "name": "INIT-051",
+              "color": "default"
+            },
+            {
+              "name": "INIT-052",
+              "color": "default"
+            },
+            {
+              "name": "INIT-053",
+              "color": "default"
+            },
+            {
+              "name": "INIT-054",
+              "color": "default"
+            },
+            {
+              "name": "INIT-055",
+              "color": "default"
+            },
+            {
+              "name": "INIT-056",
+              "color": "default"
+            },
+            {
+              "name": "INIT-057",
+              "color": "default"
+            },
+            {
+              "name": "INIT-058",
+              "color": "default"
+            },
+            {
+              "name": "INIT-059",
+              "color": "default"
+            },
+            {
+              "name": "INIT-060",
+              "color": "default"
+            }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "key": "hub",
+          "properties": {
+            "Name": "Platform Modernization",
+            "Owner": "Ada Lovelace",
+            "Linked Initiatives": [
+              "INIT-001",
+              "INIT-002",
+              "INIT-003",
+              "INIT-004",
+              "INIT-005",
+              "INIT-006",
+              "INIT-007",
+              "INIT-008",
+              "INIT-009",
+              "INIT-010",
+              "INIT-011",
+              "INIT-012",
+              "INIT-013",
+              "INIT-014",
+              "INIT-015",
+              "INIT-016",
+              "INIT-017",
+              "INIT-018",
+              "INIT-019",
+              "INIT-020",
+              "INIT-021",
+              "INIT-022",
+              "INIT-023",
+              "INIT-024",
+              "INIT-025",
+              "INIT-026",
+              "INIT-027",
+              "INIT-028",
+              "INIT-029",
+              "INIT-030",
+              "INIT-031",
+              "INIT-032",
+              "INIT-033",
+              "INIT-034",
+              "INIT-035",
+              "INIT-036",
+              "INIT-037",
+              "INIT-038",
+              "INIT-039",
+              "INIT-040"
+            ]
+          }
+        },
+        {
+          "key": "billing",
+          "properties": {
+            "Name": "Billing Cleanup",
+            "Owner": "Grace Hopper",
+            "Linked Initiatives": [
+              "INIT-041",
+              "INIT-042",
+              "INIT-043"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
