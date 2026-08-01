@@ -84,4 +84,6 @@ Runtime: `offline` tasks need no Notion account (pure build / `exec --local` / i
 
 **Deliberate exclusions** (documented in the post): the MCP CRUD surface (owned by [MCPMark](https://mcpmark.ai) — 28 Notion tasks; we don't re-implement it), Workers *deployment* (Business-plan-gated; behavior verified via `exec --local` instead), UI-only features (automations, permissions UI, teamspace admin — not exposed to the public API).
 
+**Exhibition (outside the 38):** `showcase-001-dashboard-gallery` — one identical open-ended prompt to every config, screenshots shown as a gallery with objective placard stats; unscored by design.
+
 **Suite assignment:** ~28 of 38 → `benchmark` (published, frozen at v1); ~10 traps/pain-point tasks → `regression`; plus a private holdout (~8 additional unpublished tasks) for contamination detection later.
