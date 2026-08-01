@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "id": "investigate-comments-001-thread-summary",
+  "seed": 20260812,
+  "root": { "title": "NotionBench · investigate-comments-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "review",
+      "title": "Q3 Launch Review",
+      "icon": "🗒️",
+      "comments": [
+        {
+          "text": "Can we lock the launch date?",
+          "replies": ["Aiming for the 12th.", "The 12th works for support."]
+        },
+        { "text": "Who owns the changelog?" }
+      ],
+      "blocks": [
+        { "type": "heading_2", "text": "Where we are" },
+        {
+          "type": "paragraph",
+          "text": "Pricing page copy is still with legal.",
+          "comments": [
+            { "text": "This paragraph is out of date.", "replies": ["Rewriting it today."] }
+          ]
+        },
+        {
+          "type": "paragraph",
+          "text": "Support handoff is scheduled for the 10th.",
+          "comments": [{ "text": "Confirmed with support." }]
+        },
+        { "type": "heading_2", "text": "Open risks" },
+        {
+          "type": "bulleted_list_item",
+          "text": "The migration script has never run against production volume.",
+          "comments": [
+            {
+              "text": "How long does a dry run take?",
+              "replies": ["About forty minutes.", "Then let us do one on Friday.", "Booked."]
+            }
+          ]
+        },
+        { "type": "bulleted_list_item", "text": "Nobody has tested the rollback path." }
+      ]
+    },
+    {
+      "key": "notes",
+      "title": "Scratch notes",
+      "icon": "📎",
+      "comments": [{ "text": "Not part of the review.", "replies": ["Agreed, ignore this page."] }],
+      "blocks": [{ "type": "paragraph", "text": "Unrelated jottings." }]
+    }
+  ]
+}
