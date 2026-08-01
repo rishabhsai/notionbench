@@ -228,6 +228,13 @@ function configStatus(args: {
  * offsetting the `without` trials past the `with` ones (`trials` per condition
  * comes from run meta), which keeps trial numbers unique without dropping half
  * the run from the live view.
+ *
+ * The alternative — one row per (task, config, docsCondition) — would collide on
+ * `taskId` in the page's "By agent" table with nothing on screen to tell the two
+ * rows apart, so folding wins. The visible cost is the page's pass^3 column,
+ * which counts only rows with exactly 3 trials: a `--docs both --trials 3` run
+ * shows 6 and therefore reads 0 live. The published pass^k comes from
+ * `notionbench score`, which is docs-aware; the live view is a progress monitor.
  */
 function buildResults(records: readonly TrialRecord[], trialsPerCondition: number): StatusResult[] {
   const offset = Math.max(trialsPerCondition, 0);
