@@ -33,6 +33,11 @@
       const trials = rs.flatMap((r) => r.trials);
       const solved = trials.filter((t) => t.solved).length;
       const full = rs.filter((r) => r.trials.length >= k);
+      // Tokens and time both come from completed trials, so per-trial and total
+      // aggregations stay consistent with each other (and with the incomplete-
+      // run guard, which compares completed-trial counts).
+      const tokIn = trials.reduce((a, t) => a + t.tokens.input, 0);
+      const tokOut = trials.reduce((a, t) => a + t.tokens.output, 0);
       return {
         cfg,
         tasks: rs.length,
@@ -43,9 +48,13 @@
         pass3: full.length ? full.filter((r) => r.trials.slice(0, k).every((t) => t.solved)).length / full.length : 0,
         k,
         toolErrs: mean(trials.map((t) => t.toolErrors)),
-        tokens: cfg.tokens,
+        tokensIn: tokIn,
+        tokensOut: tokOut,
+        tokTotal: tokIn + tokOut,
+        tokPerTrial: trials.length ? (tokIn + tokOut) / trials.length : 0,
         cost: cfg.apiEquivCostUsd,
         medWallS: median(trials.map((t) => t.wallTimeS)),
+        totalWallS: trials.reduce((a, t) => a + t.wallTimeS, 0),
       };
     });
   }

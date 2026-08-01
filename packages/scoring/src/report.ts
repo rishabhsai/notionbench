@@ -84,6 +84,8 @@ export interface ReportRow {
   costKnown: boolean
   totalWallMs: number
   meanWallMs: number
+  /** Median wall time over counted trials — what one task typically costs. */
+  medianWallMs: number
   /** Cells dropped from this row for having fewer than k trials. */
   droppedTasks: string[]
 }
@@ -268,6 +270,7 @@ function summarizeRow(rows: readonly TrialRecord[], opts: RowOptions): ReportRow
       costKnown: false,
       totalWallMs: 0,
       meanWallMs: 0,
+      medianWallMs: 0,
       droppedTasks,
     }
   }
@@ -298,8 +301,16 @@ function summarizeRow(rows: readonly TrialRecord[], opts: RowOptions): ReportRow
     costKnown,
     totalWallMs,
     meanWallMs: totalWallMs / counted.length,
+    medianWallMs: median(counted.map((r) => r.wallTimeMs ?? 0)),
     droppedTasks,
   }
+}
+
+function median(xs: readonly number[]): number {
+  if (xs.length === 0) return 0
+  const sorted = [...xs].sort((a, b) => a - b)
+  const mid = sorted.length >> 1
+  return sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +332,13 @@ export function renderReport(report: Report): string {
       "Wilson score interval on the underlying solve rate. pass^k is the probability that " +
       "k trials drawn from the observed ones all succeeded — discovery and reliability are " +
       "different questions and are reported separately.",
+  )
+  out.push("")
+  out.push(
+    "Tokens and time are each reported under both aggregations because they answer " +
+      "different questions: tokens/trial (the mean over counted trials) and median time " +
+      "(the per-trial median) say what one task costs with this agent; total tokens and " +
+      "total time (sums over the counted trials) say what running the whole suite costs.",
   )
   out.push("")
   for (const note of report.notes) out.push(`> ${note}`)
@@ -371,20 +389,40 @@ export function mainTable(report: Report): string {
     `pass^${k}`,
     "Tool errors",
     "Tokens/trial",
+    "Total tokens",
     "API-equiv cost",
-    "Wall time/trial",
+    "Median time",
+    "Total time",
   ]
-  const align = ["---", "---:", "---:", "---:", "---:", "---:", "---:"]
-  const body = report.overall.map((r) => [
-    r.label,
-    `${pct(r.avgScore)} [${pct(r.ci.low)}–${pct(r.ci.high)}]`,
-    pct(r.passHatK),
-    String(r.toolErrors) + (r.unscored > 0 ? ` (${r.unscored} unverified)` : ""),
-    compactNumber(r.meanTokens),
-    r.costKnown ? usd(r.costUsd) : "–",
-    duration(r.meanWallMs),
-  ])
-  return table(header, align, body)
+  const align = ["---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:"]
+  // A total is only comparable across configs that completed the same number of
+  // cells; on a partial run the short rows' totals get an asterisk and a footnote.
+  const maxCells = report.overall.reduce((a, r) => Math.max(a, r.cells), 0)
+  let starred = false
+  const body = report.overall.map((r) => {
+    const short = r.cells < maxCells
+    if (short) starred = true
+    const star = short ? "\\*" : ""
+    return [
+      r.label,
+      `${pct(r.avgScore)} [${pct(r.ci.low)}–${pct(r.ci.high)}]`,
+      pct(r.passHatK),
+      String(r.toolErrors) + (r.unscored > 0 ? ` (${r.unscored} unverified)` : ""),
+      compactNumber(r.meanTokens),
+      compactNumber(r.totalTokens) + star,
+      r.costKnown ? usd(r.costUsd) : "–",
+      duration(r.medianWallMs),
+      duration(r.totalWallMs) + star,
+    ]
+  })
+  const md = table(header, align, body)
+  if (!starred) return md
+  return (
+    md +
+    "\n\n" +
+    "\\* This config completed fewer cells than the fullest config in this table, so its " +
+    "totals cover less work and are not comparable across rows. Per-trial columns are."
+  )
 }
 
 function breakdownTable(breakdownData: Breakdown, groupHeader: string): string {

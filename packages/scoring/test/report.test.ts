@@ -178,6 +178,19 @@ describe("buildReport", () => {
     expect(row.costUsd).toBeCloseTo(0.06, 10)
     expect(row.costKnown).toBe(true)
     expect(row.meanWallMs).toBe(60_000)
+    expect(row.totalWallMs).toBe(180_000)
+  })
+
+  it("reports the per-trial median wall time alongside the total", () => {
+    const report = buildReport([
+      record({ taskId: "build-nac-001-a", trial: 1, wallTimeMs: 10_000 }),
+      record({ taskId: "build-nac-002-b", trial: 1, wallTimeMs: 30_000 }),
+      record({ taskId: "build-nac-003-c", trial: 1, wallTimeMs: 500_000 }),
+    ])
+    const row = report.overall[0]!
+    expect(row.medianWallMs).toBe(30_000)
+    expect(row.totalWallMs).toBe(540_000)
+    expect(row.meanWallMs).toBe(180_000)
   })
 
   it("marks cost unknown when no config published prices", () => {
@@ -241,13 +254,52 @@ describe("renderReport", () => {
     { runId: "20260731-120000", generatedAt: new Date("2026-07-31T12:00:00Z") },
   )
 
-  it("renders the README-style config table", () => {
+  it("renders the README-style config table with both aggregations of tokens and time", () => {
     const md = mainTable(report)
-    expect(md).toContain("| Config | avg@3 (95% CI) | pass^3 | Tool errors | Tokens/trial | API-equiv cost | Wall time/trial |")
+    expect(md).toContain(
+      "| Config | avg@3 (95% CI) | pass^3 | Tool errors | Tokens/trial | Total tokens | API-equiv cost | Median time | Total time |",
+    )
     expect(md).toContain("Claude Code × Opus 5")
     expect(md).toContain("$0.12")
-    expect(md).toContain("1.5k")
-    expect(md).toContain("1m00s")
+    expect(md).toContain("1.5k") // tokens/trial: mean over the 6 counted trials
+    expect(md).toContain("9.0k") // total tokens: sum over the 6 counted trials
+    expect(md).toContain("1m00s") // median time per trial
+    expect(md).toContain("6m00s") // total wall time
+  })
+
+  it("explains which aggregation answers which question above the table", () => {
+    const md = renderReport(report)
+    expect(md).toMatch(/tokens\/trial \(the mean over counted trials\)/)
+    expect(md).toMatch(/median time\s+\(the per-trial median\)/)
+    expect(md).toMatch(/what one task costs with this agent/)
+    expect(md).toMatch(/what running the whole suite costs/)
+  })
+
+  it("stars totals only for configs that completed fewer cells than the fullest", () => {
+    const partial = buildReport(
+      [
+        ...cell("build-nac-001-a", "c-full", 1, 1, { configLabel: undefined }),
+        ...cell("build-nac-002-b", "c-full", 1, 1, { configLabel: undefined }),
+        ...cell("build-nac-001-a", "c-short", 1, 1, { configLabel: undefined }),
+      ],
+      { k: 1 },
+    )
+    const md = mainTable(partial)
+    const rows = md.split("\n").filter((l) => l.startsWith("|"))
+    const fullRow = rows.find((l) => l.includes("c-full"))!
+    const shortRow = rows.find((l) => l.includes("c-short"))!
+    expect(fullRow).not.toContain("\\*")
+    expect(shortRow).toContain("1.5k\\*") // total tokens starred
+    expect(shortRow).toContain("1m00s\\*") // total time starred
+    expect(shortRow).not.toContain("| 1.5k\\* | 1.5k\\*") // the per-trial column is never starred
+    expect(md).toContain(
+      "totals cover less work and are not comparable across rows. Per-trial columns are.",
+    )
+  })
+
+  it("omits the not-comparable footnote when every config completed the same cells", () => {
+    expect(mainTable(report)).not.toContain("\\*")
+    expect(mainTable(report)).not.toContain("not comparable")
   })
 
   it("includes the run id, the axes, and every breakdown", () => {

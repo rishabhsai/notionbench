@@ -221,6 +221,9 @@ table.db th .arr { font-size: 10px; margin-left: 3px; }
 table.db tbody tr:hover { background: var(--hover); }
 table.db td.num, table.db th.num { text-align: right; font-variant-numeric: tabular-nums; }
 table.db td.rank { color: var(--ink-3); width: 2ch; }
+/* totals not comparable to fuller rows (mid-run config) — muted + starred */
+table.db td.not-comp { color: var(--ink-3); }
+table.db .star { color: var(--ink-3); margin-left: 1px; }
 .cfg-cell { display: flex; align-items: center; gap: 8px; }
 .cfg-cell .sub { color: var(--ink-3); font-size: 12px; }
 .ci { color: var(--ink-3); font-size: 11.5px; margin-left: 4px; }
@@ -307,6 +310,11 @@ svg text { font-family: var(--sans); }
   .charts-grid { grid-template-columns: 1fr; }
   .lane { grid-template-columns: 1fr; gap: 6px; padding: 12px 4px; }
   .lane-side { flex-direction: row; flex-wrap: wrap; gap: 4px 16px; }
+}
+@media (max-width: 700px) {
+  /* phone-first live monitoring: the two "total" columns matter most in the
+     final published table, so they collapse before anything else does */
+  table.db .col-total { display: none; }
 }
 @media (max-width: 620px) {
   h1 { font-size: 30px; }

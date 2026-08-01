@@ -120,41 +120,55 @@
     { key: "avg", label: "avg@k", num: true },
     { key: "pass3", label: "pass^k", num: true },
     { key: "toolErrs", label: "Tool errors", num: true, title: "mean per trial" },
-    { key: "tok", label: "Tokens", num: true },
+    { key: "tokPerTrial", label: "Tokens/trial", num: true, title: "mean tokens per completed trial" },
+    { key: "tokTotal", label: "Total tokens", num: true, cls: "col-total", title: "summed over completed trials" },
     { key: "cost", label: "API-equiv cost", num: true },
-    { key: "medWallS", label: "Median time", num: true },
+    { key: "medWallS", label: "Median time", num: true, title: "median wall time per trial" },
+    { key: "totalWallS", label: "Total time", num: true, cls: "col-total", title: "summed wall time over completed trials" },
   ];
 
   function renderLeaderboard(data, state, rerender) {
     const rows = NB.stats.perConfig(data).filter((r) => r.trials > 0);
+    // Totals are only comparable across configs that completed the same number
+    // of cells; mid-run stragglers get their two total columns muted + starred.
+    const maxTrials = rows.reduce((a, r) => Math.max(a, r.trials), 0);
     const key = state.sort.key, dir = state.sort.dir;
-    const val = (r) => key === "label" ? r.cfg.label.toLowerCase() : key === "tok" ? r.tokens.input + r.tokens.output : r[key];
+    const val = (r) => key === "label" ? r.cfg.label.toLowerCase() : r[key];
     rows.sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
 
     const partial = data.configs.some((c) => c.status !== "done");
     const head = LB_COLS.map((c) => {
       const arrow = state.sort.key === c.key ? `<span class="arr">${dir < 0 ? "▼" : "▲"}</span>` : "";
-      return `<th class="sortable ${c.num ? "num" : ""}" data-key="${c.key}" ${c.title ? `title="${c.title}"` : ""} aria-sort="${state.sort.key === c.key ? (dir < 0 ? "descending" : "ascending") : "none"}">${c.label}${arrow}</th>`;
+      return `<th class="sortable ${c.num ? "num" : ""} ${c.cls || ""}" data-key="${c.key}" ${c.title ? `title="${c.title}"` : ""} aria-sort="${state.sort.key === c.key ? (dir < 0 ? "descending" : "ascending") : "none"}">${c.label}${arrow}</th>`;
     }).join("");
 
+    let starred = false;
     const body = rows.map((r, i) => {
       const running = r.cfg.status !== "done" && data.mode === "live";
+      const short = r.trials < maxTrials;
+      if (short) starred = true;
+      const star = short ? `<span class="star" aria-label="not comparable — fewer completed cells">*</span>` : "";
+      const totCls = short ? "num col-total not-comp" : "num col-total";
+      const inOut = `${r.tokensIn.toLocaleString("en-US")} in / ${r.tokensOut.toLocaleString("en-US")} out`;
       return `<tr>
         <td class="rank">${i + 1}</td>
         <td><div class="cfg-cell"><span class="dot" style="background:${slotVar(r.cfg.slot)}"></span><span>${esc(r.cfg.label)}${running ? ` <span class="sub">(${r.cfg.progress.done}/${r.cfg.progress.total} cells)</span>` : ""}</span></div></td>
         <td class="num"><span class="score-cell">${meterHtml(r.avg, "var(--seq)", "thin")}<span>${fmt.score(r.avg)}<span class="ci">±${r.ciHalf.toFixed(2)}</span></span></span></td>
         <td class="num">${fmt.pct(r.pass3)}</td>
         <td class="num">${r.toolErrs.toFixed(1)}</td>
-        <td class="num" title="${r.tokens.input.toLocaleString("en-US")} in / ${r.tokens.output.toLocaleString("en-US")} out">${fmt.tokens(r.tokens.input + r.tokens.output)}</td>
+        <td class="num" title="mean over ${r.trials} completed trial${r.trials === 1 ? "" : "s"}">${fmt.tokens(Math.round(r.tokPerTrial))}</td>
+        <td class="${totCls}" title="${inOut}">${fmt.tokens(r.tokTotal)}${star}</td>
         <td class="num">${fmt.money(r.cost)}</td>
         <td class="num">${fmt.dur(r.medWallS)}</td>
+        <td class="${totCls}">${fmt.dur(r.totalWallS)}${star}</td>
       </tr>`;
     }).join("");
 
     $("board").innerHTML = `<table class="db">
       <thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>` +
       (partial ? `<p class="chart-note">Configs still running are scored on completed cells only — ± is the 95% Wilson interval on the solve rate.</p>`
-               : `<p class="chart-note">± is the 95% Wilson interval on the solve rate. pass^k = solved in all k trials (k = ${NB.stats.observedK(data)} in this run).</p>`);
+               : `<p class="chart-note">± is the 95% Wilson interval on the solve rate. pass^k = solved in all k trials (k = ${NB.stats.observedK(data)} in this run). Tokens/trial is the mean per completed trial; median time the per-trial median; the total columns are sums over the run.</p>`) +
+      (starred ? `<p class="chart-note">* Total tokens and total time are sums over completed cells only — this config has completed fewer cells than the fullest one, so its totals cover less work and aren't comparable across rows. Per-trial means and medians are.</p>` : "");
 
     for (const th of $("board").querySelectorAll("th.sortable"))
       th.addEventListener("click", () => {
