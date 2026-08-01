@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "id": "build-workers-005-enrichment-tool",
+  "seed": 20260817,
+  "root": { "title": "NotionBench · build-workers-005", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "sales",
+      "title": "Sales",
+      "icon": "💼",
+      "blocks": [{ "type": "paragraph", "text": "Order intake. The maths is done by hand and it shows." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "orders",
+      "title": "Orders",
+      "parent": "sales",
+      "dataSource": { "name": "Orders" },
+      "properties": {
+        "Order": { "type": "title" },
+        "Unit price": { "type": "number", "format": "dollar" },
+        "Quantity": { "type": "number" },
+        "Order total": { "type": "number", "format": "dollar" },
+        "Tier": {
+          "type": "select",
+          "options": [
+            { "name": "Standard", "color": "gray" },
+            { "name": "Priority", "color": "blue" },
+            { "name": "Strategic", "color": "purple" }
+          ]
+        }
+      },
+      "rows": [
+        {
+          "key": "ord-small",
+          "properties": { "Order": "ORD-3001", "Unit price": 19, "Quantity": 12, "Order total": null, "Tier": null }
+        },
+        {
+          "key": "ord-mid",
+          "properties": { "Order": "ORD-3002", "Unit price": 240, "Quantity": 7, "Order total": null, "Tier": null }
+        },
+        {
+          "key": "ord-large",
+          "properties": { "Order": "ORD-3003", "Unit price": 1250, "Quantity": 9, "Order total": null, "Tier": null }
+        },
+        {
+          "key": "ord-boundary",
+          "properties": { "Order": "ORD-3004", "Unit price": 100, "Quantity": 10, "Order total": null, "Tier": null }
+        }
+      ]
+    }
+  ]
+}
