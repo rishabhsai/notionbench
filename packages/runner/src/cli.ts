@@ -7,6 +7,7 @@
  *   notionbench run --resume <runId>
  *   notionbench score <runDir>
  *   notionbench status <runId>
+ *   notionbench serve <runDir>
  *   notionbench configs
  *   notionbench tasks --tasks <glob>
  */
@@ -36,7 +37,14 @@ import {
 } from './checkpoint.js';
 import { ConfigError, loadRunConfig, selectConfigs, type AgentConfig } from './config.js';
 import { getAdapter, hasAdapter } from './parsers/index.js';
-import { Scheduler, runQueue, type CellOutcome, type QueueCell } from './queue.js';
+import {
+  Scheduler,
+  runQueue,
+  writeRateWindowState,
+  type CellOutcome,
+  type QueueCell,
+} from './queue.js';
+import { DEFAULT_HOST, DEFAULT_PORT, defaultWebRoot, serve } from './serve.js';
 import { compilePatterns } from './rate-limit.js';
 import { buildPlan, renderPlan } from './plan.js';
 import { isScorable, scoreTrial, unscoredRecord } from './score.js';
@@ -51,6 +59,7 @@ Usage:
   notionbench run [options]
   notionbench score <runDir|runId> [--k <n>] [--results <dir>] [--json]
   notionbench status <runId> [--results <dir>] [--json]
+  notionbench serve <runDir|runId> [--port <n>] [--key <token>] [--host <addr>]
   notionbench configs [--runconfig <path>] [--json]
   notionbench tasks [--tasks <glob>] [--evals <dir>] [--json]
 
@@ -82,9 +91,18 @@ score options:
   --results <dir>       Results root, when a bare runId is given. Default results/
   --json                Emit the report as JSON instead of markdown.
 
+serve options:
+  --port <n>            Listen port. Default 8377.
+  --host <addr>         Bind address. Default 127.0.0.1 (loopback only).
+  --key <token>         Bearer token for /api/status. Default: a fresh random
+                        token, printed at startup.
+  --web <dir>           Static dashboard directory. Default: the repo's web/.
+  --results <dir>       Results root, when a bare runId is given. Default results/
+
 \`run\` does spawn -> score -> checkpoint per trial and appends every scored
 rollout to results/<runId>/results.jsonl; \`score\` aggregates that file into
-results/<runId>/summary.md and prints it.
+results/<runId>/summary.md and prints it. \`serve\` reads a run directory (while
+it is still being written) and hosts the live dashboard + /api/status.
 `;
 
 type Argv = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>;
@@ -107,6 +125,10 @@ const OPTIONS = {
   'score-timeout': { type: 'string' },
   'no-score': { type: 'boolean' },
   'dry-run': { type: 'boolean' },
+  port: { type: 'string' },
+  host: { type: 'string' },
+  key: { type: 'string' },
+  web: { type: 'string' },
   k: { type: 'string' },
   json: { type: 'boolean' },
   help: { type: 'boolean', short: 'h' },
@@ -136,6 +158,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return await cmdScore(values, positionals[1]);
       case 'status':
         return await cmdStatus(values, positionals[1]);
+      case 'serve':
+        return await cmdServe(values, positionals[1]);
       case 'configs':
         return await cmdConfigs(values);
       case 'tasks':
@@ -236,6 +260,60 @@ async function cmdStatus(values: Values, runId: string | undefined): Promise<num
     if (failed.length > 20) process.stdout.write(`    … and ${failed.length - 20} more\n`);
   }
   return summary.failed > 0 ? 1 : 0;
+}
+
+/**
+ * Host the live dashboard for a run that is (usually) still executing.
+ *
+ * Read-only by construction: it opens no checkpoint, takes no lock, and re-reads
+ * state.json/results.jsonl only when their mtime changes, so pointing it at the
+ * directory a run is actively writing is safe.
+ */
+async function cmdServe(values: Values, target: string | undefined): Promise<number> {
+  const runconfigPath = await defaultRunconfigPath(values.runconfig);
+  const rc = await loadRunConfig(runconfigPath);
+  const resultsRoot = path.resolve(values.results ?? rc.resultsRoot);
+  const runDir = await resolveRunDir(target, resultsRoot);
+  if (!runDir) {
+    process.stderr.write(
+      `serve requires a run directory or run id (looked under ${resultsRoot})\n`,
+    );
+    return 2;
+  }
+  if (!(await isDir(runDir))) {
+    process.stderr.write(`not a run directory: ${runDir}\n`);
+    return 2;
+  }
+
+  const port = values.port ? intOpt(values.port, 0, '--port') : DEFAULT_PORT;
+  const handle = await serve({
+    runDir,
+    port,
+    host: values.host ?? DEFAULT_HOST,
+    key: values.key,
+    runconfigPath,
+    webRoot: values.web,
+  });
+
+  process.stdout.write(
+    `notionbench serve — ${runDir}\n` +
+      `  dashboard  ${handle.url}\n` +
+      `  api        http://${handle.host}:${handle.port}/api/status  (Authorization: Bearer ${handle.key})\n` +
+      `  static     ${path.resolve(values.web ?? defaultWebRoot())}\n` +
+      (values.key ? '' : '  (token generated for this process; pass --key to pin one)\n') +
+      `  Ctrl-C to stop\n`,
+  );
+
+  await new Promise<void>((resolve) => {
+    const stop = () => {
+      process.stdout.write('\nstopping\n');
+      void handle.close().then(resolve, resolve);
+    };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+    handle.server.once('close', resolve);
+  });
+  return 0;
 }
 
 /**
@@ -476,7 +554,17 @@ async function cmdRun(values: Values): Promise<number> {
     );
   }
 
-  const scheduler = new Scheduler({ concurrency, cooldownMs, maxAttempts });
+  const scheduler = new Scheduler({
+    concurrency,
+    cooldownMs,
+    maxAttempts,
+    // Mirror cooldown/blocked next to state.json so `notionbench serve` — a
+    // separate process — can report them. Best effort: a failed mirror write
+    // must never interrupt a multi-day run.
+    onRateWindowChange: (s) => {
+      void writeRateWindowState(runDir, s).catch(() => {});
+    },
+  });
   scheduler.enqueue(cp.pending().map((c) => ({ ...c, attempts: c.attempts })));
 
   const configById = new Map(configs.map((c) => [c.id, c]));

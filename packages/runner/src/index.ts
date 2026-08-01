@@ -57,15 +57,43 @@ export {
 } from './plan.js';
 
 export {
+  DEFAULT_MAX_RATE_LIMITED_ATTEMPTS,
+  RATE_WINDOW_STATE_FILENAME,
   Scheduler,
+  rateWindowStatePath,
+  readRateWindowState,
   runQueue,
+  writeRateWindowState,
   type CellOutcome,
   type Decision,
   type QueueCell,
+  type RateWindowState,
   type RunQueueOptions,
   type SchedulerEvent,
   type SchedulerOptions,
 } from './queue.js';
+
+export {
+  DEFAULT_HOST,
+  DEFAULT_PORT,
+  STATUS_SCHEMA_VERSION,
+  StatusSource,
+  buildStatus,
+  createStatusServer,
+  dashboardUrl,
+  defaultWebRoot,
+  generateKey,
+  serve,
+  type ConfigStatus,
+  type ServeHandle,
+  type ServeOptions,
+  type StatusConfig,
+  type StatusFailure,
+  type StatusInput,
+  type StatusPayload,
+  type StatusResult,
+  type StatusTrial,
+} from './serve.js';
 
 export {
   STRIPPED_ENV_KEYS,
