@@ -63,6 +63,16 @@ async function findTasks(): Promise<string[]> {
   return out.sort()
 }
 
+/**
+ * A task is QC-able once it has an oracle. Tasks mid-authoring (PROMPT.md and
+ * fixture written, `solution/` not yet) are reported as skipped rather than
+ * failing the gate — but they are *printed*, so "the suite is green" can never
+ * quietly mean "nothing ran".
+ */
+async function isQcable(taskDir: string): Promise<boolean> {
+  return exists(path.join(taskDir, "solution"))
+}
+
 const qcRoot = process.env.NOTIONBENCH_QC_DIR ?? path.join(os.tmpdir(), "notionbench-qc")
 
 /**
@@ -160,8 +170,14 @@ async function main(): Promise<void> {
   }
 
   const checks: Check[] = []
+  const skipped: string[] = []
   for (const taskDir of tasks) {
     console.log(`\n── ${path.basename(taskDir)}`)
+    if (!(await isQcable(taskDir))) {
+      skipped.push(path.basename(taskDir))
+      console.log("   SKIP  no solution/ — task is still being authored")
+      continue
+    }
     for (const variant of args.variants) {
       const check = await runVariant(taskDir, variant, args.keep)
       checks.push(check)
@@ -187,10 +203,18 @@ async function main(): Promise<void> {
   const failed = checks.filter((c) => !c.ok)
   console.log(
     `\n${checks.length - failed.length}/${checks.length} checks green` +
+      (skipped.length > 0 ? `, ${skipped.length} task(s) skipped: ${skipped.join(", ")}` : "") +
       (args.keep ? ` (trials kept under ${qcRoot})` : ""),
   )
   if (failed.length > 0) {
     for (const f of failed) console.log(`  FAIL ${f.task} / ${f.variant}`)
+    process.exitCode = 1
+    return
+  }
+  // A gate that passes because it checked nothing is worse than no gate: fail
+  // loudly if a selection matched no runnable task.
+  if (checks.length === 0) {
+    console.log("  no QC-able task ran — refusing to report a green gate")
     process.exitCode = 1
   }
 }

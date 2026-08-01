@@ -1,0 +1,72 @@
+name: CI
+
+# Everything here is offline and deterministic: no agent CLIs, no Notion
+# workspace, no tokens. The benchmark's own runs are operator-driven against a
+# paid subscription and are never triggered from CI.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Trials/QC never talk to a model or a workspace; make that impossible rather
+  # than incidental, and keep npm quiet inside the task fixtures.
+  CI: '1'
+  NPM_CONFIG_FUND: 'false'
+  NPM_CONFIG_AUDIT: 'false'
+
+jobs:
+  build-test-qc:
+    name: build · test · task QC
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # Matches `packageManager` in the root package.json.
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm -r build
+
+      - name: Test
+        run: pnpm -r test
+
+      # The QC gate. Every task must prove it grades: the oracle solution scores
+      # 1, a plausibly-wrong solution scores 0, and a null agent (untouched
+      # fixture) scores 0. A task that cannot fail is not a task.
+      #
+      # `qc.ts` installs each fixture's dependencies once per task into a warm
+      # cache and symlinks it into the three trial workspaces, so the npm cost is
+      # paid once per task rather than nine times.
+      - name: Cache task fixture installs
+        uses: actions/cache@v4
+        with:
+          path: ${{ runner.temp }}/notionbench-qc
+          key: qc-deps-${{ runner.os }}-${{ hashFiles('evals/*/fixture/workspace/package-lock.json', 'evals/*/fixture/workspace/package.json') }}
+          restore-keys: |
+            qc-deps-${{ runner.os }}-
+
+      - name: Task QC gate (solution=1, wrong=0, null=0 for every task)
+        env:
+          NOTIONBENCH_QC_DIR: ${{ runner.temp }}/notionbench-qc
+        run: pnpm --filter @notionbench/evals run qc
