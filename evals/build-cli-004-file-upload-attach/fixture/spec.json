@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "id": "build-cli-004-file-upload-attach",
+  "seed": 20260814,
+  "root": { "title": "NotionBench · build-cli-004", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "engineering",
+      "title": "Engineering",
+      "icon": "🛠️",
+      "blocks": [{ "type": "paragraph", "text": "Ship logs and everything that hangs off them." }]
+    }
+  ],
+  "databases": [
+    {
+      "key": "releases",
+      "title": "Release Log",
+      "parent": "engineering",
+      "dataSource": { "name": "Release Log" },
+      "properties": {
+        "Version": { "type": "title" },
+        "Shipped": { "type": "date" },
+        "Status": {
+          "type": "select",
+          "options": [
+            { "name": "Planned", "color": "gray" },
+            { "name": "Shipped", "color": "green" }
+          ]
+        },
+        "Assets": { "type": "files" }
+      },
+      "rows": [
+        {
+          "key": "rel220",
+          "properties": { "Version": "v2.2.0", "Shipped": "2026-06-09", "Status": "Shipped" }
+        },
+        {
+          "key": "rel230",
+          "properties": { "Version": "v2.3.0", "Shipped": "2026-07-07", "Status": "Shipped" }
+        },
+        {
+          "key": "rel240",
+          "properties": { "Version": "v2.4.0", "Shipped": "2026-08-04", "Status": "Shipped" }
+        },
+        {
+          "key": "rel250",
+          "properties": { "Version": "v2.5.0", "Shipped": "2026-09-01", "Status": "Planned" }
+        }
+      ]
+    }
+  ]
+}
