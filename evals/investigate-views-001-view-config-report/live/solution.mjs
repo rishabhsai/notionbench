@@ -23,13 +23,23 @@ for (;;) {
   cursor = page.next_cursor
 }
 
+// Views reference properties by opaque id; the report asks for names, so pull
+// the schema once and translate. Values already spelled as names pass through.
+const database = await api("get", `databases/${databaseId}`)
+const dataSource = await api("get", `data_sources/${database.data_sources[0].id}`)
+const nameById = Object.fromEntries(
+  Object.entries(dataSource.properties ?? {}).map(([name, prop]) => [prop.id, name]),
+)
+const nameOf = (v) => (typeof v === "string" ? (nameById[v] ?? v) : null)
+
 const views = {}
 for (const stub of stubs) {
   const view = await api("get", `views/${stub.id}`)
+  const groupBy = view.configuration?.group_by
   views[view.name] = {
     type: view.type,
-    group_by: view.configuration?.group_by?.property_name ?? null,
-    filter_property: view.filter?.property ?? null,
+    group_by: nameOf(groupBy?.property_name) ?? nameOf(groupBy?.property_id),
+    filter_property: nameOf(view.filter?.property),
   }
 }
 

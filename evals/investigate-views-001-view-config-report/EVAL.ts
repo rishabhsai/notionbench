@@ -44,15 +44,29 @@ interface ViewFacts {
   filter_property: string | null
 }
 
-/** The three facts the task asks for, pulled out of one view object. */
-function factsOf(view: NotionView): ViewFacts {
-  const configuration = (view.configuration ?? {}) as { group_by?: { property_name?: unknown } }
-  const groupBy = configuration.group_by?.property_name
+/**
+ * The three facts the task asks for, pulled out of one view object.
+ *
+ * Properties come back spelled two different ways depending on the endpoint and
+ * how the view was authored: real Notion answers with opaque property *ids*
+ * (`"Kg@B"`), while a view created by name may echo the *name* back. The task
+ * prompt asks for names — its own example answer shows `"filter_property":
+ * "Quarter"` — so both spellings are normalized to the name here via the
+ * schema's id→name map. Anything not found in the map passes through unchanged.
+ */
+function factsOf(view: NotionView, propertyNames: Record<string, string>): ViewFacts {
+  const nameOf = (v: unknown): string | null =>
+    typeof v === "string" ? (propertyNames[v] ?? v) : null
+
+  const configuration = (view.configuration ?? {}) as {
+    group_by?: { property_name?: unknown; property_id?: unknown }
+  }
+  const groupBy = configuration.group_by
   const filter = (view.filter ?? null) as { property?: unknown } | null
   return {
     type: String(view.type),
-    group_by: typeof groupBy === "string" ? groupBy : null,
-    filter_property: typeof filter?.property === "string" ? filter.property : null,
+    group_by: nameOf(groupBy?.property_name) ?? nameOf(groupBy?.property_id),
+    filter_property: nameOf(filter?.property),
   }
 }
 
@@ -77,8 +91,27 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
 
   // ---- ground truth: list the stubs, then retrieve every one of them -------
   const views = await client.listAllViewsFor({ database_id: databaseId })
+
+  // Views reference properties by id; the answer is asked for by name. Build the
+  // id→name map once from the database's schema so both spellings compare equal.
+  let propertyNames: Record<string, string> = {}
+  try {
+    const dsId = (await client.getDatabase(databaseId)).data_sources?.[0]?.id
+    if (dsId) {
+      const ds = await client.getDataSource(dsId)
+      propertyNames = Object.fromEntries(
+        Object.entries(ds.properties ?? {}).flatMap(([name, prop]) => {
+          const id = (prop as { id?: unknown })?.id
+          return typeof id === "string" ? [[id, name] as const] : []
+        }),
+      )
+    }
+  } catch (err) {
+    diagnostics.push(`could not read the schema to resolve property ids: ${(err as Error).message}`)
+  }
+
   const expected: Record<string, ViewFacts> = {}
-  for (const view of views) expected[String(view.name)] = factsOf(view)
+  for (const view of views) expected[String(view.name)] = factsOf(view, propertyNames)
   const expectedNames = Object.keys(expected)
   diagnostics.push(
     `ground truth: ${views.length} view(s) — ` +
@@ -140,7 +173,11 @@ export default async function evaluate({ workspaceDir, ctx }: EvalArgs): Promise
     const e = entry as Record<string, unknown>
     const want = expected[name]
     for (const key of ["type", "group_by", "filter_property"] as const) {
-      const value = e[key] === undefined ? null : e[key]
+      const raw = e[key] === undefined ? null : e[key]
+      // Accept either spelling from the agent: a property name, or the opaque id
+      // the API reports it under. Neither is more correct than the other.
+      const value =
+        key === "type" || typeof raw !== "string" ? raw : (propertyNames[raw] ?? raw)
       if (value !== want[key]) {
         problems.push(`"${name}".${key} is ${JSON.stringify(value)}, expected ${JSON.stringify(want[key])}`)
       }
