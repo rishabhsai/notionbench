@@ -1,0 +1,303 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "ops-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Operations",
+    "accessLevel": "open",
+    "icon": {
+      "type": "notion_icon",
+      "description": "gear",
+      "color": "gray"
+    },
+    "description": "How we keep the lights on."
+  },
+  {
+    "type": "page",
+    "resourceId": "ops-handbook-page",
+    "properties": {
+      "title": [
+        [
+          "Operations handbook"
+        ]
+      ]
+    },
+    "icon": {
+      "type": "notion_icon",
+      "description": "book",
+      "color": "blue"
+    },
+    "content": "# Operations handbook\n\n<callout icon=\"📌\">\nStart here if you are new to the rotation.\n</callout>\n",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ops-teamspace"
+    }
+  },
+  {
+    "type": "database",
+    "resourceId": "runbooks-db",
+    "name": "Runbooks",
+    "icon": {
+      "type": "notion_icon",
+      "description": "clipboard",
+      "color": "green"
+    },
+    "dataSources": [
+      {
+        "resourceId": "runbooks-ds",
+        "name": "Runbooks",
+        "properties": [
+          {
+            "resourceId": "runbook-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "runbook-system-prop",
+            "name": "System",
+            "type": "select",
+            "options": [
+              {
+                "name": "Billing",
+                "color": "orange"
+              },
+              {
+                "name": "Search",
+                "color": "blue"
+              },
+              {
+                "name": "Ingest",
+                "color": "purple"
+              }
+            ]
+          },
+          {
+            "resourceId": "runbook-owner-prop",
+            "name": "Owner",
+            "type": "text"
+          },
+          {
+            "resourceId": "runbook-reviewed-prop",
+            "name": "Last Reviewed",
+            "type": "date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "ops-teamspace"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "runbooks-db",
+    "view": {
+      "resourceId": "runbooks-table-view",
+      "name": "All Runbooks",
+      "type": "table",
+      "dataSourceResourceId": "runbooks-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "billing-retry-runbook",
+    "properties": {
+      "Name": [
+        [
+          "Replay failed billing retries"
+        ]
+      ],
+      "System": "Billing",
+      "Owner": [
+        [
+          "Dana Whitfield"
+        ]
+      ],
+      "Last Reviewed": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-06-12"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "runbooks-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "search-reindex-runbook",
+    "properties": {
+      "Name": [
+        [
+          "Reindex the search cluster"
+        ]
+      ],
+      "System": "Search",
+      "Owner": [
+        [
+          "Sam Ibarra"
+        ]
+      ],
+      "Last Reviewed": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-03"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "runbooks-ds"
+    }
+  },
+  {
+    "type": "teamspace",
+    "resourceId": "vendors-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Vendors",
+    "accessLevel": "open",
+    "description": "Contracts, renewals, and who owns the relationship."
+  },
+  {
+    "type": "database",
+    "resourceId": "vendors-db",
+    "name": "Vendors",
+    "dataSources": [
+      {
+        "resourceId": "vendors-ds",
+        "name": "Vendors",
+        "properties": [
+          {
+            "resourceId": "vendor-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "vendor-tier-prop",
+            "name": "Tier",
+            "type": "select",
+            "options": [
+              {
+                "name": "Critical",
+                "color": "red"
+              },
+              {
+                "name": "Standard",
+                "color": "gray"
+              }
+            ]
+          },
+          {
+            "resourceId": "vendor-owner-prop",
+            "name": "Owner",
+            "type": "text"
+          },
+          {
+            "resourceId": "vendor-renewal-prop",
+            "name": "Renews",
+            "type": "date"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "vendors-teamspace"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "cloudkeep-vendor",
+    "properties": {
+      "Name": [
+        [
+          "CloudKeep"
+        ]
+      ],
+      "Tier": "Critical",
+      "Owner": [
+        [
+          "Priya Raman"
+        ]
+      ],
+      "Renews": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-11-30"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "vendors-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "paperless-vendor",
+    "properties": {
+      "Name": [
+        [
+          "Paperless HR"
+        ]
+      ],
+      "Tier": "Standard",
+      "Owner": [
+        [
+          "Miguel Ortiz"
+        ]
+      ],
+      "Renews": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2027-01-15"
+              }
+            ]
+          ]
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "vendors-ds"
+    }
+  }
+]
