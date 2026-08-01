@@ -10,7 +10,7 @@ An open benchmark that runs coding agents — Claude Code, Codex, and friends �
 
 *Coming soon — first run in progress.*
 
-| Agent config | Score (avg@5) | pass^5 | Tool errors | Tokens | API-equiv cost | Time |
+| Agent config | Score (avg@3) | pass^3 | Tool errors | Tokens | API-equiv cost | Time |
 |---|---|---|---|---|---|---|
 | OpenCode × Kimi K3 | – | – | – | – | – | – |
 | Claude Code × Opus 5 (high) | – | – | – | – | – | – |
@@ -27,7 +27,7 @@ Grouped by product area, stage (build / investigate / resolve / operate), and do
 - **38 tasks** across 4 stages and every programmable Notion surface — see [docs/COVERAGE.md](docs/COVERAGE.md).
 - **Two suites** (`benchmark` = published, frozen per version; `regression` = known failure modes, grows freely, never affects published scores).
 - **Three verification layers**: static (typecheck), behavioral (`ntn workers exec --local`, canonical intents comparison for Notion-as-Code — both offline & deterministic), and live workspace state assertions (host-side, never visible to the agent).
-- **k=5 independent trials** per task; we report avg@5 with Wilson intervals *and* pass^5 (reliability) — no "retry then grade."
+- **k=3 independent trials** per task for v1 (extending to 5 via checkpoint/resume); we report avg@k with Wilson intervals *and* pass^k (reliability) — no "retry then grade."
 - **Docs axis**: every config runs docs-provided vs docs-withheld — measuring which model best learns a brand-new API from its documentation.
 - **QC per task (CI)**: the oracle solution must pass, a null agent must fail, and a plausibly-wrong solution must fail.
 
