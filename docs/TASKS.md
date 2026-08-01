@@ -84,7 +84,9 @@ suite is stated in its section below and in the index.
 | [`operate-files-001-list-audit`](#operate-files-001-list-audit) | benchmark | ops | operate | live | Audit every file attached under the sandbox page |
 | [`operate-workers-001-env-secrets`](#operate-workers-001-env-secrets) | benchmark | ops | operate | offline | Get the Meridian key out of the source before this repo goes up |
 | [`operate-workers-002-exec-local-harness`](#operate-workers-002-exec-local-harness) | benchmark | ops | operate | offline | Run receipt_digest on my machine and tell me what it says |
-| [`showcase-001-dashboard-gallery`](#showcase-001-dashboard-gallery) | other | cli | build | live | Build me a workspace worth showing off |
+| [`showcase-001-student-studying`](#showcase-001-student-studying) | other | cli | build | live | Study system for a junior taking five classes |
+| [`showcase-002-mobile-grooming-business`](#showcase-002-mobile-grooming-business) | other | cli | build | live | Operations hub for a two-van mobile dog-grooming business |
+| [`showcase-003-twitch-creator`](#showcase-003-twitch-creator) | other | cli | build | live | Content pipeline for a Twitch streamer turning VODs into videos |
 
 ## Build (16)
 
@@ -593,18 +595,42 @@ Finance says our receipt fingerprints don't match theirs and I need a reference 
 - **Checked.** `worker_untouched`, `answer_readable`, `command_reproduces`, `output_matches` — every subscore must be 1.
 - **Files.** [PROMPT.md](../evals/operate-workers-002-exec-local-harness/PROMPT.md) · [EVAL.ts](../evals/operate-workers-002-exec-local-harness/EVAL.ts)
 
-## Exhibition (1, unscored)
+## Exhibition (3, unscored)
 
 Outside the scored suite: the same open-ended prompt goes to every agent configuration and the results are shown side by side. The verifier measures the result and always returns 1, so nothing here moves a published number.
 
-### showcase-001-dashboard-gallery
+### showcase-001-student-studying
 
-**Build me a workspace worth showing off**
+**Study system for a junior taking five classes**
 
-suite `other` · family `cli` · difficulty `L4` · runtime `live` · fixture `none` · verify `state` · topics `exhibition`, `taste`, `views`, `information-architecture`, `unscored`
+suite `other` · family `cli` · difficulty `L4` · runtime `live` · fixture `none` · verify `state` · topics `exhibition`, `taste`, `information-architecture`, `spaced-repetition`, `relations`, `unscored`
 
-I want to move my whole life into Notion and I keep bouncing off it, because every time I start I end up with three empty pages called "Untitled" and I give up. Please just build the thing for me. It's for me and my dog. His name is Biscuit, he is a large and opinionated mutt, and a surprising amount of my week is organised around him.
+I'm a junior, I'm taking five classes, and I am drowning in material. My entire study method is: reread my notes the night before and hope. It does not work. I've heard of spaced repetition and it sounds like the right idea, but I don't want to be the one deciding what to go over — I want to be told.
 
 - **Starting state.** No fixture spec — the trial starts from an empty per-trial sandbox page.
-- **Checked.** `home_page`, `board_view`, `two_databases`, `extra_views`, `written_content`, `populated_rows`, `icons`, `nested_structure` — reported as a checklist only; the score is always 1, unscored by construction.
-- **Files.** [PROMPT.md](../evals/showcase-001-dashboard-gallery/PROMPT.md) · [EVAL.ts](../evals/showcase-001-dashboard-gallery/EVAL.ts)
+- **Checked.** `home_page`, `review_system`, `due_today_view`, `exam_calendar`, `courses_db`, `notes_db`, `notes_courses_related`, `weak_topics_tracking`, `reading_tracking`, `written_content`, `populated_rows`, `icons`, `nested_structure` — reported as a checklist only; the score is always 1, unscored by construction.
+- **Files.** [PROMPT.md](../evals/showcase-001-student-studying/PROMPT.md) · [EVAL.ts](../evals/showcase-001-student-studying/EVAL.ts)
+
+### showcase-002-mobile-grooming-business
+
+**Operations hub for a two-van mobile dog-grooming business**
+
+suite `other` · family `cli` · difficulty `L4` · runtime `live` · fixture `none` · verify `state` · topics `exhibition`, `taste`, `information-architecture`, `scheduling`, `rollups`, `unscored`
+
+We're a mobile dog-grooming outfit — two vans, me and three groomers, we come to you. The business runs off my phone: bookings arrive as texts, everything else is in a paper notebook that lives in van one.
+
+- **Starting state.** No fixture spec — the trial starts from an empty per-trial sandbox page.
+- **Checked.** `home_page`, `clients_db`, `appointments_db`, `clients_appointments_related`, `recurring_handled`, `inventory_or_supplies_db`, `vehicle_maintenance`, `calendar_view`, `board_or_status_view`, `revenue_rollup`, `written_content`, `populated_rows`, `icons` — reported as a checklist only; the score is always 1, unscored by construction.
+- **Files.** [PROMPT.md](../evals/showcase-002-mobile-grooming-business/PROMPT.md) · [EVAL.ts](../evals/showcase-002-mobile-grooming-business/EVAL.ts)
+
+### showcase-003-twitch-creator
+
+**Content pipeline for a Twitch streamer turning VODs into videos**
+
+suite `other` · family `cli` · difficulty `L4` · runtime `live` · fixture `none` · verify `state` · topics `exhibition`, `taste`, `information-architecture`, `pipeline`, `relations`, `unscored`
+
+I stream three or four times a week and I've grown past the point where memory works. Every stream is supposed to become clips and eventually a YouTube video. What actually happens is VODs pile up unedited and I lose track of what's been cut, what's with my editor, and what actually went out. He's a freelancer — files go out, notes come back, and it all lives in Discord DMs I can never find again.
+
+- **Starting state.** No fixture spec — the trial starts from an empty per-trial sandbox page.
+- **Checked.** `home_page`, `stream_vod_db`, `video_pipeline_status`, `pipeline_board_view`, `editor_handoff`, `scripts_tracking`, `sponsorships_db`, `sponsor_deliverables`, `content_calendar`, `performance_tracking`, `written_content`, `populated_rows`, `icons`, `nested_structure` — reported as a checklist only; the score is always 1, unscored by construction.
+- **Files.** [PROMPT.md](../evals/showcase-003-twitch-creator/PROMPT.md) · [EVAL.ts](../evals/showcase-003-twitch-creator/EVAL.ts)
