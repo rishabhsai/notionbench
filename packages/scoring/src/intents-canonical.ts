@@ -43,6 +43,79 @@
  *
  * ## Normalization choices (documented on purpose)
  *
+ * - **Inline and separate views are the same thing** (disable with
+ *   `normalizeInlineViews: false`). Notion-as-Code offers two spellings for
+ *   attaching a view to a database: inline, `notion.database({views:[schema]})`,
+ *   which compiles into the database intent's `views?: ViewSchema[]`; and
+ *   separate, `db.addView(schema)`, which compiles into a standalone
+ *   `{type:"view", databaseResourceId, view}` intent. The SDK itself documents
+ *   them as one operation — the separate intent exists only "to allow streaming
+ *   output without needing to buffer views until the database is finalized" —
+ *   so grading must not care which one the author reached for.
+ *
+ *   Canonicalization therefore **lifts inline views out** (inline -> separate):
+ *   every `views` entry on a `database` intent becomes a synthetic
+ *   `{type:"view", databaseResourceId:<that database's resourceId>, view}`
+ *   intent appended to the flat array, and the now-redundant `views` key is
+ *   dropped (including when it was an empty array, which means the same thing
+ *   as its absence).
+ *
+ *   *Why this direction and not folding separate views back in.* (a) It is
+ *   total: a `view` intent may name a `databaseResourceId` that no database in
+ *   the document declares, and folding has nowhere to put such a view, whereas
+ *   lifting never fails. (b) It only ever *adds* to the reference graph —
+ *   `databaseResourceId` is an ordinary `*ResourceId` key, so the containment
+ *   edge an inline view relies on is re-expressed as a real reference edge that
+ *   colour refinement already knows how to follow; folding would instead delete
+ *   that edge from authored separate views. (c) The existing array-order policy
+ *   already covers the lifted paths (`$view.view.sorts`, `$view.view.columns`,
+ *   `$view.view.properties`), and the lifted intents land in the top-level
+ *   array, which is already sorted order-insensitively.
+ *
+ *   *Ordering.* Views of one database compare as an **unordered set**. This is
+ *   not a new relaxation: `$database.views` was already an unordered array
+ *   under the policy below, and separate `view` intents were already unordered
+ *   because the top-level intent array is. Making it anything else is not even
+ *   well defined across the two spellings — the separate form lets views be
+ *   interleaved with arbitrary other intents, so there is no position an inline
+ *   view could be said to occupy. Order *inside* a view (`sorts` precedence,
+ *   board `columns`, displayed `properties`) is untouched and still significant.
+ *
+ *   Normalization runs before symbol discovery, so synthetic view intents are
+ *   indistinguishable from authored ones everywhere downstream: their
+ *   `dataSourceResourceId`, `groupBy.property`, filter/sort `propertyId`s and
+ *   `defaultTemplate` are labelled, refined and rewritten exactly the same way,
+ *   and pinned ids keep working unchanged.
+ * - **A view's `groupBy.type` is derived when it is omitted** (disable with
+ *   `normalizeGroupByType: false`). `GroupByFormat.type` is optional in the
+ *   SDK and its enum is a list of *property types* — it restates the type the
+ *   grouped property already declares in its data source schema, so
+ *   `groupBy: {property: p}` and `groupBy: {property: p, type: "select"}` say
+ *   the same thing when `p` is a select. Omitting it is legal, natural API
+ *   usage, so grading must not require it.
+ *
+ *   This is **derive-and-fill, not ignore**. When (and only when) `type` is
+ *   absent, it is resolved the way the SDK documents the reference:
+ *   `view.dataSourceResourceId` -> that data source's `properties[]` -> the
+ *   entry whose `resourceId` is `groupBy.property` -> its declared `type`.
+ *   Consequences, all deliberate:
+ *   - a `type` that is *present* is never touched, so an explicit value that
+ *     disagrees with the referenced property still produces a difference;
+ *   - an unresolvable reference (dangling property, or a view pointing at a
+ *     data source this document does not declare) leaves `type` absent rather
+ *     than guessing — and two documents that both omit it still compare equal;
+ *   - resolution is scoped *through* `dataSourceResourceId` rather than by
+ *     property id alone, so a view naming a property that belongs to a
+ *     different data source stays unresolved instead of being papered over.
+ *
+ *   Only `groupBy` needs this. The sibling references `calendarBy`,
+ *   `timelineBy` and `timelineByEnd` are bare `ResourceId` strings in the SDK
+ *   with no type field to restate, and board `columns[].value.type` describes a
+ *   group *value*, not the property, so neither is derivable.
+ *
+ *   Like the views rule this runs before symbol discovery, and it handles both
+ *   spellings (`database.views[]` and `view.view`), so it composes with
+ *   `normalizeInlineViews` in either setting.
  * - **Object keys** are always sorted.
  * - **Sibling order is preserved only where it is semantic.** Ordered arrays:
  *   `sorts` (sort precedence), board `columns` (group order), view
@@ -104,6 +177,21 @@ export interface CanonicalizeOptions {
    * (`[["x"]]` / `"x"` / `5`, relation id vs array of ids). Default true.
    */
   normalizePropertyValues?: boolean
+  /**
+   * Treat a view declared inline on a `database` intent (`views[]`) and the
+   * same view attached through a standalone `view` intent (`addView`) as the
+   * same thing, by lifting inline views into synthetic `view` intents.
+   * Default true. Set to false only when a task deliberately asserts one
+   * spelling over the other.
+   */
+  normalizeInlineViews?: boolean
+  /**
+   * Fill in a view's optional `groupBy.type` from the declared type of the
+   * property `groupBy.property` points at, when the author omitted it.
+   * Default true. A `type` that is present is never rewritten, so an explicit
+   * value that disagrees with the property is still a difference.
+   */
+  normalizeGroupByType?: boolean
 }
 
 export interface CanonicalDocument {
@@ -231,7 +319,9 @@ export function isOrderedArray(path: string): boolean {
     if (path.endsWith(suffix)) return true
   }
   if (path.endsWith(".properties")) {
-    // view column display order (`$database.views[].properties`, `$view.view.properties`)
+    // View column display order. `$view.view.properties` is what inline views
+    // look like once `liftInlineViews` has run; `$database.views[].properties`
+    // only survives under `normalizeInlineViews: false`.
     if (path.includes(".views[].") || path.startsWith("$view.view.")) return true
   }
   return false
@@ -392,6 +482,146 @@ function compareStrings(a: string, b: string): number {
 
 function intentPath(intent: Intent): string {
   return `$${typeof intent.type === "string" ? intent.type : "unknown"}`
+}
+
+// ---------------------------------------------------------------------------
+// Spelling normalization: inline views -> standalone view intents
+// ---------------------------------------------------------------------------
+
+/**
+ * Rewrite `database.views[]` into standalone `{type:"view",
+ * databaseResourceId, view}` intents so that the two equivalent spellings of
+ * "attach this view to this database" converge. See the module docblock for
+ * why the normalization runs in this direction.
+ *
+ * Runs *before* symbol discovery, so the synthetic intents are ordinary
+ * intents to everything downstream — including `databaseResourceId`, which is
+ * picked up as a reference by the usual `*ResourceId` rule.
+ *
+ * Defensive: a `database` whose `views` is not an array, or that has no string
+ * `resourceId` to point the synthetic intent at, is passed through untouched
+ * rather than mangled (unknown shapes still participate in equality).
+ */
+function liftInlineViews(intents: Intent[]): Intent[] {
+  let lifted = false
+  const out: Intent[] = []
+  for (const intent of intents) {
+    const obj = intent as unknown as JsonObject
+    const views = obj["views"]
+    const databaseResourceId = obj["resourceId"]
+    if (
+      obj["type"] !== "database" ||
+      !Array.isArray(views) ||
+      typeof databaseResourceId !== "string"
+    ) {
+      out.push(intent)
+      continue
+    }
+    lifted = true
+    const rest: JsonObject = {}
+    for (const key of Object.keys(obj)) {
+      if (key !== "views") rest[key] = obj[key]
+    }
+    out.push(rest as unknown as Intent)
+    for (const view of views) {
+      out.push({ type: "view", databaseResourceId, view } as unknown as Intent)
+    }
+  }
+  return lifted ? out : intents
+}
+
+// ---------------------------------------------------------------------------
+// Derived field normalization: view groupBy.type
+// ---------------------------------------------------------------------------
+
+/**
+ * `dataSource resourceId -> (property resourceId -> declared property type)`,
+ * read from `database.dataSources[].properties[]`. Scoping the index by data
+ * source (rather than flattening every property id) is what lets an
+ * unresolvable `groupBy.property` stay unresolved instead of being papered
+ * over by a same-named property on another data source.
+ */
+function collectPropertyTypes(intents: Intent[]): Map<string, Map<string, string>> {
+  const out = new Map<string, Map<string, string>>()
+  for (const intent of intents) {
+    const sources = (intent as unknown as JsonObject)["dataSources"]
+    if (!Array.isArray(sources)) continue
+    for (const source of sources) {
+      if (source === null || typeof source !== "object" || Array.isArray(source)) continue
+      const ds = source as JsonObject
+      const id = ds["resourceId"]
+      const properties = ds["properties"]
+      if (typeof id !== "string" || !Array.isArray(properties)) continue
+      const byProperty = out.get(id) ?? new Map<string, string>()
+      for (const property of properties) {
+        if (property === null || typeof property !== "object" || Array.isArray(property)) continue
+        const p = property as JsonObject
+        if (typeof p["resourceId"] === "string" && typeof p["type"] === "string") {
+          byProperty.set(p["resourceId"], p["type"])
+        }
+      }
+      if (byProperty.size > 0) out.set(id, byProperty)
+    }
+  }
+  return out
+}
+
+/**
+ * Fill an omitted `groupBy.type` from the grouped property's declared type.
+ * Returns the input unchanged (by reference) when there is nothing to add, so
+ * callers can copy-on-write and never mutate the caller's document.
+ */
+function fillViewGroupByType(view: Json, propertyTypes: Map<string, Map<string, string>>): Json {
+  if (view === null || typeof view !== "object" || Array.isArray(view)) return view
+  const schema = view as JsonObject
+  const groupBy = schema["groupBy"]
+  if (groupBy === null || typeof groupBy !== "object" || Array.isArray(groupBy)) return view
+  const group = groupBy as JsonObject
+  // An explicit `type` — right or wrong — is the author's, and stays.
+  if (group["type"] !== undefined) return view
+  const property = group["property"]
+  const dataSource = schema["dataSourceResourceId"]
+  if (typeof property !== "string" || typeof dataSource !== "string") return view
+  const declared = propertyTypes.get(dataSource)?.get(property)
+  // Dangling property, or a view pointing at a data source this document does
+  // not declare: leave it absent rather than guess. Two documents that both
+  // omit it still agree.
+  if (declared === undefined) return view
+  return { ...schema, groupBy: { ...group, type: declared } }
+}
+
+/**
+ * Apply {@link fillViewGroupByType} to every view schema in the document, in
+ * either spelling — `view` intents (`intent.view`) and views still declared
+ * inline on a `database` intent (`intent.views[]`, reachable when
+ * `normalizeInlineViews` is off). See the module docblock for the rationale.
+ */
+function fillGroupByTypes(intents: Intent[]): Intent[] {
+  const propertyTypes = collectPropertyTypes(intents)
+  if (propertyTypes.size === 0) return intents
+  let filled = false
+  const out = intents.map((intent) => {
+    const obj = intent as unknown as JsonObject
+    if (obj["type"] === "view" && obj["view"] !== undefined) {
+      const view = fillViewGroupByType(obj["view"], propertyTypes)
+      if (view === obj["view"]) return intent
+      filled = true
+      return { ...obj, view } as unknown as Intent
+    }
+    if (obj["type"] === "database" && Array.isArray(obj["views"])) {
+      let any = false
+      const views = obj["views"].map((view) => {
+        const next = fillViewGroupByType(view, propertyTypes)
+        if (next !== view) any = true
+        return next
+      })
+      if (!any) return intent
+      filled = true
+      return { ...obj, views } as unknown as Intent
+    }
+    return intent
+  })
+  return filled ? out : intents
 }
 
 // ---------------------------------------------------------------------------
@@ -632,7 +862,9 @@ function assignLabels(
  * See the module docblock for the exact normalization rules.
  */
 export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): CanonicalDocument {
-  const list = assertIntents(intents)
+  let list = assertIntents(intents)
+  if (opts.normalizeInlineViews ?? true) list = liftInlineViews(list)
+  if (opts.normalizeGroupByType ?? true) list = fillGroupByTypes(list)
   const normalizeValues = opts.normalizePropertyValues ?? true
   const declared = collectDeclared(list)
   const occurrences = collectOccurrences(list, declared, normalizeValues)
