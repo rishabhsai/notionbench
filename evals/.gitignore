@@ -1,0 +1,12 @@
+# Vendored fixtures are committed as source only. Dependency trees are
+# installed at scoring time (QC warms one install per task) and build output is
+# regenerated from it, so neither belongs in git.
+node_modules/
+dist/
+
+# QC scratch space, when NOTIONBENCH_QC_DIR points inside the repo.
+.qc/
+
+# Written into a trial workspace by evals/_lib/exec-worker.ts and removed again;
+# ignored so an interrupted run cannot leave it staged.
+.notionbench-exec.ts

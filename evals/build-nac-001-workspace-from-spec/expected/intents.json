@@ -1,0 +1,182 @@
+[
+  {
+    "type": "teamspace",
+    "resourceId": "product-ops-teamspace",
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "workspace-root"
+    },
+    "name": "Product Ops",
+    "accessLevel": "open"
+  },
+  {
+    "type": "database",
+    "resourceId": "launch-tracker-db",
+    "name": "Launch Tracker",
+    "dataSources": [
+      {
+        "resourceId": "launch-tracker-ds",
+        "name": "Launch Tracker",
+        "properties": [
+          {
+            "resourceId": "launch-name-prop",
+            "name": "Name",
+            "type": "title"
+          },
+          {
+            "resourceId": "launch-stage-prop",
+            "name": "Stage",
+            "type": "select",
+            "options": [
+              {
+                "name": "Planning",
+                "color": "blue"
+              },
+              {
+                "name": "Building",
+                "color": "yellow"
+              },
+              {
+                "name": "Shipped",
+                "color": "green"
+              }
+            ]
+          },
+          {
+            "resourceId": "launch-target-date-prop",
+            "name": "Target Date",
+            "type": "date"
+          },
+          {
+            "resourceId": "launch-blocked-prop",
+            "name": "Blocked",
+            "type": "checkbox"
+          }
+        ]
+      }
+    ],
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "product-ops-teamspace"
+    }
+  },
+  {
+    "type": "view",
+    "databaseResourceId": "launch-tracker-db",
+    "view": {
+      "resourceId": "launch-tracker-board-view",
+      "name": "By Stage",
+      "type": "board",
+      "dataSourceResourceId": "launch-tracker-ds",
+      "groupBy": {
+        "property": "launch-stage-prop",
+        "type": "select"
+      }
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "beta-invites-launch",
+    "properties": {
+      "Name": [
+        [
+          "Beta invites"
+        ]
+      ],
+      "Stage": "Planning",
+      "Target Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-14"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Blocked": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "launch-tracker-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "pricing-page-refresh-launch",
+    "properties": {
+      "Name": [
+        [
+          "Pricing page refresh"
+        ]
+      ],
+      "Stage": "Building",
+      "Target Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-08-21"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Blocked": [
+        [
+          "Yes"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "launch-tracker-ds"
+    }
+  },
+  {
+    "type": "page",
+    "resourceId": "docs-revamp-launch",
+    "properties": {
+      "Name": [
+        [
+          "Docs revamp"
+        ]
+      ],
+      "Stage": "Shipped",
+      "Target Date": [
+        [
+          "‣",
+          [
+            [
+              "d",
+              {
+                "type": "date",
+                "start_date": "2026-07-31"
+              }
+            ]
+          ]
+        ]
+      ],
+      "Blocked": [
+        [
+          "No"
+        ]
+      ]
+    },
+    "parent": {
+      "type": "resourceId",
+      "resourceId": "launch-tracker-ds"
+    }
+  }
+]
