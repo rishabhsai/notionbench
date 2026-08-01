@@ -259,11 +259,22 @@ export async function provisionFixture(opts: ProvisionOptions): Promise<Provisio
     dataSourceIds[db.key] = dataSourceId
 
     // Extra views, on top of the default table view the API creates itself.
+    // The real API identifies a grouped property by id, not name (fake-notion
+    // accepted the name), so resolve the freshly-created schema's ids first.
+    let propertyIds: Record<string, string> = {}
+    if ((db.views ?? []).length > 0) {
+      const ds = await client.getDataSource(dataSourceId)
+      propertyIds = Object.fromEntries(
+        Object.entries((ds as { properties?: Record<string, { id?: string }> }).properties ?? [])
+          .map(([name, p]) => [name, String(p?.id ?? "")])
+          .filter(([, id]) => id !== ""),
+      )
+    }
     for (const view of db.views ?? []) {
       const created_ = await client.createView({
         parent: { type: "database_id", database_id: database.id },
         data_source_id: dataSourceId,
-        ...toViewPayload(view, db),
+        ...toViewPayload(view, db, propertyIds),
       })
       if (view.key) idMap[view.key] = created_.id
       created.views++
@@ -319,12 +330,20 @@ async function seedComments(
 }
 
 /** Expand the spec's declarative view shorthand into the API's payload. */
-function toViewPayload(view: ViewSpec, db: DatabaseSpec): Record<string, unknown> {
+function toViewPayload(
+  view: ViewSpec,
+  db: DatabaseSpec,
+  propertyIds: Record<string, string> = {},
+): Record<string, unknown> {
   const configuration: Record<string, unknown> = { type: view.type }
   if (view.groupBy) {
     const prop = db.properties[view.groupBy]
+    const gid = propertyIds[view.groupBy]
     configuration.group_by = {
       type: prop?.type ?? "select",
+      // Real API: property_id (required). fake-notion also accepts property_name,
+      // which is why qc:live never caught this — keep both for compatibility.
+      ...(gid ? { property_id: gid } : {}),
       property_name: view.groupBy,
       sort: { type: "manual" },
       hide_empty_groups: false,
