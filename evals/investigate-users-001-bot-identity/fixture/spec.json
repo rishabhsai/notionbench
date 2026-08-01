@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "id": "investigate-users-001-bot-identity",
+  "seed": 20260813,
+  "root": { "title": "NotionBench · investigate-users-001", "icon": "🧪" },
+  "pages": [
+    {
+      "key": "ops",
+      "title": "Integration Ops",
+      "icon": "🔌",
+      "blocks": [
+        { "type": "heading_2", "text": "Access review" },
+        {
+          "type": "paragraph",
+          "text": "Every quarter we write down which integration is connected here and who it belongs to."
+        },
+        { "type": "paragraph", "text": "Last review: nobody filled this in." }
+      ]
+    }
+  ]
+}
