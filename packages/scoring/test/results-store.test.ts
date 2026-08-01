@@ -9,6 +9,8 @@ import {
   readResults,
   recordCellKey,
   resultsPath,
+  supersedeResults,
+  supersededPath,
   type TrialRecord,
 } from "../src/results-store.js"
 
@@ -140,5 +142,66 @@ describe("dedupeByCell", () => {
     expect(recordCellKey(record())).toBe(
       "build-nac-001-workspace-from-spec::claude-code-opus-5::with::1",
     )
+  })
+})
+
+/**
+ * `supersedeResults` is the one operation that rewrites the append-only file.
+ * It exists for `--redo`: a task found to be invalid has verdicts that do not
+ * measure what they claim to, and leaving them in place would mean the report
+ * averaged two different verifiers' answers under one task id.
+ */
+describe("supersedeResults", () => {
+  it("moves the matching rows to results.superseded.jsonl and leaves the rest", async () => {
+    await appendResult(runDir, record({ taskId: "broken", configId: "a" }))
+    await appendResult(runDir, record({ taskId: "broken", configId: "b" }))
+    await appendResult(runDir, record({ taskId: "fine", configId: "a" }))
+
+    const outcome = await supersedeResults(runDir, (r) => r.taskId === "broken")
+    expect(outcome).toMatchObject({ moved: 2, kept: 1 })
+    expect(outcome.archivePath).toBe(supersededPath(runDir))
+
+    const { records, problems } = await readResults(runDir)
+    expect(problems).toEqual([])
+    expect(records.map((r) => r.taskId)).toEqual(["fine"])
+
+    const archived = (await readFile(supersededPath(runDir), "utf8")).trim().split("\n")
+    expect(archived).toHaveLength(2)
+    expect(archived.every((l) => (JSON.parse(l) as TrialRecord).taskId === "broken")).toBe(true)
+  })
+
+  it("appends to an existing archive rather than replacing it", async () => {
+    await appendResult(runDir, record({ taskId: "broken", configId: "a" }))
+    await supersedeResults(runDir, (r) => r.taskId === "broken")
+    await appendResult(runDir, record({ taskId: "broken", configId: "a", score: 0 }))
+    await supersedeResults(runDir, (r) => r.taskId === "broken")
+    const archived = (await readFile(supersededPath(runDir), "utf8")).trim().split("\n")
+    expect(archived).toHaveLength(2)
+  })
+
+  it("keeps a torn line instead of discarding it on a predicate it cannot be tested against", async () => {
+    await appendResult(runDir, record({ taskId: "broken" }))
+    await appendFile(resultsPath(runDir), '{"taskId":"brok', "utf8")
+    const outcome = await supersedeResults(runDir, (r) => r.taskId === "broken")
+    expect(outcome).toMatchObject({ moved: 1, kept: 1 })
+    const remaining = await readFile(resultsPath(runDir), "utf8")
+    expect(remaining).toContain('{"taskId":"brok')
+  })
+
+  it("is a no-op when nothing matches, and when the file does not exist", async () => {
+    expect(await supersedeResults(runDir, () => true)).toMatchObject({ moved: 0, kept: 0 })
+    await appendResult(runDir, record({ taskId: "fine" }))
+    const before = await readFile(resultsPath(runDir), "utf8")
+    expect(await supersedeResults(runDir, (r) => r.taskId === "other")).toMatchObject({ moved: 0, kept: 1 })
+    expect(await readFile(resultsPath(runDir), "utf8")).toBe(before)
+    await expect(readFile(supersededPath(runDir), "utf8")).rejects.toThrow()
+  })
+
+  it("leaves an empty results.jsonl readable when every row is retired", async () => {
+    await appendResult(runDir, record({ taskId: "broken" }))
+    await supersedeResults(runDir, () => true)
+    const { records, problems } = await readResults(runDir)
+    expect(records).toEqual([])
+    expect(problems).toEqual([])
   })
 })

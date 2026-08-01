@@ -8,12 +8,236 @@ notionbench run --dry-run    # the exact plan: grid, argv per config, child env
 notionbench run --tasks 'build-nac-*' --configs claude-code-opus-5 --trials 5 --docs both
 notionbench run --resume 20260731-120000   # replays that run's recorded grid, exactly
 notionbench run --dry-run --resume 20260731-120000
+notionbench run --resume 20260731-120000 --redo build-nac-004-board-view-filters
 notionbench score results/latest
 notionbench status 20260731-120000
 notionbench serve results/latest   # live dashboard + /api/status while the run executes
+notionbench doctor results/latest  # post-hoc audit: which tasks look invalid?
 notionbench configs          # roster + which harnesses have an adapter
 notionbench tasks --tasks '*nac*'
 ```
+
+## Catching an invalid task early
+
+A full grid is 798 cells over several days of paid subscription time. The
+expensive failure is not a crash — it is a run that completes beautifully and
+whose results have to be thrown away because one task's verifier was wrong the
+whole time. Three things exist to make that cheap instead:
+
+| | what it does | when |
+|---|---|---|
+| [execution ordering](#execution-ordering) | every task gets a verdict from every config in the **first pass**, so cross-config evidence about task N assembles in minutes, not days | while planning |
+| [the watchdog](#the-watchdog) | deterministic, in-process; **halts** the run when a task looks invalid rather than hard | while running |
+| [`doctor`](#doctor-auditing-a-finished-run) | read-only audit of a finished or halted run — "these tasks look invalid, investigate before publishing" | before publishing |
+| [`--redo`](#fix-one-task-and-re-run-only-it) | invalidate and re-run exactly one task's cells | after fixing it |
+
+## Execution ordering
+
+```bash
+notionbench run --order trial-major,task-major   # default
+notionbench run --order config-major             # the old behaviour, for comparison
+```
+
+The order cells execute in does not change any number the benchmark reports. It
+changes enormously how fast a broken task is *detectable*.
+
+**`trial-major,task-major` (default)**
+
+```
+outer   trial 1 for every (task, config), then trial 2, then trial 3
+inner   within a trial, task by task: every config runs task 1,
+        then every config runs task 2, …
+```
+
+The first pass covers **all** tasks, so the seven verdicts about task N land
+within one task-block of each other. Under the previous, implicit ordering —
+each config walking its own task list, `config-major` — the seventh config's
+verdict on task 30 arrives only after it has independently ground through tasks
+1..29, which on a rate-window-paced grid is days after the first config's.
+That is the whole gap the watchdog needs closed to be useful.
+
+Concurrency and the serial-per-config rule are untouched: configs still run in
+parallel up to `--concurrency`, and a config never has two cells in flight.
+
+### Blocks are soft barriers
+
+A task-block is an *emission order*, never a synchronisation point — **nothing
+ever waits for a block to complete.**
+
+The scheduler scans its pending queue front to back and takes the first cell
+whose config is neither busy nor cooling down. A config sitting in a 30-minute
+Kimi cooldown is simply skipped, and the other six walk straight on into the
+next task-block. The straggler's cell keeps its rank, stays pending, and — since
+that rank is ahead of everything else in its own lane — is the first thing that
+config picks up when its window reopens. It then continues in task order from
+there.
+
+The cost is bounded and deliberate: a cooled-down config's verdict on that block
+arrives late, so the watchdog may compare 6 of 7 verdicts instead of 7 (its
+thresholds are 3 configs, or 60% of the run's configs, precisely so that this is
+still enough). The alternative — a hard barrier — would let one config's rate
+window idle the other six for half an hour at a time, which over 798 cells is
+measured in days.
+
+Retries follow the same rule: a retried cell goes back to *its own place in the
+order*, not to the back of the queue, so a flake on task 3 of trial 1 cannot push
+that task's first-trial evidence behind the whole of trial 3.
+
+### Recorded and replayed
+
+The policy is written into `results/<runId>/run-spec.json` under `execution.order`
+and replayed by `--resume`, for the same reason every other execution knob is:
+"the second half of this grid ran in a different order than the first" is exactly
+the kind of unrecorded difference the spec file exists to prevent. A run created
+before ordering existed has no recorded policy and is replayed as `config-major`
+— the order it actually executed — with a note saying so, never as today's
+default.
+
+## The watchdog
+
+Deterministic and in-process. **No model is involved** — only counting, set
+intersection and string normalization. It is evaluated after every scored cell,
+and its one job is to separate:
+
+> *every frontier agent failed this task with the **same** complaint*
+> → almost certainly the verifier or the fixture. **Halt.**
+
+from
+
+> *several agents failed this task with **different** complaints*
+> → that is what a hard task looks like. **Keep going.**
+
+### Signals and their defaults
+
+| signal | default | halts? | why that number |
+|---|---|---|---|
+| **cross-config identical failure** — ≥N configs failed the same task in the same trial and their diagnostics share a normalized substring | 3 configs, **or** ≥60% of the configs in the run | yes | 3 is what both real bugs looked like. Three independent frontier models do not produce the same failure *text* by coincidence; they do produce different ones on a genuinely hard task. The 60% arm keeps a narrow grid (`--configs a,b,c`) from being blind. The denominator is the run's config count, never "the configs that have reported so far" — otherwise the first two verdicts of every block are trivially 100% of them. |
+| **verifier crash** — `scored: false` after the verifier actually ran | 1 occurrence | yes | The measurement apparatus failed. Never a legitimate agent failure, and every later cell on that task is unmeasured too. |
+| **fixture provisioning failure** on a live task | 2 for the same task | yes | One can be a Notion 500. Two on the same `spec.json`, while other tasks provision fine, is the spec. |
+| **total-task failure** — every config that attempted it scored 0, no shared diagnostic | 5 configs | **no — warns** | A task all frontier models fail may be broken *or* brutally hard, and NotionBench exists to contain tasks nothing solves. Halting on "hard" would be the benchmark censoring its own headline result. Set `watchdog.totalTaskFailure.halt` to opt in. |
+| **infrastructure** — nothing completed in X minutes while work was runnable | 60 min | yes | 4× the 900s per-trial budget, and the stall clock only advances while at least one config was actually free to run, so a legitimate all-configs cooldown cannot trip it. |
+| **infrastructure** — free disk below Y GB | 5 GB | yes | Transcripts and workspaces are the run's only durable output. |
+| **infrastructure** — every config down | all *blocked* | yes (blocked) / warns (merely cooling) | Every config permanently blocked means the run cannot progress. Every config merely cooling is the normal shape of a paced grid. |
+
+Diagnostics are normalized before comparison — urls, uuids, hex ids, paths,
+numbers and quote styles are stripped — so `missing field \`type\` at intents[3]`
+and `missing field 'type' at intents[9]` compare equal, while
+`rollup aggregation is sum, expected average` and
+`relation points at the wrong data source` do not.
+
+### On halt
+
+1. **Stop scheduling new cells.** In-flight cells are *never* killed — they run
+   to completion and are scored normally. Killing a trial mid-flight would waste
+   the one genuinely expensive thing and leave a workspace unverified; the point
+   of halting is to stop spending, not to destroy what has been spent.
+2. Write `results/<runId>/ALERT.json` and a banner block into `run.log`.
+3. Exit **3**, naming the task, the evidence, and the exact command to re-run it
+   after a fix.
+
+```
+notionbench run … --no-watchdog          # disable entirely
+notionbench run … --watchdog-warn-only   # alert and record, but never stop
+```
+
+Thresholds live under `"watchdog"` in `runconfig.json`; every field is optional
+and merges over the defaults above:
+
+```json
+{
+  "watchdog": {
+    "crossConfig": { "minConfigs": 3, "minFraction": 0.6, "minSharedChars": 24 },
+    "verifierCrash": { "enabled": true, "minOccurrences": 1 },
+    "fixtureFailure": { "enabled": true, "minOccurrences": 2 },
+    "totalTaskFailure": { "enabled": true, "minConfigs": 5, "halt": false },
+    "infrastructure": { "stallMinutes": 60, "minFreeDiskGb": 5 }
+  }
+}
+```
+
+The active alerts are also served on `/api/status` as an additive `alerts` array
+(`{level, kind, taskId, configIds, evidence, at, halted}`), so the dashboard can
+show that a run stopped and why.
+
+## `doctor`: auditing a finished run
+
+```bash
+notionbench doctor results/latest
+notionbench doctor 20260801-085000 --json
+```
+
+Read-only in the same sense `serve` is: it opens no checkpoint, takes no lock and
+writes nothing, so it is safe to point at a run that is still executing. It
+re-uses the watchdog's thresholds and diagnostic normalization, so a finished
+grid is judged by exactly the rules the live run was judged by.
+
+Per task it reports who attempted it, who solved it, whether the failures share a
+diagnostic once ids and paths are stripped, whether the verifier ever failed to
+return a verdict, and which cells the runner abandoned — then a plain-English
+verdict. Exit code carries it, so it works as a publish gate in CI:
+
+| code | meaning |
+|---|---|
+| 0 | no task shows a cross-config failure signature — safe to publish |
+| 1 | at least one task is SUSPECT (every config scored 0, for different stated reasons) |
+| 3 | at least one task looks INVALID (shared diagnostic, or a verifier crash) |
+
+On the real 35-cell pilot (`20260801-085000`, 34/35, one Sonnet failure):
+
+```
+tasks
+  build-cli-001-create-page-with-icon          6/7 solved
+      - 1 config(s): "no page titled "onboarding checklist" anywhere under the sandbox root"
+  build-nac-001-workspace-from-spec            7/7 solved
+  …
+verdict: no invalid tasks detected
+  No task shows a cross-config failure signature: where configs failed, they
+  failed for different stated reasons, which is what genuine agent misses look like.
+  Safe to publish as far as task validity goes.
+```
+
+## Fix one task and re-run only it
+
+```bash
+# 1. the run halted, or doctor flagged it
+notionbench doctor results/20260801-085000
+
+# 2. fix evals/build-nac-004-board-view-filters/EVAL.ts
+
+# 3. re-run ONLY that task's cells — one command
+notionbench run --resume 20260801-085000 --redo build-nac-004-board-view-filters
+```
+
+`--redo` is deliberately not just a filter. A filter narrows which *pending*
+cells run, and the whole problem with a task found to be broken is that its cells
+are already `done`, holding verdicts a wrong verifier produced. So `--redo`
+**invalidates** them first:
+
+- the task's rows are moved out of `results.jsonl` into
+  `results.superseded.jsonl` (nothing is deleted; the report never reads the
+  archive, so the history stays on disk and the decision stays auditable);
+- its cells are reset to `pending` with their attempt budget restored and their
+  mirrored score cleared, so `notionbench status` cannot keep reporting a verdict
+  that has been retired;
+- the pass is restricted to exactly those cells — no other task is touched;
+- the whole thing is appended to `run-spec.json`'s `history` as a `redo` entry.
+
+It is repeatable and comma-separated (`--redo a --redo b,c`), composes with the
+other filters (`--redo t --configs opus` redoes only that config's cells of `t`),
+requires `--resume`, and refuses a task that is not in the recorded grid. Add
+`--dry-run` to see exactly what would be invalidated without touching anything:
+
+```
+resume 20260801-085000
+  --redo           build-nac-004-board-view-filters — would INVALIDATE 7 cell(s)
+                   (7 already done) and retire 7 scored row(s)
+                   retired rows move to results.superseded.jsonl; nothing is deleted
+```
+
+Relying on `dedupeByCell` alone (last row per cell wins) would only be safe if
+every retired cell were actually re-run in the same pass — and on a multi-day
+grid an interrupted re-run is the normal case, which would leave the report
+averaging two different verifiers' answers under one task id.
 
 ## One trial: spawn → score → checkpoint
 
@@ -363,6 +587,10 @@ Both fields are overridden by `NOTION_PARENT_PAGE_ID` / `NOTION_API_BASE`, both
 are validated at load (a bad `apiBase` is a config error, not a run-time 404), and
 a `token` key is **rejected** — runconfig.json is checked in, so the integration
 token stays in the environment. See [Live tasks](#live-tasks-a-real-notion-workspace).
+
+The optional `watchdog` block tunes the halt thresholds; every field merges over
+the documented defaults, so omitting the block entirely is the same as accepting
+them. See [The watchdog](#the-watchdog).
 
 ## Testing
 

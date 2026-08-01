@@ -10,6 +10,12 @@
 
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import {
+  DEFAULT_WATCHDOG_SETTINGS,
+  resolveWatchdogSettings,
+  type DeepPartial,
+  type WatchdogSettings,
+} from './watchdog.js';
 import type { DocsCondition, HarnessId } from './types.js';
 
 export interface AgentConfig {
@@ -117,6 +123,12 @@ export interface RunConfigFile {
   /** Max attempts per cell before it is marked failed for good. Default 3. */
   maxAttempts?: number;
   rateWindow?: Partial<RateWindowConfig>;
+  /**
+   * Thresholds for the in-process run watchdog (watchdog.ts). Every field is
+   * optional and merges over the documented defaults; omitting the block
+   * entirely is the same as accepting them.
+   */
+  watchdog?: DeepPartial<WatchdogSettings>;
   /** Where results trees are written. Default `results/`. */
   resultsRoot?: string;
   /** Where task directories live. Default `evals/`. */
@@ -247,11 +259,13 @@ export const V1_ROSTER: AgentConfig[] = [
   },
 ];
 
-export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow'>> & {
+export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow' | 'watchdog'>> & {
   rateWindow: RateWindowConfig;
+  watchdog: WatchdogSettings;
 } {
   return {
     configs: V1_ROSTER,
+    watchdog: DEFAULT_WATCHDOG_SETTINGS,
     concurrency: DEFAULT_CONCURRENCY,
     trials: DEFAULT_TRIALS,
     timeoutSec: DEFAULT_TIMEOUT_SEC,
@@ -288,6 +302,7 @@ export function resolveRunConfig(file: Partial<RunConfigFile> = {}): ResolvedRun
     resultsRoot: file.resultsRoot ?? base.resultsRoot,
     evalsRoot: file.evalsRoot ?? base.evalsRoot,
     notion: normalizeNotion(file.notion),
+    watchdog: resolveWatchdogSettings(file.watchdog),
     rateWindow: {
       patterns: file.rateWindow?.patterns ?? base.rateWindow.patterns,
       cooldownMs: positive(file.rateWindow?.cooldownMs, base.rateWindow.cooldownMs, 'rateWindow.cooldownMs'),

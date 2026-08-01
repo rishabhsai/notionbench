@@ -5,9 +5,11 @@
  *   notionbench run --tasks <glob> --configs <a,b> --trials 5 --docs both
  *   notionbench run --dry-run
  *   notionbench run --resume <runId>
+ *   notionbench run --resume <runId> --redo <taskId>
  *   notionbench score <runDir>
  *   notionbench status <runId>
  *   notionbench serve <runDir>
+ *   notionbench doctor <runDir>
  *   notionbench configs
  *   notionbench tasks --tasks <glob>
  */
@@ -24,6 +26,7 @@ import {
   hasScorer,
   readResults,
   renderReport,
+  supersedeResults,
 } from '@notionbench/scoring';
 import {
   Checkpoint,
@@ -49,6 +52,7 @@ import {
   readRunSpec,
   reconstructSpec,
   recordDrift,
+  recordRedo,
   renderRefusal,
   specCells,
   writeRunSpec,
@@ -59,8 +63,20 @@ import {
   type RunSpecFile,
   type SpecConfig,
 } from './run-spec.js';
+import { DEFAULT_ORDER, LEGACY_ORDER, cellRanker, parseOrder, type OrderPolicy } from './order.js';
+import { buildDoctorReport, renderDoctorReport } from './doctor.js';
+import {
+  WATCHDOG_EXIT_CODE,
+  Watchdog,
+  freeDiskBytes,
+  renderAlertBanner,
+  writeAlertFile,
+  type WatchdogAlert,
+  type WatchdogObservation,
+} from './watchdog.js';
 import {
   LiveFixtures,
+  appendRunLog,
   inspectLiveTasks,
   liveRequirementProblems,
   renderLiveProblems,
@@ -91,6 +107,7 @@ Usage:
   notionbench score <runDir|runId> [--k <n>] [--results <dir>] [--json]
   notionbench status <runId> [--results <dir>] [--json]
   notionbench serve <runDir|runId> [--port <n>] [--key <token>] [--host <addr>]
+  notionbench doctor <runDir|runId> [--results <dir>] [--json]
   notionbench configs [--runconfig <path>] [--json]
   notionbench tasks [--tasks <glob>] [--evals <dir>] [--json]
 
@@ -111,6 +128,32 @@ run options:
                         run, and record the expansion in the spec. Without it, a
                         resume that would grow the grid is refused, naming what
                         differs.
+  --redo <taskId>       With --resume: FIX-AND-RE-RUN ONE TASK. Invalidates every
+                        recorded cell of <taskId> — resets them to pending and
+                        retires their rows from results.jsonl into
+                        results.superseded.jsonl — then runs only those cells.
+                        Repeatable/comma-separated. This is the command to use
+                        after the watchdog (or \`notionbench doctor\`) says a task
+                        was broken: fix evals/<taskId>, then
+
+                            notionbench run --resume <runId> --redo <taskId>
+
+                        Nothing is deleted and no other task is touched. Add
+                        --dry-run to see exactly what would be invalidated.
+  --order <policy>      Cell execution order. One of:
+                          trial-major,task-major  (default) trial 1 of every
+                            (task, config) first; within a trial, every config
+                            runs task 1 before any runs task 2. The first pass
+                            covers all tasks, so a broken task shows up as
+                            several configs failing it identically within
+                            minutes instead of days.
+                          config-major  each config walks its own task list —
+                            what the runner did implicitly before; kept for
+                            comparison.
+                        Recorded in run-spec.json and replayed on --resume.
+  --no-watchdog         Disable the in-process watchdog (see below).
+  --watchdog-warn-only  Watchdog alerts are recorded and printed, but never stop
+                        the run.
   --runconfig <path>    runconfig.json. Default: ./runconfig.json if present.
   --results <dir>       Results root. Default: results/
   --evals <dir>         Task root. Default: evals/
@@ -149,10 +192,32 @@ serve options:
   --web <dir>           Static dashboard directory. Default: the repo's web/.
   --results <dir>       Results root, when a bare runId is given. Default results/
 
+doctor options:
+  --json                Emit the report as JSON instead of text.
+  --results <dir>       Results root, when a bare runId is given. Default results/
+
+the watchdog (deterministic, no model; thresholds under "watchdog" in runconfig)
+  Evaluated after every scored cell. It halts the run when a task looks INVALID
+  rather than hard:
+    - ≥3 configs (or ≥60% of those that attempted) fail the same task in the same
+      trial and their diagnostics share a normalized substring — the signature of
+      a verifier bug, not of three independent models;
+    - any verifier crash / malformed verdict (one is enough — never an agent
+      failure);
+    - 2 fixture provisioning failures on the same live task.
+  It WARNS (does not halt) when every config scores 0 on a task with no shared
+  diagnostic — that is what a very hard task and a broken one both look like.
+  On halt: scheduling stops, in-flight cells finish and are scored, ALERT.json
+  and a run.log banner are written, and the process exits ${WATCHDOG_EXIT_CODE}.
+  Then: fix the task and \`notionbench run --resume <runId> --redo <taskId>\`.
+
 \`run\` does spawn -> score -> checkpoint per trial and appends every scored
 rollout to results/<runId>/results.jsonl; \`score\` aggregates that file into
 results/<runId>/summary.md and prints it. \`serve\` reads a run directory (while
 it is still being written) and hosts the live dashboard + /api/status.
+\`doctor\` is the read-only post-hoc audit of a finished or halted run: per-task
+failure patterns, which tasks' failures share diagnostics, verifier crashes, and
+a plain-English "these tasks look invalid, investigate before publishing".
 `;
 
 type Argv = ReturnType<typeof parseArgs<{ options: typeof OPTIONS; allowPositionals: true }>>;
@@ -164,6 +229,10 @@ const OPTIONS = {
   docs: { type: 'string' },
   resume: { type: 'string' },
   expand: { type: 'boolean' },
+  redo: { type: 'string', multiple: true },
+  order: { type: 'string' },
+  'no-watchdog': { type: 'boolean' },
+  'watchdog-warn-only': { type: 'boolean' },
   runconfig: { type: 'string' },
   results: { type: 'string' },
   evals: { type: 'string' },
@@ -212,6 +281,8 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
         return await cmdStatus(values, positionals[1]);
       case 'serve':
         return await cmdServe(values, positionals[1]);
+      case 'doctor':
+        return await cmdDoctor(values, positionals[1]);
       case 'configs':
         return await cmdConfigs(values);
       case 'tasks':
@@ -369,6 +440,43 @@ async function cmdServe(values: Values, target: string | undefined): Promise<num
 }
 
 /**
+ * `notionbench doctor <runDir>` — audit a finished or halted run before writing
+ * it up.
+ *
+ * Read-only in the same sense `serve` is: it opens no checkpoint, takes no lock,
+ * writes nothing, and is safe to point at a directory a run is still writing.
+ *
+ * Exit code carries the verdict, so it is usable as a publish gate in CI:
+ *   0  no task shows a cross-config failure signature
+ *   1  at least one task is SUSPECT (all configs scored 0, different reasons)
+ *   3  at least one task looks INVALID (shared diagnostic, or a verifier crash)
+ */
+async function cmdDoctor(values: Values, target: string | undefined): Promise<number> {
+  const rc = await loadRunConfig(await defaultRunconfigPath(values.runconfig));
+  const resultsRoot = path.resolve(values.results ?? rc.resultsRoot);
+  const runDir = await resolveRunDir(target, resultsRoot);
+  if (!runDir) {
+    process.stderr.write(
+      `doctor requires a run directory or run id (looked under ${resultsRoot})\n`,
+    );
+    return 2;
+  }
+  if (!(await isDir(runDir))) {
+    process.stderr.write(`not a run directory: ${runDir}\n`);
+    return 2;
+  }
+
+  const report = await buildDoctorReport(runDir, { settings: rc.watchdog });
+  if (values.json) {
+    process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
+  } else {
+    process.stdout.write(`${renderDoctorReport(report)}\n`);
+  }
+  if (report.verdict.level === 'invalid') return WATCHDOG_EXIT_CODE;
+  return report.verdict.level === 'suspect' ? 1 : 0;
+}
+
+/**
  * Aggregate a run's `results.jsonl` into the published table.
  *
  * Reads nothing but results.jsonl — no state.json, no transcripts — so an
@@ -471,6 +579,12 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   if (values.expand === true && !values.resume) {
     throw new ConfigError('--expand only applies with --resume (it extends an existing run)');
   }
+  if (splitList(values.redo).length > 0 && !values.resume) {
+    throw new ConfigError(
+      '--redo only applies with --resume: it invalidates and re-runs a task\'s cells inside an ' +
+        'existing run. Use `notionbench run --resume <runId> --redo <taskId>`.',
+    );
+  }
 
   // The grid a run measures is decided ONCE, at creation, and recorded in
   // results/<runId>/run-spec.json. A resume replays that; it never rebuilds the
@@ -510,6 +624,21 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   const scoreTimeoutMs = values['score-timeout']
     ? intOpt(values['score-timeout'], 0, '--score-timeout') * 1000
     : (replay?.spec.execution.scoring.timeoutMs ?? DEFAULT_SCORE_TIMEOUT_MS);
+
+  // Ordering, like every other execution knob: a flag typed on THIS command line
+  // wins; otherwise the recorded policy is replayed; otherwise the default. A
+  // resumed run that predates the policy is replayed as `config-major` — the
+  // order it actually executed in — not as today's default, because a resume
+  // replays the run, it does not redesign it.
+  const order: OrderPolicy = values.order
+    ? parseOrder(values.order)
+    : (replay?.spec.execution.order ?? (replay ? LEGACY_ORDER : DEFAULT_ORDER));
+
+  const watchdogSettings = {
+    ...rc.watchdog,
+    enabled: values['no-watchdog'] === true ? false : rc.watchdog.enabled,
+    warnOnly: values['watchdog-warn-only'] === true ? true : rc.watchdog.warnOnly,
+  };
 
   const taskPatterns = replay ? replay.taskIds : splitList(values.tasks);
   const tasks = await discoverTasks(evalsRoot, taskPatterns);
@@ -619,6 +748,8 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
       live: livePlan,
       cells: replay?.gridCells,
       resume: replay ? resumePlanFor(replay) : undefined,
+      order,
+      watchdog: watchdogSettings,
     });
     if (values.json) {
       process.stdout.write(`${JSON.stringify(plan, null, 2)}\n`);
@@ -659,6 +790,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     evalsRoot,
     resultsRoot,
     scoring: { enabled: scoringEnabled, timeoutMs: scoreTimeoutMs },
+    order,
   };
 
   // Checkpoint: resume or create.
@@ -668,7 +800,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   if (replay) {
     cp = await Checkpoint.load(replay.spec.runId, resultsRoot);
     await cp.resetRunning();
-    await applyReplay(cp, replay, resultsRoot);
+    await applyReplay(cp, replay, resultsRoot, argv);
     passKeys = new Set(replay.passCells.map(cellKey));
   } else {
     const runId = newRunId();
@@ -726,7 +858,9 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
   const summary = tallyCells(cp, cells);
   process.stdout.write(
     `${tasks.length} task(s) × ${configs.length} config(s) × ${docsConditions.join('/')} × ${trials} trial(s) ` +
-      `= ${summary.total} cell(s); ${summary.done} already done, ${summary.pending} pending\n`,
+      `= ${summary.total} cell(s); ${summary.done} already done, ${summary.pending} pending\n` +
+      `order: ${order}${watchdogSettings.enabled ? '' : '  ·  watchdog DISABLED'}` +
+      `${watchdogSettings.enabled && watchdogSettings.warnOnly ? '  ·  watchdog warn-only' : ''}\n`,
   );
 
   const patterns = compilePatterns(rc.rateWindow.patterns);
@@ -763,6 +897,17 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     onRateWindowChange: (s) => {
       void writeRateWindowState(runDir, s).catch(() => {});
     },
+    // The execution order (order.ts). The scheduler keeps its pending queue
+    // sorted by this, which is what makes a task-block a soft barrier: a cooling
+    // config is skipped and everyone else walks on, while its cell keeps the
+    // rank of the block it belongs to and is the first thing it picks up when
+    // the window reopens.
+    rank: cellRanker(order, {
+      taskIds: tasks.map((t) => t.id),
+      configIds: configs.map((c) => c.id),
+      docsConditions,
+      trials,
+    }),
   });
   // Only cells this pass is allowed to touch. On a fresh run that is the whole
   // grid; on a resume it is the recorded grid (narrowed by any filters the
@@ -774,16 +919,78 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
       .map((c) => ({ ...c, attempts: c.attempts })),
   );
 
+  // The deterministic run watchdog (watchdog.ts). It sees every scored cell and
+  // decides whether a task looks INVALID (halt) or merely hard (keep going).
+  const watchdog = new Watchdog({
+    settings: watchdogSettings,
+    runId: cp.runId,
+    configIds: configs.map((c) => c.id),
+  });
+
   const configById = new Map(configs.map((c) => [c.id, c]));
+  // TWO controllers, deliberately.
+  //
+  //  `abort`  is Ctrl-C: it stops the queue AND is handed to the child
+  //           processes, so an interrupted trial dies instead of running out its
+  //           15-minute clock while the operator waits.
+  //  `halt`   is the watchdog: it stops the queue ONLY. In-flight cells keep
+  //           their signal, run to completion and are scored normally — killing
+  //           a trial mid-flight would waste the one genuinely expensive thing
+  //           and leave a workspace unverified, and the whole point of halting
+  //           is to stop spending, not to destroy what has already been spent.
   const abort = new AbortController();
+  const halt = new AbortController();
+  const stopScheduling = (): void => {
+    if (!halt.signal.aborted) halt.abort();
+  };
+  abort.signal.addEventListener('abort', stopScheduling, { once: true });
+
+  const raise = (alerts: WatchdogAlert[]): void => {
+    for (const alert of alerts) {
+      process.stderr.write(
+        `\n  [watchdog ${alert.level}] ${alert.kind}${alert.taskId ? ` ${alert.taskId}` : ''}: ${alert.evidence}\n`,
+      );
+    }
+    if (watchdog.halted && !halt.signal.aborted) {
+      process.stderr.write(
+        '\n  [watchdog] HALTING — no further cells will be scheduled; in-flight trials will ' +
+          'finish and be scored.\n',
+      );
+      stopScheduling();
+    }
+  };
+
   const onSigint = () => {
     process.stderr.write('\ninterrupted — finishing in-flight trials, state is checkpointed\n');
     abort.abort();
   };
   process.once('SIGINT', onSigint);
 
+  // The infrastructure sweep: stalls, disk and "every config is down" are by
+  // construction invisible from a cell completion, so they are checked on a
+  // timer. Unref'd — it must never be the thing keeping the process alive.
+  const infraTimer = watchdogSettings.enabled
+    ? setInterval(() => {
+        void (async () => {
+          const stats = scheduler.stats(Date.now());
+          const rw = scheduler.rateWindowState();
+          raise(
+            watchdog.checkInfrastructure({
+              now: Date.now(),
+              pendingCells: stats.pending,
+              inFlightCells: stats.running,
+              cooldownConfigIds: rw.cooldowns.map((c) => c.configId),
+              blockedConfigIds: rw.blocked,
+              freeDiskBytes: await freeDiskBytes(resultsRoot),
+            }),
+          );
+        })().catch(() => {});
+      }, 60_000)
+    : undefined;
+  infraTimer?.unref?.();
+
   await runQueue(scheduler, {
-    signal: abort.signal,
+    signal: halt.signal,
     onEvent: (e) => {
       if (e.type === 'config-paused') {
         const mins = Math.round(((e.untilMs ?? 0) - Date.now()) / 60_000);
@@ -810,10 +1017,23 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
         live,
         keepWorkspaces: values['keep-workspaces'] === true,
         signal: abort.signal,
+        onObserve: (obs) => raise(watchdog.observe(obs)),
       }),
   });
 
   process.off('SIGINT', onSigint);
+  if (infraTimer) clearInterval(infraTimer);
+
+  // Written after the queue has drained, so ALERT.json describes a settled run:
+  // every in-flight cell has finished and been scored by this point.
+  if (watchdog.alerts.length > 0) {
+    const file = watchdog.snapshot();
+    const banner = renderAlertBanner(file, runDir);
+    await writeAlertFile(runDir, file);
+    await appendRunLog(runDir, `\n${banner}`);
+    process.stderr.write(`\n${banner}\n`);
+  }
+
   const final = cp.summary();
   const orphans = live?.orphanSummary();
   if (orphans) process.stdout.write(`\nwarning: ${orphans}\n`);
@@ -823,8 +1043,22 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
       (final.unverified > 0 ? `  (${final.unverified} unverified)` : '') +
       '\n' +
       `resume with: notionbench run --resume ${cp.runId}\n` +
-      `report with: notionbench score ${path.relative(process.cwd(), runDir) || runDir}\n`,
+      `report with: notionbench score ${path.relative(process.cwd(), runDir) || runDir}\n` +
+      `audit with:  notionbench doctor ${path.relative(process.cwd(), runDir) || runDir}\n`,
   );
+
+  const halting = watchdog.haltingAlert;
+  if (halting) {
+    process.stderr.write(
+      `\nHALTED by the watchdog: ${halting.evidence}\n` +
+        (halting.taskId
+          ? `Fix evals/${halting.taskId}, then re-run only that task's cells:\n` +
+            `  notionbench run --resume ${cp.runId} --redo ${halting.taskId}\n`
+          : `Then resume with: notionbench run --resume ${cp.runId}\n`) +
+        `Evidence and every other alert: ${path.join(runDir, 'ALERT.json')}\n`,
+    );
+    return WATCHDOG_EXIT_CODE;
+  }
   return final.failed > 0 ? 1 : 0;
 }
 
@@ -845,6 +1079,12 @@ interface Replay {
   gridCells: CellCoords[];
   /** The subset this invocation may execute — filters narrow it, nothing widens it. */
   passCells: CellCoords[];
+  /** `--redo`: tasks whose recorded cells are invalidated and re-queued. */
+  redoTaskIds: string[];
+  /** The cells `--redo` would invalidate, and how many already carry a verdict. */
+  redoCells: CellCoords[];
+  redoDone: number;
+  redoRows: number;
   /** state.json cells outside the recorded grid; repaired away on a real resume. */
   strayKeys: string[];
   strayStarted: number;
@@ -897,6 +1137,7 @@ async function resolveReplay(args: {
         evalsRoot: state.meta?.evalsRoot ?? path.resolve(rc.evalsRoot),
         resultsRoot: state.meta?.resultsRoot ?? resultsRoot,
         scoring: { enabled: true, timeoutMs: DEFAULT_SCORE_TIMEOUT_MS },
+        order: LEGACY_ORDER,
       },
       runconfigPath,
       argv,
@@ -909,6 +1150,15 @@ async function resolveReplay(args: {
     );
     specSource = `state.json (no ${RUN_SPEC_FILENAME} — grid reconstructed from the run's own history)`;
     dirty = true;
+  }
+
+  if (spec.execution.order === undefined) {
+    notes.push(
+      `that run recorded no ordering policy, so it executed ${LEGACY_ORDER}; this resume replays ` +
+        `${LEGACY_ORDER} rather than today's ${DEFAULT_ORDER} default (pass --order to change it ` +
+        'deliberately — the two halves of a grid running in different orders is exactly what ' +
+        `${RUN_SPEC_FILENAME} exists to make visible)`,
+    );
   }
 
   spec = { ...spec, configs: hydrateConfigs(spec, rc.configs, notes) };
@@ -1031,9 +1281,39 @@ async function resolveReplay(args: {
   const gridKeys = new Set(gridCells.map(cellKey));
   const requestedKeys = new Set(requested.map(cellKey));
   const filtered = explicit.tasks || explicit.configs || explicit.docs || explicit.trials;
-  const passCells = filtered
+  let passCells = filtered
     ? gridCells.filter((c) => requestedKeys.has(cellKey(c)))
     : gridCells;
+
+  // --redo: the fix-and-re-run path. It is deliberately NOT a filter — a filter
+  // narrows which pending cells run, and the whole problem with a task that was
+  // found to be broken is that its cells are already *done*, holding verdicts
+  // produced by a verifier that was wrong. So --redo also invalidates them, and
+  // it restricts the pass to exactly those cells so "fix task 7, re-run task 7"
+  // is one command that touches nothing else.
+  const redoTaskIds = splitList(values.redo);
+  let redoCells: CellCoords[] = [];
+  let redoDone = 0;
+  let redoRows = 0;
+  if (redoTaskIds.length > 0) {
+    const recordedTasks = new Set(gridCells.map((c) => c.taskId));
+    const unknown = redoTaskIds.filter((id) => !recordedTasks.has(id));
+    if (unknown.length > 0) {
+      throw new ConfigError(
+        `--redo ${unknown.join(', ')}: not in run ${runId}'s recorded grid. ` +
+          `Recorded: ${[...recordedTasks].sort().join(', ')}. ` +
+          '(--redo re-runs a task this run already measured; use --expand to add a new one.)',
+      );
+    }
+    const wanted = new Set(redoTaskIds);
+    redoCells = gridCells.filter((c) => wanted.has(c.taskId));
+    redoDone = redoCells.filter((c) => state.cells?.[cellKey(c)]?.status === 'done').length;
+    redoRows = await countTaskRows(path.join(resultsRoot, runId), wanted);
+    // Filters compose with --redo: `--redo t --configs a` redoes only a's cells.
+    const redoKeys = new Set(redoCells.map(cellKey));
+    passCells = filtered ? passCells.filter((c) => redoKeys.has(cellKey(c))) : redoCells;
+    if (filtered) redoCells = redoCells.filter((c) => requestedKeys.has(cellKey(c)));
+  }
 
   const strayKeys = Object.keys(state.cells ?? {}).filter((k) => !gridKeys.has(k));
   const strayStarted = strayKeys.filter((k) => {
@@ -1057,6 +1337,10 @@ async function resolveReplay(args: {
     expanded,
     gridCells,
     passCells,
+    redoTaskIds,
+    redoCells,
+    redoDone,
+    redoRows,
     strayKeys,
     strayStarted,
     configs: spec.configs.filter((c) => usedConfigIds.has(c.id)),
@@ -1122,6 +1406,13 @@ function printReplay(replay: Replay): void {
         `${RUN_SPEC_FILENAME}\n`,
     );
   }
+  if (replay.redoTaskIds.length > 0) {
+    process.stdout.write(
+      `  --redo ${replay.redoTaskIds.join(', ')}: INVALIDATING ${replay.redoCells.length} recorded ` +
+        `cell(s) (${replay.redoDone} already done) and retiring ${replay.redoRows} scored row(s) ` +
+        'to results.superseded.jsonl — nothing is deleted, no other task is touched\n',
+    );
+  }
   if (replay.passCells.length < replay.gridCells.length) {
     process.stdout.write(
       `  filters restrict this pass to ${replay.passCells.length} of ${replay.gridCells.length} ` +
@@ -1145,11 +1436,25 @@ function printReplay(replay: Replay): void {
   }
 }
 
+/**
+ * Rows in results.jsonl belonging to these tasks. Read-only, and tolerant of a
+ * run that has not scored anything yet.
+ */
+async function countTaskRows(runDir: string, taskIds: Set<string>): Promise<number> {
+  try {
+    const { records } = await readResults(runDir);
+    return records.filter((r) => taskIds.has(r.taskId)).length;
+  } catch {
+    return 0;
+  }
+}
+
 /** The state-mutating half of a resume. Never reached by --dry-run. */
 async function applyReplay(
   cp: Checkpoint,
   replay: Replay,
   resultsRoot: string,
+  argv: string[],
 ): Promise<void> {
   const added = await cp.ensureCells(replay.gridCells);
   if (added > 0) process.stdout.write(`  ${added} cell(s) added to state.json\n`);
@@ -1176,7 +1481,43 @@ async function applyReplay(
       cliVersion: c.cliVersion,
     })),
   });
-  if (replay.dirty) await writeRunSpec(resultsRoot, replay.spec);
+
+  // --redo, in the order that survives a crash between the two steps: retire the
+  // stale rows FIRST, then reset the cells. Crash in between and the cells are
+  // still `done` with no row — which `notionbench doctor` reports as a missing
+  // result and a plain `--resume` leaves alone — rather than pending cells
+  // racing against rows that still claim a verdict for them.
+  let spec = replay.spec;
+  if (replay.redoTaskIds.length > 0) {
+    const wanted = new Set(replay.redoTaskIds);
+    const keys = new Set(replay.redoCells.map(cellKey));
+    const superseded = await supersedeResults(
+      path.join(resultsRoot, cp.runId),
+      (r) => wanted.has(r.taskId) && keys.has(cellKey(r)),
+    );
+    const reset = await cp.resetCells(
+      [...keys],
+      `--redo ${replay.redoTaskIds.join(', ')}: the recorded verdicts were produced against a ` +
+        'task that has since been changed',
+    );
+    process.stdout.write(
+      `  --redo ${replay.redoTaskIds.join(', ')}: invalidated ${reset.length} cell(s) and retired ` +
+        `${superseded.moved} scored row(s) to ${path.basename(superseded.archivePath)}\n`,
+    );
+    await appendRunLog(
+      path.join(resultsRoot, cp.runId),
+      `redo ${replay.redoTaskIds.join(', ')}  cells=${reset.length} superseded=${superseded.moved}`,
+    );
+    spec = recordRedo(spec, {
+      taskIds: replay.redoTaskIds,
+      cells: reset.length,
+      supersededRows: superseded.moved,
+      argv,
+    });
+    await writeRunSpec(resultsRoot, spec);
+    return;
+  }
+  if (replay.dirty) await writeRunSpec(resultsRoot, spec);
 }
 
 function resumePlanFor(replay: Replay): ResumePlan {
@@ -1192,13 +1533,25 @@ function resumePlanFor(replay: Replay): ResumePlan {
     pending: grid.pending,
     running: grid.running,
     failed: grid.failed,
-    wouldRun: pass.pending + pass.running,
+    // --redo invalidates its cells, so every one of them will run — including
+    // the ones state.json currently calls `done`.
+    wouldRun:
+      replay.redoTaskIds.length > 0 ? replay.passCells.length : pass.pending + pass.running,
     stray: replay.strayKeys.length,
     excluded: replay.gridCells.length - replay.passCells.length,
     adding: replay.expanded ? replay.diff.added.length : 0,
     addDiffs: replay.diff.reasons,
     drift: driftLines(replay.drift),
     notes: replay.notes,
+    redo:
+      replay.redoTaskIds.length > 0
+        ? {
+            taskIds: replay.redoTaskIds,
+            cells: replay.redoCells.length,
+            done: replay.redoDone,
+            scoredRows: replay.redoRows,
+          }
+        : undefined,
   };
 }
 
@@ -1285,6 +1638,15 @@ async function executeCell(args: {
   live?: LiveFixtures;
   keepWorkspaces: boolean;
   signal: AbortSignal;
+  /**
+   * Called exactly once per finished cell with what the watchdog needs to
+   * classify it. The classification is made HERE, not inferred from the
+   * persisted row, because "the verifier crashed" and "we deliberately did not
+   * verify" (rate window, spawn error, --no-score) are both `scored: false` on
+   * disk, and confusing them would halt a healthy run every time a usage window
+   * closed.
+   */
+  onObserve?: (obs: WatchdogObservation) => void;
 }): Promise<CellOutcome> {
   const { cell, cp, config, task } = args;
   const coords: CellCoords = {
@@ -1292,6 +1654,15 @@ async function executeCell(args: {
     configId: cell.configId,
     docsCondition: cell.docsCondition,
     trial: cell.trial,
+  };
+  const observe = (obs: Omit<WatchdogObservation, 'taskId' | 'configId' | 'trial' | 'docsCondition'>): void => {
+    args.onObserve?.({
+      taskId: coords.taskId,
+      configId: coords.configId,
+      trial: coords.trial,
+      docsCondition: coords.docsCondition,
+      ...obs,
+    });
   };
   await cp.markRunning(coords);
 
@@ -1307,16 +1678,23 @@ async function executeCell(args: {
     task.runtime === 'live' || wantsFixture ? await args.tokens.acquire() : undefined;
 
   let fixture: ProvisionedFixture | undefined;
+  /** Set when the throw came from provisioning, which is signal (c), not (b). */
+  let provisioningFailed: string | undefined;
   try {
     if (wantsFixture) {
-      fixture = await args.live!.provision({
-        task,
-        workspaceDir: workspace.dir,
-        token: lease?.token,
-        // Folded into the fixture root's title so a leaked page names the cell
-        // that leaked it.
-        label: `${cp.runId} ${cellKey(coords)}`,
-      });
+      try {
+        fixture = await args.live!.provision({
+          task,
+          workspaceDir: workspace.dir,
+          token: lease?.token,
+          // Folded into the fixture root's title so a leaked page names the cell
+          // that leaked it.
+          label: `${cp.runId} ${cellKey(coords)}`,
+        });
+      } catch (err) {
+        provisioningFailed = (err as Error).message;
+        throw err;
+      }
     }
 
     const prompt = await readPrompt(task);
@@ -1347,10 +1725,13 @@ async function executeCell(args: {
 
     if (outcome.status === 'rate_limited') {
       await cp.markRateLimited(coords, outcome.rateLimit.signals[0]?.excerpt ?? 'usage window exhausted');
+      // Not a measurement of anything: the agent never got its turn.
+      observe({ kind: 'unmeasured' });
       return { kind: 'rate-limited', cooldownMs: outcome.rateLimit.cooldownMs, detail: 'usage window' };
     }
     if (outcome.status === 'spawn_error') {
       await cp.markFailed(coords, outcome.error ?? 'spawn error', outcome.status);
+      observe({ kind: 'unmeasured', error: outcome.error });
       return { kind: 'failed', detail: outcome.error };
     }
 
@@ -1370,6 +1751,7 @@ async function executeCell(args: {
         }),
       );
       await cp.markDone(coords, outcome);
+      observe({ kind: 'unmeasured' });
       return { kind: 'done' };
     }
 
@@ -1399,6 +1781,14 @@ async function executeCell(args: {
       scored: score.ok,
       error: score.error,
     });
+    // The verifier ran. Either it returned a verdict (a real data point the
+    // watchdog compares across configs) or it did not, which is a broken
+    // measurement apparatus and never an agent failure.
+    observe(
+      score.ok
+        ? { kind: 'scored', score: score.score, diagnostics: score.diagnostics }
+        : { kind: 'verifier-crash', error: score.error },
+    );
     return { kind: 'done' };
   } catch (err) {
     // Infrastructure, not a verdict: workspace prep, fixture provisioning, a
@@ -1408,6 +1798,11 @@ async function executeCell(args: {
       `  ${pad('ERROR', 13)} ${cellKey(coords)}  ${firstLine((err as Error).message)}\n`,
     );
     await cp.markFailed(coords, (err as Error).message);
+    observe(
+      provisioningFailed !== undefined
+        ? { kind: 'fixture-failure', error: provisioningFailed }
+        : { kind: 'runner-error', error: (err as Error).message },
+    );
     return { kind: 'failed', detail: (err as Error).message };
   } finally {
     // After the verdict is durable, and never fatal: `teardown` swallows its own

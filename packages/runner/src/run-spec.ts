@@ -27,6 +27,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { cellKey, type CellCoords, type CellState, type RunStateFile } from './checkpoint.js';
 import type { AgentConfig } from './config.js';
+import type { OrderPolicy } from './order.js';
 import { writeJsonAtomic } from './spawn.js';
 import type { DocsCondition } from './types.js';
 
@@ -75,6 +76,18 @@ export interface RunSpecExecution {
   evalsRoot: string;
   resultsRoot: string;
   scoring: { enabled: boolean; timeoutMs: number };
+  /**
+   * The order cells are emitted in (order.ts). Recorded because it is a property
+   * of the *experiment*, not of the invocation: which cells a half-finished run
+   * has already produced — and therefore what a resume of it means — depends on
+   * it, and "the second half of this grid ran in a different order than the
+   * first" is exactly the kind of un-recorded difference run-spec.json exists to
+   * prevent.
+   *
+   * Optional so specs written before ordering existed still parse; a spec
+   * without it is replayed as `config-major`, which is what those runs executed.
+   */
+  order?: OrderPolicy;
 }
 
 export interface RunSpecProvenance {
@@ -95,13 +108,15 @@ export interface RunSpecProvenance {
 
 export interface RunSpecHistoryEntry {
   at: string;
-  event: 'created' | 'reconstructed' | 'expanded' | 'drift' | 'replayed';
+  event: 'created' | 'reconstructed' | 'expanded' | 'drift' | 'replayed' | 'redo';
   detail: string;
   /** argv of the invocation that produced the entry. */
   argv?: string[];
   /** `expanded`: how many cells were added, and the axis diffs that added them. */
   added?: number;
   diffs?: string[];
+  /** `redo`: the tasks whose cells were invalidated and the counts that were retired. */
+  redo?: { taskIds: string[]; cells: number; supersededRows: number };
   /** `drift`: the config definitions that no longer match runconfig.json. */
   drift?: ConfigDrift[];
   /** `expanded`: the grid as it stood before the expansion. */
@@ -620,6 +635,43 @@ export function expandSpec(
         added: args.diff.added.length,
         diffs: args.diff.reasons,
         previousGrid: spec.grid,
+        argv: args.argv,
+      },
+    ],
+  };
+}
+
+/**
+ * Record that a task's cells were invalidated and re-queued (`--redo`).
+ *
+ * The grid does not change — the same cells are still part of the experiment —
+ * but *when* they were measured, and against which version of the task, does.
+ * A results tree where task 7 was scored twice, hours apart, by two different
+ * verifiers is only interpretable if the file says so.
+ */
+export function recordRedo(
+  spec: RunSpecFile,
+  args: {
+    taskIds: string[];
+    cells: number;
+    supersededRows: number;
+    argv: string[];
+    now?: Date;
+  },
+): RunSpecFile {
+  const at = (args.now ?? new Date()).toISOString();
+  return {
+    ...spec,
+    updatedAt: at,
+    history: [
+      ...spec.history,
+      {
+        at,
+        event: 'redo',
+        detail:
+          `--redo invalidated ${args.cells} cell(s) of ${args.taskIds.join(', ')} and retired ` +
+          `${args.supersededRows} scored row(s) to results.superseded.jsonl`,
+        redo: { taskIds: [...args.taskIds], cells: args.cells, supersededRows: args.supersededRows },
         argv: args.argv,
       },
     ],

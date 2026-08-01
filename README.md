@@ -67,7 +67,38 @@ node packages/runner/dist/cli.js score results/latest
 # Watch it while it runs: hosts web/ + a bearer-gated /api/status, and prints a
 # ready-to-open http://127.0.0.1:8377/#api=…&key=… link.
 node packages/runner/dist/cli.js serve results/latest
+
+# Audit a finished run before publishing it: per-task failure patterns, tasks
+# whose failures share a diagnostic, verifier crashes, and a verdict.
+node packages/runner/dist/cli.js doctor results/latest
 ```
+
+### A broken task must not cost you three days
+
+The 798-cell grid runs for days, and a task whose verifier is wrong invalidates
+every cell that touched it. Three things keep that cheap:
+
+- **Cells execute trial-major, task-major.** The first pass covers *every* task,
+  so all seven configs' verdicts on task N land minutes apart instead of days
+  apart. Configs still run concurrently and never overlap with themselves; a
+  config in a rate-window cooldown is skipped and the block proceeds without it,
+  picking its missed cell back up when the window reopens.
+- **A deterministic watchdog (no LLM) halts the run** when ≥3 configs fail the
+  same task in the same trial with the *same normalized diagnostic* — the
+  signature of a verifier bug, which is how two real ones presented — or when a
+  verifier crashes even once. A task every config fails for *different* reasons
+  is flagged SUSPECT but never halts: that is also what a very hard task looks
+  like, and this benchmark is meant to contain those. In-flight trials always
+  finish and are scored; nothing is killed.
+- **Fix it and re-run only it, in one command.** `--redo` invalidates that task's
+  cells and retires its stale rows to `results.superseded.jsonl` rather than
+  leaving them to be averaged in:
+
+  ```bash
+  node packages/runner/dist/cli.js run --resume <runId> --redo <taskId>
+  ```
+
+Details: [packages/runner/README.md](packages/runner/README.md#catching-an-invalid-task-early).
 
 Presets exist for Claude Code and Codex configs; any prompt-in/files-out CLI works via the `command-template` harness (see [packages/runner](packages/runner/README.md)). Auth is your **subscription** — the runner strips `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` from every child so a stray key cannot silently change what is being measured. Live-suite tasks additionally need a Notion workspace integration token (docs coming). Community submissions (PR with trajectories) planned post-v1.
 
