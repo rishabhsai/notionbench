@@ -1,0 +1,355 @@
+/**
+ * Agent configs — the unit of measurement for NotionBench.
+ *
+ * Per docs/PLAN.md a "config" is a (harness, model, reasoningEffort?) bundle run
+ * headlessly against the user's *subscription* (not an API key). The docs axis
+ * (`with` / `without` Notion's AGENTS.md+skills) multiplies every config; it is
+ * carried on the run cell rather than baked into the config, except when a config
+ * deliberately pins itself to one condition via `docsCondition`.
+ */
+
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import type { DocsCondition, HarnessId } from './types.js';
+
+export interface AgentConfig {
+  /** Stable slug; becomes a path segment under results/<run>/<task>/<configId>/. */
+  id: string;
+  /** Human label for tables/charts. */
+  label: string;
+  harness: HarnessId;
+  /**
+   * Model selector passed to the harness CLI. For claude-code this is the
+   * `--model` value (alias like `opus`/`fable` or a full id like `claude-opus-5`);
+   * for codex it is `-m` / `model=`.
+   */
+  model: string;
+  /**
+   * Reasoning/thinking effort. claude-code: `--effort <low|medium|high|xhigh|max>`.
+   * codex: `-c model_reasoning_effort="<minimal|low|medium|high|xhigh>"`.
+   */
+  reasoningEffort?: string;
+  /** Pin this config to a single docs condition. Normally undefined (run both). */
+  docsCondition?: DocsCondition;
+  /** Disabled configs are kept in the roster for documentation but never scheduled. */
+  enabled: boolean;
+  /**
+   * Published per-token prices used for the API-equivalent cost column. Subscription
+   * runs have no true per-run $; PLAN.md says report tokens + API-equivalent cost.
+   * USD per 1M tokens.
+   */
+  pricing?: {
+    inputPerMTok?: number;
+    outputPerMTok?: number;
+    cacheReadPerMTok?: number;
+    cacheWritePerMTok?: number;
+  };
+  /** Extra CLI args appended verbatim to the invocation (escape hatch). */
+  extraArgs?: string[];
+  /** Extra env vars for the child process. */
+  env?: Record<string, string>;
+  /** Free-form note surfaced in run metadata (e.g. why a config is disabled). */
+  note?: string;
+}
+
+export interface RateWindowConfig {
+  /**
+   * Regex sources (JS syntax, matched case-insensitively unless flags given)
+   * applied to the child's stderr/stdout to detect subscription usage-limit
+   * exhaustion. Kept configurable because these strings drift between CLI releases.
+   */
+  patterns: string[];
+  /** How long to pause a config after a rate-window hit. Default 30 min. */
+  cooldownMs: number;
+}
+
+export interface RunConfigFile {
+  /** Configs to schedule. */
+  configs: AgentConfig[];
+  /** Global in-flight trial cap across all configs. Default 2. */
+  concurrency?: number;
+  /** Default trials per (task, config, docsCondition) cell. Default 5. */
+  trials?: number;
+  /** Default per-trial wall clock timeout in seconds; tasks may override. */
+  timeoutSec?: number;
+  /** Grace period between SIGTERM and SIGKILL, ms. Default 10_000. */
+  killGraceMs?: number;
+  /** Max attempts per cell before it is marked failed for good. Default 3. */
+  maxAttempts?: number;
+  rateWindow?: Partial<RateWindowConfig>;
+  /** Where results trees are written. Default `results/`. */
+  resultsRoot?: string;
+  /** Where task directories live. Default `evals/`. */
+  evalsRoot?: string;
+}
+
+export const DEFAULT_RATE_LIMIT_PATTERNS: string[] = [
+  // Claude Code
+  'rate[ _-]?limit(ed|ing)?\\b',
+  '\\b(five|5)[- ]hour limit',
+  'weekly limit (reached|exceeded)',
+  'usage limit (reached|exceeded)',
+  "you'?ve (hit|reached) your usage limit",
+  'upgrade to increase your usage limit',
+  'claude usage limit reached',
+  // Codex / OpenAI
+  "you'?ve hit your usage limit",
+  'usage_limit_reached',
+  'quota exceeded',
+  'insufficient_quota',
+  'too many requests',
+  // Generic HTTP surface both CLIs bubble up
+  '\\b429\\b',
+  'retry[- ]after',
+];
+
+/** 30 minutes — a subscription 5h window rarely clears faster than this. */
+export const DEFAULT_COOLDOWN_MS = 30 * 60 * 1000;
+export const DEFAULT_CONCURRENCY = 2;
+export const DEFAULT_TRIALS = 5;
+export const DEFAULT_TIMEOUT_SEC = 900;
+export const DEFAULT_KILL_GRACE_MS = 10_000;
+export const DEFAULT_MAX_ATTEMPTS = 3;
+
+/**
+ * v1 roster (docs/PLAN.md "Configs").
+ *
+ * Model ids/aliases verified against the CLIs installed on the authoring machine:
+ *   claude 2.1.220  — `--model` accepts aliases (`opus`, `fable`, `sonnet`) or full names.
+ *   codex-cli 0.144.6 — `-m gpt-5.6-sol`, effort via `-c model_reasoning_effort=...`.
+ * Pin the exact CLI versions into run metadata (spawn.ts records them).
+ */
+export const V1_ROSTER: AgentConfig[] = [
+  {
+    id: 'claude-code-opus-5',
+    label: 'Claude Code × Opus 5',
+    harness: 'claude-code',
+    model: 'opus',
+    enabled: true,
+    pricing: {
+      inputPerMTok: 5,
+      outputPerMTok: 25,
+      cacheReadPerMTok: 0.5,
+      cacheWritePerMTok: 6.25,
+    },
+  },
+  {
+    id: 'claude-code-fable-5',
+    label: 'Claude Code × Fable 5',
+    harness: 'claude-code',
+    model: 'fable',
+    enabled: true,
+    pricing: {
+      inputPerMTok: 3,
+      outputPerMTok: 15,
+      cacheReadPerMTok: 0.3,
+      cacheWritePerMTok: 3.75,
+    },
+    // TODO(pricing): confirm published Fable 5 per-token rates before publishing
+    // the cost-Pareto chart; these are placeholders.
+  },
+  {
+    id: 'codex-gpt-5.6-sol-medium',
+    label: 'Codex × GPT-5.6 Sol (medium)',
+    harness: 'codex',
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium',
+    enabled: true,
+    // TODO(pricing): fill from OpenAI's published GPT-5.6 Sol rates.
+  },
+  {
+    id: 'codex-gpt-5.6-sol-high',
+    label: 'Codex × GPT-5.6 Sol (high)',
+    harness: 'codex',
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'high',
+    enabled: true,
+  },
+  {
+    id: 'claude-code-haiku-4-5',
+    label: 'Claude Code × Haiku 4.5 (budget)',
+    harness: 'claude-code',
+    model: 'haiku',
+    enabled: false,
+    note: 'Budget config for the cost-Pareto story (PLAN.md). Enable once the main grid has headroom in the rate window.',
+  },
+  {
+    id: 'tera',
+    label: 'Tera (placeholder)',
+    harness: 'tera',
+    model: 'TODO',
+    enabled: false,
+    note:
+      'TODO(invocation): no Tera CLI is installed on the authoring machine, so the ' +
+      'headless invocation is unverified. Before enabling: (1) confirm a subscription ' +
+      'or affordable API path exists at all — PLAN.md says cut this config otherwise; ' +
+      '(2) capture `<cli> --help` and fill in a harness adapter in src/parsers/ that ' +
+      'returns argv + a usage parser; (3) pin the CLI version. Scheduling this config ' +
+      'without an adapter throws by design rather than silently producing null usage.',
+  },
+  {
+    id: 'luna',
+    label: 'Luna (placeholder)',
+    harness: 'luna',
+    model: 'TODO',
+    enabled: false,
+    note:
+      'TODO(invocation): same as `tera` — unverified headless syntax, no adapter yet. ' +
+      'Confirm model id + pricing (PLAN.md open item) before enabling.',
+  },
+];
+
+export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow'>> & {
+  rateWindow: RateWindowConfig;
+} {
+  return {
+    configs: V1_ROSTER,
+    concurrency: DEFAULT_CONCURRENCY,
+    trials: DEFAULT_TRIALS,
+    timeoutSec: DEFAULT_TIMEOUT_SEC,
+    killGraceMs: DEFAULT_KILL_GRACE_MS,
+    maxAttempts: DEFAULT_MAX_ATTEMPTS,
+    resultsRoot: 'results',
+    evalsRoot: 'evals',
+    rateWindow: {
+      patterns: DEFAULT_RATE_LIMIT_PATTERNS,
+      cooldownMs: DEFAULT_COOLDOWN_MS,
+    },
+  };
+}
+
+export type ResolvedRunConfig = ReturnType<typeof defaultRunConfig>;
+
+export class ConfigError extends Error {}
+
+/** Merge a partial runconfig.json over the built-in defaults + v1 roster. */
+export function resolveRunConfig(file: Partial<RunConfigFile> = {}): ResolvedRunConfig {
+  const base = defaultRunConfig();
+  const configs = file.configs && file.configs.length > 0 ? file.configs.map(normalizeConfig) : base.configs;
+  assertUniqueIds(configs);
+  return {
+    configs,
+    concurrency: positive(file.concurrency, base.concurrency, 'concurrency'),
+    trials: positive(file.trials, base.trials, 'trials'),
+    timeoutSec: positive(file.timeoutSec, base.timeoutSec, 'timeoutSec'),
+    killGraceMs: positive(file.killGraceMs, base.killGraceMs, 'killGraceMs'),
+    maxAttempts: positive(file.maxAttempts, base.maxAttempts, 'maxAttempts'),
+    resultsRoot: file.resultsRoot ?? base.resultsRoot,
+    evalsRoot: file.evalsRoot ?? base.evalsRoot,
+    rateWindow: {
+      patterns: file.rateWindow?.patterns ?? base.rateWindow.patterns,
+      cooldownMs: positive(file.rateWindow?.cooldownMs, base.rateWindow.cooldownMs, 'rateWindow.cooldownMs'),
+    },
+  };
+}
+
+/** Load runconfig.json from disk; missing file falls back to built-in defaults. */
+export async function loadRunConfig(filePath?: string): Promise<ResolvedRunConfig> {
+  if (!filePath) return resolveRunConfig();
+  let raw: string;
+  try {
+    raw = await readFile(filePath, 'utf8');
+  } catch (err) {
+    const e = err as NodeJS.ErrnoException;
+    if (e.code === 'ENOENT') {
+      throw new ConfigError(`runconfig not found: ${path.resolve(filePath)}`);
+    }
+    throw err;
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (err) {
+    throw new ConfigError(`runconfig is not valid JSON (${filePath}): ${(err as Error).message}`);
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new ConfigError(`runconfig must be a JSON object (${filePath})`);
+  }
+  return resolveRunConfig(parsed as Partial<RunConfigFile>);
+}
+
+function normalizeConfig(c: AgentConfig): AgentConfig {
+  if (!c || typeof c.id !== 'string' || c.id.length === 0) {
+    throw new ConfigError('every config needs a non-empty string id');
+  }
+  if (!/^[a-z0-9][a-z0-9._-]*$/i.test(c.id)) {
+    throw new ConfigError(`config id "${c.id}" must be filesystem-safe (letters, digits, . _ -)`);
+  }
+  if (typeof c.harness !== 'string' || c.harness.length === 0) {
+    throw new ConfigError(`config "${c.id}" needs a harness`);
+  }
+  if (typeof c.model !== 'string' || c.model.length === 0) {
+    throw new ConfigError(`config "${c.id}" needs a model`);
+  }
+  return { ...c, label: c.label ?? c.id, enabled: c.enabled !== false };
+}
+
+function assertUniqueIds(configs: AgentConfig[]): void {
+  const seen = new Set<string>();
+  for (const c of configs) {
+    if (seen.has(c.id)) throw new ConfigError(`duplicate config id: ${c.id}`);
+    seen.add(c.id);
+  }
+}
+
+function positive(value: number | undefined, fallback: number, name: string): number {
+  if (value === undefined) return fallback;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new ConfigError(`${name} must be a positive number (got ${String(value)})`);
+  }
+  return value;
+}
+
+/** Look up configs by id, erroring loudly on typos and disabled configs. */
+export function selectConfigs(
+  all: AgentConfig[],
+  ids: string[] | undefined,
+  opts: { includeDisabled?: boolean } = {},
+): AgentConfig[] {
+  if (!ids || ids.length === 0) {
+    return all.filter((c) => c.enabled || opts.includeDisabled);
+  }
+  const byId = new Map(all.map((c) => [c.id, c]));
+  const out: AgentConfig[] = [];
+  for (const id of ids) {
+    const c = byId.get(id);
+    if (!c) {
+      throw new ConfigError(
+        `unknown config "${id}". Known: ${all.map((x) => x.id).join(', ')}`,
+      );
+    }
+    if (!c.enabled && !opts.includeDisabled) {
+      throw new ConfigError(
+        `config "${id}" is disabled${c.note ? `: ${c.note}` : ''}. Pass --include-disabled to force.`,
+      );
+    }
+    out.push(c);
+  }
+  return out;
+}
+
+/** USD estimate from published per-token prices (subscription runs have no real $). */
+export function apiEquivalentCostUsd(
+  config: AgentConfig,
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadInputTokens: number;
+    cacheCreationInputTokens: number;
+    inputTokensIncludeCached: boolean;
+  },
+): number | undefined {
+  const p = config.pricing;
+  if (!p) return undefined;
+  const perM = (n: number, rate?: number) => (rate === undefined ? 0 : (n / 1_000_000) * rate);
+  // Avoid double-counting cached input for harnesses whose input count is inclusive.
+  const freshInput = usage.inputTokensIncludeCached
+    ? Math.max(0, usage.inputTokens - usage.cacheReadInputTokens)
+    : usage.inputTokens;
+  return (
+    perM(freshInput, p.inputPerMTok) +
+    perM(usage.outputTokens, p.outputPerMTok) +
+    perM(usage.cacheReadInputTokens, p.cacheReadPerMTok) +
+    perM(usage.cacheCreationInputTokens, p.cacheWritePerMTok)
+  );
+}

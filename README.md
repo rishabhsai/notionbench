@@ -40,7 +40,7 @@ packages/runner/       spawns agent CLIs headless in the sandbox; checkpoint/res
 packages/sandbox/      Docker environment (ntn, Node 24, templates preinstalled)
 packages/scoring/      verification layers: intents canonicalizer, exec-local driver,
                        live-state assertion helpers, stats (pass^k, Wilson)
-docs/                  PLAN.md (full design), COVERAGE.md (task × dimension matrix)
+docs/                  COVERAGE.md (task × dimension matrix), methodology notes
 ```
 
 ## Status

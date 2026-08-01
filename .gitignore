@@ -5,3 +5,10 @@ results/
 *.local
 .DS_Store
 notion_state.json
+
+# internal/personal — never publish
+PLAN.md
+docs/PLAN.md
+private/
+notes/
+runconfig.local.*
