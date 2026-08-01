@@ -17,6 +17,11 @@
  *     is exactly the argv prompt.
  *   - `-s workspace-write` confines writes to the trial workspace. v1 relies on this
  *     plus the per-trial tmpdir for isolation (see packages/sandbox/README.md).
+ *   - `sandbox_workspace_write={network_access=true}` is REQUIRED for live tasks: the
+ *     default workspace-write policy blocks outbound network, so `ntn` cannot reach
+ *     api.notion.com and the agent reports a capability failure that is really a
+ *     harness failure. Claude Code and OpenCode do not sandbox network by default, so
+ *     without this Codex is measured under a strictly harsher policy than its peers.
  *
  * Stream shape (captured from a real run, see test/fixtures/codex-*.jsonl):
  *   {"type":"thread.started","thread_id":"..."}
@@ -78,6 +83,14 @@ export const codexAdapter: HarnessAdapter = {
       config.model,
       '-c',
       'approval_policy="never"',
+      // Live tasks reach api.notion.com through the `ntn` CLI. `-s workspace-write`
+      // denies network by default, which is invisible in the transcript except as a
+      // DNS failure the agent then reports as its own inability — a harness confound
+      // that reads as a model failure. Verified in the 20260801-075526 pilot: every
+      // Codex live-task cell failed with "cannot resolve api.notion.com" while every
+      // Claude Code / OpenCode cell passed. Writes stay confined to the workspace.
+      '-c',
+      'sandbox_workspace_write={network_access=true}',
     ];
     if (config.reasoningEffort) {
       // `-c key=value` parses value as TOML; quote it so it is an explicit string.
