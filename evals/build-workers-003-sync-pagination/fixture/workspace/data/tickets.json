@@ -1,0 +1,16 @@
+{
+	"tickets": [
+		{ "id": "DL-1041", "subject": "Password reset email never arrives", "status": "open" },
+		{ "id": "DL-1042", "subject": "Invoice PDF is missing the tax line", "status": "pending" },
+		{ "id": "DL-1043", "subject": "SSO login loops back to the sign-in page", "status": "open" },
+		{ "id": "DL-1044", "subject": "Exported CSV has the columns in the wrong order", "status": "closed" },
+		{ "id": "DL-1045", "subject": "Webhook retries stop after the first failure", "status": "open" },
+		{ "id": "DL-1046", "subject": "Seat count on the billing page is stale", "status": "pending" },
+		{ "id": "DL-1047", "subject": "Mobile app crashes when opening attachments", "status": "open" },
+		{ "id": "DL-1048", "subject": "Search returns archived records", "status": "closed" },
+		{ "id": "DL-1049", "subject": "Timezone on scheduled reports is off by an hour", "status": "pending" },
+		{ "id": "DL-1050", "subject": "Bulk import silently drops rows past 500", "status": "open" },
+		{ "id": "DL-1051", "subject": "Cannot remove a deactivated teammate", "status": "closed" },
+		{ "id": "DL-1052", "subject": "API key rotation invalidates active sessions", "status": "open" }
+	]
+}
