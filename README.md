@@ -44,6 +44,16 @@ packages/scoring/      verification layers: intents canonicalizer, exec-local dr
 docs/                  COVERAGE.md (task × dimension matrix), methodology notes
 ```
 
+## Run it yourself
+
+```bash
+# zero-setup: offline suite (Notion-as-Code + local Workers tasks), any agent CLI
+npx notionbench run --suite offline --agent "claude -p {prompt}" --trials 3
+notionbench score results/latest
+```
+
+Presets exist for Claude Code, Codex, and OpenCode configs; any prompt-in/files-out CLI works via a command template. Live-suite tasks additionally need a Notion workspace integration token (docs coming). Community submissions (PR with trajectories) planned post-v1.
+
 ## Status
 
 🚧 Early scaffold. Task authoring in progress. Watch the repo for the first results post.
