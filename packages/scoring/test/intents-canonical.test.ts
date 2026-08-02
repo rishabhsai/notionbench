@@ -1029,3 +1029,64 @@ describe("intent parsing helpers", () => {
     expect(() => assertIntents([null])).toThrow(/expected an object/)
   })
 })
+
+describe("property visibility spellings", () => {
+  // A real document: the property the view references must actually be
+  // declared, or it is dangling and the whole entry normalizes away.
+  const doc = (properties: unknown[]) => [
+    {
+      type: "database",
+      resourceId: "db",
+      name: "Tickets",
+      parent: { type: "workspace" },
+      dataSources: [
+        {
+          resourceId: "ds",
+          name: "Tickets",
+          properties: [
+            { resourceId: "p-name", name: "Name", type: "title" },
+            { resourceId: "p-esc", name: "Escalated", type: "checkbox" },
+          ],
+        },
+      ],
+    },
+    {
+      type: "view",
+      resourceId: "v",
+      name: "Board",
+      dataSourceResourceId: "ds",
+      view: { type: "table", properties },
+    },
+  ]
+
+  it("treats visibility:'hide' and visible:false as the same column", () => {
+    const a = canonicalize(doc([{ property: "p-esc", visible: false }]))
+    const b = canonicalize(doc([{ property: "p-esc", visibility: "hide" }]))
+    expect(b.json).toBe(a.json)
+  })
+
+  it("treats visibility:'show' and visible:true as the same column", () => {
+    const a = canonicalize(doc([{ property: "p-esc", visible: true }]))
+    const b = canonicalize(doc([{ property: "p-esc", visibility: "show" }]))
+    expect(b.json).toBe(a.json)
+  })
+
+  it("still distinguishes a hidden column from a visible one", () => {
+    const a = canonicalize(doc([{ property: "p-esc", visibility: "hide" }]))
+    const b = canonicalize(doc([{ property: "p-esc", visibility: "show" }]))
+    expect(b.json).not.toBe(a.json)
+  })
+
+  it("leaves hide_if_empty alone — it has no boolean equivalent", () => {
+    const a = canonicalize(doc([{ property: "p-esc", visible: false }]))
+    const b = canonicalize(doc([{ property: "p-esc", visibility: "hide_if_empty" }]))
+    expect(b.json).not.toBe(a.json)
+  })
+
+  it("can be turned off", () => {
+    const opts = { normalizePropertyVisibility: false }
+    const a = canonicalize(doc([{ property: "p-esc", visible: false }]), opts)
+    const b = canonicalize(doc([{ property: "p-esc", visibility: "hide" }]), opts)
+    expect(b.json).not.toBe(a.json)
+  })
+})

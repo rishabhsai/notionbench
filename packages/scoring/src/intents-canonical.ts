@@ -192,6 +192,14 @@ export interface CanonicalizeOptions {
    * value that disagrees with the property is still a difference.
    */
   normalizeGroupByType?: boolean
+  /**
+   * Rewrite a view property's `visibility` (`"show"` / `"hide"`) into the
+   * equivalent `visible` boolean. `PropertyFormat` declares both spellings, so
+   * `{visible: false}` and `{visibility: "hide"}` describe the same column.
+   * Default true. `"hide_if_empty"` has no boolean equivalent and is left
+   * alone, so it still differs from an explicit `visible`.
+   */
+  normalizePropertyVisibility?: boolean
 }
 
 export interface CanonicalDocument {
@@ -596,6 +604,63 @@ function fillViewGroupByType(view: Json, propertyTypes: Map<string, Map<string, 
  * inline on a `database` intent (`intent.views[]`, reachable when
  * `normalizeInlineViews` is off). See the module docblock for the rationale.
  */
+/** `visibility` → the equivalent `visible` boolean, on one property entry. */
+function foldVisibility(entry: Json): Json {
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return entry
+  const obj = entry as JsonObject
+  const visibility = obj["visibility"]
+  if (typeof visibility !== "string") return entry
+  // Only the two spellings that mean the same thing. "hide_if_empty" is a
+  // third state with no boolean equivalent, and an explicit `visible` already
+  // present is the author's — neither is rewritten.
+  if (obj["visible"] !== undefined) return entry
+  if (visibility !== "show" && visibility !== "hide") return entry
+  const { visibility: _dropped, ...rest } = obj
+  return { ...rest, visible: visibility === "show" }
+}
+
+/** Apply {@link foldVisibility} to every `properties[]` entry in a view. */
+function foldViewVisibility(view: Json): Json {
+  if (view === null || typeof view !== "object" || Array.isArray(view)) return view
+  const schema = view as JsonObject
+  const properties = schema["properties"]
+  if (!Array.isArray(properties)) return view
+  let changed = false
+  const next = properties.map((entry) => {
+    const folded = foldVisibility(entry)
+    if (folded !== entry) changed = true
+    return folded
+  })
+  return changed ? { ...schema, properties: next } : view
+}
+
+/** Apply {@link foldViewVisibility} to every view schema, in either spelling. */
+function foldPropertyVisibility(intents: Intent[]): Intent[] {
+  let folded = false
+  const out = intents.map((intent) => {
+    const obj = intent as unknown as JsonObject
+    if (obj["type"] === "view" && obj["view"] !== undefined) {
+      const view = foldViewVisibility(obj["view"])
+      if (view === obj["view"]) return intent
+      folded = true
+      return { ...obj, view } as unknown as Intent
+    }
+    if (obj["type"] === "database" && Array.isArray(obj["views"])) {
+      let any = false
+      const views = obj["views"].map((view) => {
+        const next = foldViewVisibility(view)
+        if (next !== view) any = true
+        return next
+      })
+      if (!any) return intent
+      folded = true
+      return { ...obj, views } as unknown as Intent
+    }
+    return intent
+  })
+  return folded ? out : intents
+}
+
 function fillGroupByTypes(intents: Intent[]): Intent[] {
   const propertyTypes = collectPropertyTypes(intents)
   if (propertyTypes.size === 0) return intents
@@ -865,6 +930,7 @@ export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): 
   let list = assertIntents(intents)
   if (opts.normalizeInlineViews ?? true) list = liftInlineViews(list)
   if (opts.normalizeGroupByType ?? true) list = fillGroupByTypes(list)
+  if (opts.normalizePropertyVisibility ?? true) list = foldPropertyVisibility(list)
   const normalizeValues = opts.normalizePropertyValues ?? true
   const declared = collectDeclared(list)
   const occurrences = collectOccurrences(list, declared, normalizeValues)
