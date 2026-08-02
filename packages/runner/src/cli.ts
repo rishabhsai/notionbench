@@ -17,6 +17,7 @@
 import { parseArgs } from 'node:util';
 import { readFile, readdir, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { snapshotWorkspace } from './artifacts.js';
 import process from 'node:process';
 import { DEFAULT_TEMPLATES_DIR, prepareWorkspace, type DocsBundle } from '@notionbench/sandbox';
 import {
@@ -1787,6 +1788,8 @@ async function executeCell(args: {
   let fixture: ProvisionedFixture | undefined;
   /** Set when the throw came from provisioning, which is signal (c), not (b). */
   let provisioningFailed: string | undefined;
+  /** Hoisted so `finally` can snapshot the workspace into it before cleanup. */
+  const trialDir = path.join(args.resultsRoot, cp.runId, trialDirFor(coords));
   try {
     if (wantsFixture) {
       try {
@@ -1811,7 +1814,7 @@ async function executeCell(args: {
       identity: { runId: cp.runId, ...coords },
       prompt,
       workspaceDir: workspace.dir,
-      trialDir: path.join(args.resultsRoot, cp.runId, trialDirFor(coords)),
+      trialDir,
       timeoutMs: timeoutSec * 1000,
       killGraceMs: args.killGraceMs,
       notionHome: workspace.notionHome,
@@ -1912,6 +1915,9 @@ async function executeCell(args: {
     );
     return { kind: 'failed', detail: (err as Error).message };
   } finally {
+    // Snapshot before cleanup: once the workspace is gone, a verifier bug found
+    // later can only be fixed by re-running the cell. See artifacts.ts.
+    await snapshotWorkspace(workspace.dir, trialDir);
     // After the verdict is durable, and never fatal: `teardown` swallows its own
     // errors into an ORPHAN line in run.log rather than throwing.
     if (fixture) await args.live?.teardown(fixture);
