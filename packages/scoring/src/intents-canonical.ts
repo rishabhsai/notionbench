@@ -200,6 +200,15 @@ export interface CanonicalizeOptions {
    * alone, so it still differs from an explicit `visible`.
    */
   normalizePropertyVisibility?: boolean
+  /**
+   * Drop flags that are explicitly set to the value they already default to:
+   * `hidden: false` on a board column (`GroupFormat.hidden`) and `visible:
+   * true` on a view property (`PropertyFormat.visible`). Omitting the flag and
+   * spelling out its default describe the same view, so an author who writes
+   * `hidden: false` on the columns they are *not* hiding must not diff against
+   * an oracle that leaves them out. Default true.
+   */
+  normalizeDefaultFlags?: boolean
 }
 
 export interface CanonicalDocument {
@@ -604,6 +613,71 @@ function fillViewGroupByType(view: Json, propertyTypes: Map<string, Map<string, 
  * inline on a `database` intent (`intent.views[]`, reachable when
  * `normalizeInlineViews` is off). See the module docblock for the rationale.
  */
+/**
+ * Drop a redundant flag from one entry: a key whose explicit value equals the
+ * value it defaults to when absent.
+ */
+function dropDefault(entry: Json, key: string, defaultValue: boolean): Json {
+  if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return entry
+  const obj = entry as JsonObject
+  if (obj[key] !== defaultValue) return entry
+  const { [key]: _redundant, ...rest } = obj
+  return rest
+}
+
+/** Drop redundant `visible: true` / `hidden: false` throughout one view schema. */
+function dropViewDefaultFlags(view: Json): Json {
+  if (view === null || typeof view !== "object" || Array.isArray(view)) return view
+  const schema = view as JsonObject
+  let changed = false
+  const next: JsonObject = { ...schema }
+  for (const [field, key, dflt] of [
+    ["properties", "visible", true],
+    ["columns", "hidden", false],
+  ] as const) {
+    const list = schema[field]
+    if (!Array.isArray(list)) continue
+    let any = false
+    const mapped = list.map((entry) => {
+      const dropped = dropDefault(entry, key, dflt)
+      if (dropped !== entry) any = true
+      return dropped
+    })
+    if (any) {
+      next[field] = mapped
+      changed = true
+    }
+  }
+  return changed ? next : view
+}
+
+/** Apply {@link dropViewDefaultFlags} to every view schema, in either spelling. */
+function dropDefaultFlags(intents: Intent[]): Intent[] {
+  let changed = false
+  const out = intents.map((intent) => {
+    const obj = intent as unknown as JsonObject
+    if (obj["type"] === "view" && obj["view"] !== undefined) {
+      const view = dropViewDefaultFlags(obj["view"])
+      if (view === obj["view"]) return intent
+      changed = true
+      return { ...obj, view } as unknown as Intent
+    }
+    if (obj["type"] === "database" && Array.isArray(obj["views"])) {
+      let any = false
+      const views = obj["views"].map((view) => {
+        const next = dropViewDefaultFlags(view)
+        if (next !== view) any = true
+        return next
+      })
+      if (!any) return intent
+      changed = true
+      return { ...obj, views } as unknown as Intent
+    }
+    return intent
+  })
+  return changed ? out : intents
+}
+
 /** `visibility` → the equivalent `visible` boolean, on one property entry. */
 function foldVisibility(entry: Json): Json {
   if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return entry
@@ -931,6 +1005,8 @@ export function canonicalize(intents: unknown, opts: CanonicalizeOptions = {}): 
   if (opts.normalizeInlineViews ?? true) list = liftInlineViews(list)
   if (opts.normalizeGroupByType ?? true) list = fillGroupByTypes(list)
   if (opts.normalizePropertyVisibility ?? true) list = foldPropertyVisibility(list)
+  // After folding visibility spellings, so visibility:"show" → visible:true → dropped.
+  if (opts.normalizeDefaultFlags ?? true) list = dropDefaultFlags(list)
   const normalizeValues = opts.normalizePropertyValues ?? true
   const declared = collectDeclared(list)
   const occurrences = collectOccurrences(list, declared, normalizeValues)
@@ -1053,6 +1129,20 @@ interface DiffState {
 }
 
 const LABEL_RE = /#c\d+/g
+
+/**
+ * Render a scalar for a diff message. A field's *value* is usually what tells
+ * you whether a difference is a real disagreement or a redundant spelling --
+ * `hidden: false` next to an omitted `hidden` is not the same finding as
+ * `hidden: true` next to one -- so scalars are shown inline. Objects and
+ * arrays are summarized by shape; the full value stays on the Difference.
+ */
+function briefly(value: Json): string {
+  if (value === null) return "null"
+  if (Array.isArray(value)) return `[${value.length} item(s)]`
+  if (typeof value === "object") return `{${Object.keys(value as JsonObject).length} field(s)}`
+  return JSON.stringify(value)
+}
 
 /**
  * Compare two strings treating `#cN` labels as bindable symbols (this also
@@ -1203,7 +1293,7 @@ function diffValue(expected: Json, actual: Json, path: string, tpath: string, st
         push({
           kind: "missing",
           path: `${path}.${key}`,
-          message: `missing field \`${key}\``,
+          message: `missing field \`${key}\` (expected ${briefly(e[key])})`,
           expected: e[key],
         })
         continue
@@ -1215,7 +1305,7 @@ function diffValue(expected: Json, actual: Json, path: string, tpath: string, st
         push({
           kind: "unexpected",
           path: `${path}.${key}`,
-          message: `unexpected field \`${key}\``,
+          message: `unexpected field \`${key}\` = ${briefly(a[key])}`,
           actual: a[key],
         })
       }

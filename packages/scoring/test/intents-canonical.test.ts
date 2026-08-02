@@ -1090,3 +1090,62 @@ describe("property visibility spellings", () => {
     expect(b.json).not.toBe(a.json)
   })
 })
+
+describe("redundant default flags", () => {
+  const doc = (view: Record<string, unknown>) => [
+    {
+      type: "database",
+      resourceId: "db",
+      name: "Tickets",
+      parent: { type: "workspace" },
+      dataSources: [
+        {
+          resourceId: "ds",
+          name: "Tickets",
+          properties: [
+            { resourceId: "p-name", name: "Name", type: "title" },
+            { resourceId: "p-pri", name: "Priority", type: "select" },
+          ],
+        },
+      ],
+    },
+    { type: "view", resourceId: "v", name: "Board", dataSourceResourceId: "ds", view },
+  ]
+
+  it("hidden:false on a column is the same as leaving it out", () => {
+    const a = canonicalize(doc({ type: "board", columns: [{ property: "p-pri" }] }))
+    const b = canonicalize(doc({ type: "board", columns: [{ property: "p-pri", hidden: false }] }))
+    expect(b.json).toBe(a.json)
+  })
+
+  it("hidden:true is still a real difference", () => {
+    const a = canonicalize(doc({ type: "board", columns: [{ property: "p-pri" }] }))
+    const b = canonicalize(doc({ type: "board", columns: [{ property: "p-pri", hidden: true }] }))
+    expect(b.json).not.toBe(a.json)
+  })
+
+  it("visible:true on a property is the same as leaving it out", () => {
+    const a = canonicalize(doc({ type: "table", properties: [{ property: "p-pri" }] }))
+    const b = canonicalize(doc({ type: "table", properties: [{ property: "p-pri", visible: true }] }))
+    expect(b.json).toBe(a.json)
+  })
+
+  it("visibility:'show' folds to visible:true and then drops out", () => {
+    const a = canonicalize(doc({ type: "table", properties: [{ property: "p-pri" }] }))
+    const b = canonicalize(doc({ type: "table", properties: [{ property: "p-pri", visibility: "show" }] }))
+    expect(b.json).toBe(a.json)
+  })
+
+  it("visible:false is still a real difference", () => {
+    const a = canonicalize(doc({ type: "table", properties: [{ property: "p-pri" }] }))
+    const b = canonicalize(doc({ type: "table", properties: [{ property: "p-pri", visible: false }] }))
+    expect(b.json).not.toBe(a.json)
+  })
+
+  it("can be turned off", () => {
+    const opts = { normalizeDefaultFlags: false }
+    const a = canonicalize(doc({ type: "board", columns: [{ property: "p-pri" }] }), opts)
+    const b = canonicalize(doc({ type: "board", columns: [{ property: "p-pri", hidden: false }] }), opts)
+    expect(b.json).not.toBe(a.json)
+  })
+})
