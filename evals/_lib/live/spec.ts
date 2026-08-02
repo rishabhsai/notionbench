@@ -103,6 +103,12 @@ export interface FileSpec {
  * Threads attached to a *page* and threads attached to a *block inside* it are
  * different queries against `GET /v1/comments`, which is the distinction
  * `investigate-comments-001` grades — so both are expressible.
+ *
+ * A page carries at most ONE thread. Notion folds every page-level comment into
+ * a single discussion, so a second entry in `PageSpec.comments` does not become
+ * a second thread — it silently becomes a reply to the first. Anchor additional
+ * threads to blocks instead; `validateSpec` rejects the ambiguous spelling
+ * rather than letting a fixture promise a shape the API will not build.
  */
 export interface CommentSpec {
   text: string
@@ -298,6 +304,18 @@ export function validateSpec(value: unknown, source = "<spec>"): FixtureSpec {
     if (typeof page.title !== "string") throw new SpecError(`${source}: page "${page.key}" needs a title`)
     claim(page.key, "page")
     for (const key of page.attachments ?? []) requireFile(key, `page "${page.key}"`)
+    // Notion folds every page-level comment into one discussion, so a second
+    // entry here becomes a reply to the first rather than a thread of its own.
+    // A fixture that asks for two is describing a workspace the API will not
+    // build, and the mismatch only surfaces as an agent "wrongly" reporting the
+    // shape the spec promised.
+    if ((page.comments ?? []).length > 1) {
+      throw new SpecError(
+        `${source}: page "${page.key}" declares ${page.comments!.length} page-level threads, ` +
+          `but Notion folds all page-level comments into a single discussion — ` +
+          `anchor the extra thread(s) to a block instead`,
+      )
+    }
   }
   for (const db of spec.databases ?? []) {
     claim(db.key, "database")

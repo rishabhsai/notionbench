@@ -511,6 +511,36 @@ export function newRunId(now: Date = new Date()): string {
   ].join('');
 }
 
+/**
+ * A run id no existing run already owns.
+ *
+ * Run ids are timestamps to the second, so two runs started inside the same
+ * second collide — and a collision is silent and destructive: the second run
+ * appends its rows to the first one's `results.jsonl`, and the merged file
+ * reads as one run that scored every cell twice. Suffix rather than fail, so
+ * an operator who launches twice in quick succession gets two runs instead of
+ * an error, and never one corrupt one.
+ */
+export async function claimRunId(resultsRoot: string, now: Date = new Date()): Promise<string> {
+  // The child is created non-recursively so EEXIST means "taken"; the root has
+  // to exist first or that same call fails with ENOENT on a fresh results dir.
+  await mkdir(resultsRoot, { recursive: true });
+  // Step the clock forward a second at a time rather than suffixing: a run id
+  // is YYYYMMDD-HHMMSS everywhere — in paths, in --resume, in every log line
+  // and parser — and a shape like `...-2` silently truncates to the id of the
+  // run it was meant to differ from. A couple of seconds of drift is harmless.
+  for (let n = 0; n <= 120; n++) {
+    const candidate = newRunId(new Date(now.getTime() + n * 1000));
+    try {
+      await mkdir(path.join(resultsRoot, candidate), { recursive: false });
+      return candidate;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+    }
+  }
+  throw new Error(`cannot claim a free run id under ${resultsRoot} near ${newRunId(now)}`);
+}
+
 function statePathFor(resultsRoot: string, runId: string): string {
   return path.join(resultsRoot, runId, 'state.json');
 }

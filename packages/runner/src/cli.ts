@@ -33,7 +33,7 @@ import {
   Checkpoint,
   buildCells,
   cellKey,
-  newRunId,
+  claimRunId,
   trialDirFor,
   type CellCoords,
   type RunMeta,
@@ -896,7 +896,7 @@ async function cmdRun(values: Values, argv: string[]): Promise<number> {
     await applyReplay(cp, replay, resultsRoot, argv);
     passKeys = new Set(replay.passCells.map(cellKey));
   } else {
-    const runId = newRunId();
+    const runId = await claimRunId(resultsRoot);
     const specConfigs: SpecConfig[] = await Promise.all(
       configs.map(async (c) => ({ ...c, cliVersion: await cliVersionFor(c) })),
     );

@@ -6,6 +6,7 @@ import {
   Checkpoint,
   buildCells,
   cellKey,
+  claimRunId,
   newRunId,
   parseCellKey,
   resume,
@@ -332,5 +333,21 @@ describe('summary', () => {
     const s = cp.summary();
     expect(s.byConfig['codex-high']).toMatchObject({ done: 8, pending: 0, total: 8 });
     expect(s.byConfig['claude-code-opus-5']).toMatchObject({ done: 0, pending: 8, total: 8 });
+  });
+});
+
+describe('claimRunId', () => {
+  it('never hands two runs the same directory', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'nb-runid-'));
+    const at = new Date('2026-08-02T03:14:36Z');
+    const a = await claimRunId(root, at);
+    const b = await claimRunId(root, at);
+    const c = await claimRunId(root, at);
+    expect(a).toBe('20260802-031436');
+    expect(new Set([a, b, c]).size).toBe(3);
+    // Every id keeps the canonical shape — a suffix would truncate to another
+    // run's id under the parsers that read run ids out of paths and logs.
+    for (const id of [a, b, c]) expect(id).toMatch(/^\d{8}-\d{6}$/);
+    await rm(root, { recursive: true, force: true });
   });
 });
