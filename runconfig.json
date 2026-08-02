@@ -81,6 +81,18 @@
       "note": "OpenCode Go sub; Kimi K3 limited to 110 requests/5h \u2014 schedule this lane first and let it trickle."
     },
     {
+      "id": "opencode-deepseek-v4-flash",
+      "label": "OpenCode \u00d7 DeepSeek V4 Flash",
+      "harness": "opencode",
+      "model": "opencode-go/deepseek-v4-flash",
+      "enabled": true,
+      "pricing": {
+        "inputPerMTok": 0.14,
+        "outputPerMTok": 0.28
+      },
+      "note": "OpenCode Go sub; cheapest tier on the board \u2014 the budget-vs-frontier datapoint."
+    },
+    {
       "id": "claude-code-sonnet-5",
       "label": "Claude Code \u00d7 Sonnet 5 (high)",
       "harness": "claude-code",
