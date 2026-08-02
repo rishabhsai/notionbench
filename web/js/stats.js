@@ -45,7 +45,10 @@
         avg: mean(trials.map((t) => t.score)),
         ciHalf: wilsonHalf(solved, trials.length),
         solveRate: trials.length ? solved / trials.length : 0,
-        pass3: full.length ? full.filter((r) => r.trials.slice(0, k).every((t) => t.solved)).length / full.length : 0,
+        // null, not 0, when no cell has k trials yet: mid-run that means "not
+        // enough data", and rendering it as 0% reads as "solved nothing".
+        pass3: full.length ? full.filter((r) => r.trials.slice(0, k).every((t) => t.solved)).length / full.length : null,
+        pass3n: full.length,
         k,
         toolErrs: mean(trials.map((t) => t.toolErrors)),
         tokensIn: tokIn,
@@ -95,7 +98,7 @@
 
   /* ---------- formatters ---------- */
   const fmt = {
-    pct: (x, d = 0) => (100 * x).toFixed(d) + "%",
+    pct: (x, d = 0) => (x === null || x === undefined ? "—" : (100 * x).toFixed(d) + "%"),
     score: (x) => x.toFixed(2),
     money: (x) => "$" + (x >= 100 ? Math.round(x).toLocaleString("en-US") : x.toFixed(2)),
     tokens(n) {

@@ -406,7 +406,7 @@ export function mainTable(report: Report): string {
     return [
       r.label,
       `${pct(r.avgScore)} [${pct(r.ci.low)}–${pct(r.ci.high)}]`,
-      pct(r.passHatK),
+      r.tasks === 0 ? "—" : pct(r.passHatK),
       String(r.toolErrors) + (r.unscored > 0 ? ` (${r.unscored} unverified)` : ""),
       compactNumber(r.meanTokens),
       compactNumber(r.totalTokens) + star,
@@ -437,7 +437,7 @@ function breakdownTable(breakdownData: Breakdown, groupHeader: string): string {
       r.label,
       String(r.tasks),
       `${pct(r.avgScore)} [${pct(r.ci.low)}–${pct(r.ci.high)}]`,
-      pct(r.passHatK),
+      r.tasks === 0 ? "—" : pct(r.passHatK),
       String(r.toolErrors),
     ]
   })

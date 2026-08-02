@@ -134,7 +134,14 @@
     const maxTrials = rows.reduce((a, r) => Math.max(a, r.trials), 0);
     const key = state.sort.key, dir = state.sort.dir;
     const val = (r) => key === "label" ? r.cfg.label.toLowerCase() : r[key];
-    rows.sort((a, b) => (val(a) > val(b) ? dir : val(a) < val(b) ? -dir : 0));
+    // A null metric (pass^k before any cell has k trials) sorts last in either
+    // direction — "unknown" is not a small value.
+    rows.sort((a, b) => {
+      const x = val(a), y = val(b);
+      const xn = x === null || x === undefined, yn = y === null || y === undefined;
+      if (xn || yn) return xn && yn ? 0 : xn ? 1 : -1;
+      return x > y ? dir : x < y ? -dir : 0;
+    });
 
     const partial = data.configs.some((c) => c.status !== "done");
     const head = LB_COLS.map((c) => {
@@ -154,7 +161,7 @@
         <td class="rank">${i + 1}</td>
         <td><div class="cfg-cell"><span class="dot" style="background:${slotVar(r.cfg.slot)}"></span><span>${esc(r.cfg.label)}${running ? ` <span class="sub">(${r.cfg.progress.done}/${r.cfg.progress.total} cells)</span>` : ""}</span></div></td>
         <td class="num"><span class="score-cell">${meterHtml(r.avg, "var(--seq)", "thin")}<span>${fmt.score(r.avg)}<span class="ci">±${r.ciHalf.toFixed(2)}</span></span></span></td>
-        <td class="num">${fmt.pct(r.pass3)}</td>
+        <td class="num" title="${r.pass3 === null ? `no cell has ${r.k} trials yet` : `over ${r.pass3n} task(s) with all ${r.k} trials complete`}">${fmt.pct(r.pass3)}${r.pass3 !== null && r.pass3n < 5 ? `<span class="muted"> (${r.pass3n})</span>` : ""}</td>
         <td class="num">${r.toolErrs.toFixed(1)}</td>
         <td class="num" title="mean over ${r.trials} completed trial${r.trials === 1 ? "" : "s"}">${fmt.tokens(Math.round(r.tokPerTrial))}</td>
         <td class="${totCls}" title="${inOut}">${fmt.tokens(r.tokTotal)}${star}</td>
