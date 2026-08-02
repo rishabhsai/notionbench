@@ -36,6 +36,20 @@ const LIB = path.join(EVALS, "_lib", "live")
 const { provisionFixture, teardownFixture, specPathFor, writeWorkspacePointer } = await import(
   pathToFileURL(path.join(LIB, "provision.ts")).href
 )
+const { NotionClient } = await import(pathToFileURL(path.join(LIB, "notion.ts")).href)
+
+/**
+ * teardownFixture takes (client, rootId) — calling it with the ProvisionResult
+ * alone fails silently and leaks the fixture. A leaked fixture is not merely
+ * untidy: its databases stay searchable workspace-wide, so a later task that
+ * resolves a data source by name can match a dead run's copy.
+ */
+async function teardown(provisioned) {
+  const result = await teardownFixture(new NotionClient(), provisioned.rootId)
+  if (!result?.ok) {
+    console.log(`   (teardown failed, leaked ${provisioned.rootId}: ${result?.error ?? "unknown"})`)
+  }
+}
 
 async function exists(p) {
   try {
@@ -98,18 +112,23 @@ async function runCandidate(taskDir, scriptName, provisioned) {
 async function verify(taskId) {
   const taskDir = path.join(EVALS, taskId)
   const spec = JSON.parse(await fs.readFile(specPathFor(taskDir), "utf8"))
-  const provisioned = await provisionFixture({ spec, label: `verify-${taskId}` })
   const failures = []
-  try {
-    for (const [scriptName, want] of [
-      ["solution.mjs", 1],
-      ["wrong.mjs", 0],
-    ]) {
-      try {
-        await fs.access(path.join(taskDir, "live", scriptName))
-      } catch {
-        continue // a task may ship no foil
-      }
+
+  // A FRESH fixture per variant, exactly as qc:live does. Sharing one fixture
+  // between the oracle and the foil lets the oracle's correct work stand in for
+  // the foil's missing work — build-cli-003's foil omits option colours, and on
+  // a schema the oracle had already coloured it scored a clean 1.
+  for (const [scriptName, want] of [
+    ["solution.mjs", 1],
+    ["wrong.mjs", 0],
+  ]) {
+    try {
+      await fs.access(path.join(taskDir, "live", scriptName))
+    } catch {
+      continue // a task may ship no foil
+    }
+    const provisioned = await provisionFixture({ spec, label: `verify-${taskId}` })
+    try {
       const { result } = await runCandidate(taskDir, scriptName, provisioned)
       const ok = result.score === want
       console.log(
@@ -120,11 +139,9 @@ async function verify(taskId) {
         failures.push(`${taskId} / ${scriptName}`)
         for (const d of result.diagnostics ?? []) console.log(`          - ${String(d).slice(0, 220)}`)
       }
+    } finally {
+      await teardown(provisioned)
     }
-  } finally {
-    await teardownFixture(provisioned).catch((err) =>
-      console.log(`   (teardown failed, leaked ${provisioned.rootId}: ${err.message})`),
-    )
   }
   return failures
 }

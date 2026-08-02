@@ -43,17 +43,34 @@ async function isUnderRoot(page) {
   return false
 }
 
-const hits = (await searchPages("Runbook")).filter((page) => props(page).title?.includes("Runbook"))
+/** One full pass: search, keep the in-scope hits, and read each for an owner. */
+async function collectRunbooks() {
+  const hits = (await searchPages("Runbook")).filter((page) => props(page).title?.includes("Runbook"))
+  const found = []
+  for (const page of hits) {
+    if (page.in_trash || page.archived) continue
+    if (!(await isUnderRoot(page))) continue
+    const blocks = await listChildren(page.id)
+    const hasOwner = blocks.some((block) =>
+      plain(block[block.type]?.rich_text).trimStart().startsWith("Owner:"),
+    )
+    found.push({ title: props(page).title, hasOwner })
+  }
+  return found
+}
 
-const runbooks = []
-for (const page of hits) {
-  if (page.in_trash || page.archived) continue
-  if (!(await isUnderRoot(page))) continue
-  const blocks = await listChildren(page.id)
-  const hasOwner = blocks.some((block) =>
-    plain(block[block.type]?.rich_text).trimStart().startsWith("Owner:"),
-  )
-  runbooks.push({ title: props(page).title, hasOwner })
+// Notion's search index is eventually consistent: a page created seconds ago is
+// not necessarily searchable yet, and this oracle runs immediately after the
+// fixture is provisioned. Poll until the result set stops growing. An agent
+// under test never needs this — by the time it searches, minutes have passed —
+// but without it the oracle races the index and reports zero.
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+let runbooks = []
+for (let attempt = 0; attempt < 30; attempt++) {
+  const found = await collectRunbooks()
+  if (found.length > 0 && found.length === runbooks.length) break
+  runbooks = found
+  await sleep(2000)
 }
 
 const answer = {
