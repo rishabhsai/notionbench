@@ -1,0 +1,313 @@
+# How well do coding agents build on Notion's developer platform?
+
+*Draft — methodology. Results sections are placeholders until the first grid completes.*
+
+Notion shipped a developer platform in May 2026: the `ntn` CLI, Workers, and
+Notion-as-Code. It was explicitly built for AI coding agents. Nobody had measured
+whether agents can actually use it.
+
+NotionBench is 38 tasks across every programmable surface of that platform, run
+against seven agent configurations, three times each — 798 rollouts, each graded
+by a program rather than a model.
+
+This post is about how it works and why it is built the way it is. The results
+post is separate.
+
+---
+
+## What is being measured
+
+**Agent configurations, not models.** A model does not use a CLI; a harness does,
+using a model. Claude Code with Opus 5 and Codex with Opus 5 would be different
+systems with different tool-calling loops, different context handling, and
+different failure modes. Every row in the leaderboard is a `harness × model`
+pair, run through its own official CLI in headless mode, on its subscription —
+the configuration a developer would actually have.
+
+**Why this platform, and why now.** The platform is three months old. That is a
+narrow and closing window in which no model has meaningfully trained on it, so
+the benchmark measures something closer to *"can this agent learn an unfamiliar
+API from its documentation"* than *"has this agent memorized the API."* Every
+agent is given the `AGENTS.md` and skills files Notion ships in its own
+templates, because that is what a real developer would hand it.
+
+---
+
+## What "solved" means
+
+Every task is graded by deterministic, programmatic verification. There is no
+LLM judge anywhere in the scoring path. A task either produced the required
+state, or it did not.
+
+Three layers, chosen per task:
+
+**Static.** The project typechecks and builds. Necessary, never sufficient.
+
+**Behavioral.** `ntn workers exec --local` runs a Worker offline and
+deterministically — the key discovery that makes Workers testable without a
+Business plan or a deployment. For Notion-as-Code, the build emits
+`dist/intents.json`, and we compare it to the oracle's *canonically*, not
+byte-wise (see below).
+
+**Live state.** For tasks that touch a real workspace, the verifier reads Notion
+back through the public API and asserts on what is actually there. Each trial
+gets its own freshly provisioned fixture, leased and torn down per cell. The
+agent never sees the verifier, the fixture spec, or the oracle.
+
+### Canonical comparison, and why it needed four fixes
+
+Notion-as-Code lets you write the same workspace many ways. Resource IDs are
+author-chosen, so two correct programs differ in every identifier. The
+canonicalizer solves that with graph refinement: it relabels resource IDs to
+canonical names derived from structure, so two isomorphic documents become
+byte-identical, and a real difference stays a difference.
+
+Getting "the same workspace" right turned out to be most of the work. Four times,
+a correct answer was marked wrong because the SDK permits two spellings and our
+oracle happened to pick one:
+
+| The two spellings | What we were doing |
+|---|---|
+| a view declared inline on a database, vs. attached as a separate `view` intent | treating them as different workspaces |
+| `groupBy.type` omitted (it is derivable from the grouped property) vs. stated | requiring it |
+| `visible: false` vs. `visibility: "hide"` — `PropertyFormat` declares both | understanding only the boolean |
+| `hidden: false` vs. omitting `hidden` — the default is already `false` | reading a redundant default as a disagreement |
+
+Each was found the same way: several independent frontier models failing one task
+with the *same* complaint. That is not what models failing looks like. It is what
+a broken verifier looks like, and the run halts on it automatically (below).
+
+All four are now normalizations with tests, each independently disableable, and
+each documented with the SDK type that justifies it. The last one cost a grep
+through an agent transcript to recover a single boolean — which is why diff
+messages now carry the offending value, and why trial artifacts are persisted.
+
+---
+
+## The task suite
+
+38 scored tasks across four stages, covering pages, databases and data sources,
+views, search, comments, users, files, Workers (tools, syncs, webhooks, ops),
+Notion-as-Code, API versioning, and rate limits. The full matrix is in
+[COVERAGE.md](COVERAGE.md); every task in long form is in [TASKS.md](TASKS.md).
+
+- **build** (16) — create something that did not exist
+- **investigate** (8) — answer a question about real state, in a machine-checkable file
+- **resolve** (10) — fix something broken
+- **operate** (4) — run the platform correctly (secrets, rate discipline, offline harness)
+
+Tasks are not uniformly easy on purpose. Several are traps that a plausible,
+confident, wrong approach walks straight into:
+
+- `GET /v1/views` returns `{object, id}` stubs and nothing else. An agent that
+  reads the list response as "here are the views" reports one view out of six.
+- A data source query paginates silently at 100 rows. An agent that sums the
+  first page reports a confidently wrong total.
+- `PATCH /pages/{id}/markdown` replaces the whole document. Appending a section
+  by sending only the new section deletes the page body.
+- Relation properties cap at 25 linked items per read.
+
+**Deliberate exclusions,** stated so the scope is not mistaken for coverage: the
+MCP CRUD surface (owned by [MCPMark](https://mcpmark.ai) — we do not
+re-implement it), Workers *deployment* (Business-plan gated; behavior is verified
+via `exec --local` instead), and UI-only features with no public API.
+
+---
+
+## Proving the tasks are fair, before running anything
+
+Every task passes a three-way gate in CI, offline, with no API tokens:
+
+1. the **oracle** solution scores 1,
+2. a **plausibly-wrong** solution — one that makes exactly the mistake the task
+   is about — scores 0,
+3. a **null** agent that does nothing scores 0.
+
+A task that cannot fail its own foil is not measuring anything. This gate runs on
+every commit against an in-process fake Notion server.
+
+### The gate's blind spot, and the check that closes it
+
+`qc:live` proves a verifier is self-consistent *against our fake server*. That is
+all it can prove. The fake is necessarily more permissive and more uniform than
+`api.notion.com`, so an assertion encoding a wrong belief about Notion passes CI
+and then fails every live cell. Three bugs shipped through that gap:
+
+- views report a filter/group_by property as an opaque **id**, not a name;
+- the schema **percent-encodes** those ids (`"C~m%7C"`) while views reference them
+  raw (`"C~m|"`) — so only some properties failed to resolve, and it read as
+  intermittent rather than systematic;
+- `GET /pages/{id}/markdown` **never renders the page title** into the body. Our
+  fake prepended it, so one task demanded a line Notion does not send, and every
+  config failed it having done the work correctly.
+
+So there is now a second check that talks to the real API: it provisions the real
+fixture, runs the real oracle against `api.notion.com`, and asserts the verifier
+scores it 1 and the foil 0. It costs real API calls, so it is not in CI — it runs
+whenever a live verifier or fixture changes. Sweeping all 18 live tasks with it
+also caught a fixture that was describing a workspace Notion will not build:
+Notion folds *every* page-level comment into a single discussion, so a fixture
+declaring two page-level threads silently got one, and agents were marked wrong
+for reporting the shape the spec promised. The spec validator now rejects that
+shape outright.
+
+---
+
+## What a failure actually means
+
+This matters more than the leaderboard, and most benchmarks are quiet about it.
+"Config X failed task Y" is not one claim. In this run it has been at least five
+different things, and only some of them are about the agent's ability.
+
+**1. Our verifier was wrong.** Four canonicalizer bugs and three fake-vs-real API
+divergences, above. Every one produced failures for correct work. All were fixed
+and the affected cells re-run; the stale rows are retired to
+`results.superseded.jsonl` rather than deleted, so the correction is auditable.
+
+**2. The environment was wrong.** Codex's sandbox blocks network access by
+default, so every live task failed with "cannot resolve api.notion.com" until
+`network_access=true` was set. Claude Code refuses to run as root. Ubuntu's
+restriction on unprivileged user namespaces broke Codex's sandbox entirely. None
+of these are facts about a model, and all were fixed before measurement.
+
+**3. The provider was down or rate-limited.** One configuration is capped at 110
+requests per 5 hours. On exhaustion, the CLI *hangs* rather than returning a 429 —
+so the harness cannot tell it apart from a slow agent and records a 900-second
+timeout. Those cells show 0 tool calls and 0 tokens: the agent never ran. They
+are excluded and re-run, not published as zeros.
+
+**4. The agent could do it, but did not follow the instruction.** This is the
+most interesting category and the easiest to misreport. Two examples from this
+run:
+
+- One task's prompt says *"Keep that wording exactly."* One configuration
+  paraphrased the instruction text on both trials. It built the custom agent
+  correctly — right icon, right model, right shared resources, all subscores
+  passing — and failed only on wording it was told not to change.
+- Another task states that *"a category nobody has expensed answers with zeros
+  rather than an error."* Three configurations pinned the tool's input schema to
+  an enum, so the SDK rejected the unknown value before their handler ran. Their
+  code was arguably better engineering; it was not what the task specified.
+
+These are counted as failures — the spec was explicit, and several configurations
+followed it. But they say something different about an agent than "could not use
+the platform," and they are reported distinctly rather than folded into one
+number.
+
+**5. The agent genuinely could not do it.** Missed pagination, wrong property
+type, never registered the webhook handler, wrote to the wrong data source. This
+is the category the benchmark exists to measure, and it is the one people assume
+every failure belongs to.
+
+A benchmark that reports only category 5 while silently containing 1–4 is
+reporting a number that means less than it appears to. Ours are separated
+because we had to find each one to trust the rest.
+
+---
+
+## Statistics
+
+**`avg@k`** — the fraction of all trials solved. Capability. Reported with a 95%
+Wilson interval, which behaves correctly near 0 and 1 where the normal
+approximation does not.
+
+**`pass^k`** — the fraction of tasks solved in *every* one of k trials, using the
+unbiased estimator `C(c,k)/C(n,k)`. Reliability. The gap between the two is the
+point: a configuration that solves 90% of trials scattered across many tasks
+looks identical to one that reliably solves 90% of tasks, until you look here.
+
+Mid-run, `pass^k` is undefined for any task without k completed trials. It shows
+an em dash and the number of qualifying tasks rather than `0%`, because "no data
+yet" and "solved nothing" are not the same statement.
+
+**Time.** Agent runtimes are heavy-tailed — a single timeout drags a mean by 75%
+while describing no actual run. We report the **median** per trial (typical),
+**p90** (the tail the median hides), and the **total** (what it costs to run the
+suite). Median matches [DeepSWE](https://arxiv.org/pdf/2607.07946) and
+[GSO-bench](https://gso-bench.github.io/); some benchmarks use means instead.
+
+**Cost** is API-equivalent: token counts are real and measured, priced at public
+list rates. The runs themselves are on subscriptions, so this is a comparison
+figure, not a receipt.
+
+**Tokens** are normalized across harnesses, which do not agree on what they
+report. One counts cached reads inside its input total; another excludes them and
+reports reasoning tokens as a separate addend. Comparing raw numbers across
+harnesses without normalizing compares accounting conventions, not work.
+
+---
+
+## Keeping a multi-day run honest
+
+798 cells take days. A task whose verifier is wrong invalidates every cell that
+touched it, and discovering that at the end costs the whole run.
+
+- **Trial-major ordering.** The first pass covers every task once, so all seven
+  configurations' verdicts on task N land minutes apart rather than days apart —
+  which is what makes a bad task detectable early.
+- **A deterministic watchdog** (no LLM) halts the run when ≥3 configurations fail
+  the same task in the same trial with the same *normalized* diagnostic — the
+  signature of a broken verifier, which is how all four canonicalizer bugs
+  presented. A verifier crash halts on the first occurrence. A task every
+  configuration fails for *different* reasons is flagged, never halted: that is
+  also what a genuinely hard task looks like, and this suite is meant to contain
+  those.
+- **Reviewed failures are acknowledged, not hidden.** When a shared diagnostic
+  turns out to be a real miss, `--ack <task>:<pattern> --ack-reason "<why>"`
+  records that exact signature and lets the grid continue. The reason is stored
+  in `run-spec.json`, replayed on resume, shown in `ALERT.json`, and reported by
+  `doctor`, which stops calling the run clean. Verifier crashes and fixture
+  failures can never be acknowledged — those are the measuring apparatus
+  failing, not the agent.
+- **Nothing is deleted.** `--redo <task>` retires that task's rows to
+  `results.superseded.jsonl`. Every correction is in the record.
+- **Trial artifacts are persisted.** The agent's output — `dist/intents.json`,
+  `answer.json`, its source — is copied next to the verdict before the workspace
+  is deleted, so a verifier fix can be re-scored against saved artifacts instead
+  of re-running the cell.
+- **Run IDs cannot collide.** They are timestamps to the second; two runs started
+  in the same second used to share a results directory, and the second silently
+  appended to the first. The merged file read as one run that scored every cell
+  twice.
+
+---
+
+## Reproducing it
+
+```bash
+pnpm install && pnpm -r build
+
+pnpm --filter @notionbench/evals run qc        # every task: oracle=1, wrong=0, null=0
+node packages/runner/dist/cli.js run --dry-run # the exact grid, argv, and child env
+node packages/runner/dist/cli.js run --trials 3
+node packages/runner/dist/cli.js score results/latest
+node packages/runner/dist/cli.js doctor results/latest
+```
+
+Auth is your own subscription; the runner strips `ANTHROPIC_API_KEY` and
+`OPENAI_API_KEY` from every child process so a stray key cannot silently change
+what is being measured. Every rollout, including token counts and full
+diagnostics, is in `results/<runId>/results.jsonl`.
+
+---
+
+## What this does not measure
+
+- **Deployment.** Workers behavior is verified offline via `exec --local`;
+  deployment is Business-plan gated.
+- **The MCP surface.** Covered by MCPMark; duplicating it would be noise.
+- **Anything UI-only.** Automations, permissions, teamspace administration.
+- **Long-horizon work.** Tasks are scoped to a single session with a 15-minute
+  ceiling. This is not a measure of multi-hour autonomy.
+- **Prompt sensitivity.** Each task has one wording. A different phrasing would
+  move some numbers, and we do not know by how much.
+- **Statistical power at k=3.** Three trials establish reliability coarsely.
+  `pass^3` on 38 tasks is a real signal; it is not a tight one.
+
+The suite is versioned and frozen per release. A private holdout of unpublished
+tasks exists for contamination checks later.
+
+---
+
+*Repo: [github.com/rishabhsai/notionbench](https://github.com/rishabhsai/notionbench) · MIT.
+Results post: forthcoming.*
