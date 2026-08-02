@@ -32,6 +32,14 @@ rollouts, each graded by a program rather than a model.
 is the share of tasks solved in **every** one of three trials — capability
 versus reliability, and the gap between them is the interesting part.
 
+**One caveat on the table.** OpenCode × Kimi K3 ran **one trial per task, not
+three**: the account hit a weekly usage limit partway through the grid, and the
+remaining trials would have taken roughly a month of reset windows. Its `avg@1`
+covers all 38 tasks and is a valid estimate, but a noisier one — its confidence
+interval is correspondingly wider — and its `pass^k` is blank, because
+reliability cannot be measured from a single trial. Its total-token and
+total-time figures are marked as covering less work than the other rows.
+
 ### What stood out
 
 > _Placeholder — written against the finished run._
@@ -227,20 +235,25 @@ default, so every live task failed with "cannot resolve api.notion.com" until
 restriction on unprivileged user namespaces broke Codex's sandbox entirely. None
 of these are facts about a model, and all were fixed before measurement.
 
-**3. The provider was down or rate-limited.** One configuration is capped at 110
-requests per 5 hours. On exhaustion, the CLI *hangs* rather than returning a 429 —
-so the harness cannot tell it apart from a slow agent and records a 900-second
-timeout. Those cells show 0 tool calls and 0 tokens: the agent never ran. They
-are excluded and re-run, not published as zeros.
+**3. The provider was rate-limited.** One configuration hit a weekly account
+usage limit mid-run. On exhaustion its CLI *hangs* — no 429, no error, nothing
+on stdout or stderr — so the harness cannot distinguish it from a slow agent and
+records a 900-second timeout. (The limit is shown as a dialog in the CLI's
+interactive UI; headless, there is no signal at all.) Those cells are
+identifiable after the fact because they carry 0 tool calls and 0 tokens: the
+agent never ran. They are excluded and re-run rather than published as zeros.
 
 **4. The agent could do it, but did not follow the instruction.** This is the
 most interesting category and the easiest to misreport. Two examples from this
 run:
 
-- One task's prompt says *"Keep that wording exactly."* One configuration
-  paraphrased the instruction text on both trials. It built the custom agent
-  correctly — right icon, right model, right shared resources, all subscores
-  passing — and failed only on wording it was told not to change.
+- One task's prompt says *"Keep that wording exactly."* A configuration
+  paraphrased the instruction text: it built the custom agent correctly — right
+  icon, right model, right shared resources, every other subscore passing — and
+  failed only on wording it had been told not to change. Re-run later on fresh
+  rollouts, the same configuration got it right three times out of three. So
+  this is a *rollout* property, not a property of the model, which is the whole
+  argument for k > 1 and for reporting `pass^k` next to `avg@k`.
 - Another task states that *"a category nobody has expensed answers with zeros
   rather than an error."* Three configurations pinned the tool's input schema to
   an enum, so the SDK rejected the unknown value before their handler ran. Their
@@ -345,6 +358,27 @@ Auth is your own subscription; the runner strips `ANTHROPIC_API_KEY` and
 `OPENAI_API_KEY` from every child process so a stray key cannot silently change
 what is being measured. Every rollout, including token counts and full
 diagnostics, is in `results/<runId>/results.jsonl`.
+
+---
+
+## What we would run next
+
+The harness takes any prompt-in/files-out CLI, so the roster is a question of
+access rather than engineering. Next on the list: **Grok 4**, **Composer**, and
+**DeepSeek** — a spread that would extend the comparison across another
+open-weights tier and two more harness designs.
+
+The other two directions worth running:
+
+- **The docs-withheld ablation.** The harness already supports it. Running both
+  arms would separate "knows the platform" from "can read its documentation" —
+  the question that motivated the benchmark, currently answered only in one arm.
+- **A contamination check.** The suite is versioned and frozen, with a private
+  holdout of unpublished tasks. Re-running the holdout against a later model
+  generation measures how much of any improvement is training on this benchmark.
+
+If you work on the Notion developer platform and want a surface covered, a task
+added, or a configuration on the leaderboard, the repo takes issues and PRs.
 
 ---
 
