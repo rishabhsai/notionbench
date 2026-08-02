@@ -81,3 +81,9 @@ jobs:
       # is a couple of seconds.
       - name: Live task QC gate (fake Notion, no network)
         run: pnpm --filter @notionbench/evals run qc:live
+
+      # The site renders docs/POST.md; regenerating is a step an author forgets.
+      - name: Generated docs are current
+        run: |
+          node scripts/gen-task-docs.mjs --check
+          node scripts/gen-post-html.mjs --check

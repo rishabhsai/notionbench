@@ -32,14 +32,6 @@ rollouts, each graded by a program rather than a model.
 is the share of tasks solved in **every** one of three trials — capability
 versus reliability, and the gap between them is the interesting part.
 
-**One caveat on the table.** OpenCode × Kimi K3 ran **one trial per task, not
-three**: the account hit a weekly usage limit partway through the grid, and the
-remaining trials would have taken roughly a month of reset windows. Its `avg@1`
-covers all 38 tasks and is a valid estimate, but a noisier one — its confidence
-interval is correspondingly wider — and its `pass^k` is blank, because
-reliability cannot be measured from a single trial. Its total-token and
-total-time figures are marked as covering less work than the other rows.
-
 ### What stood out
 
 > _Placeholder — written against the finished run._
@@ -53,6 +45,22 @@ total-time figures are marked as covering less work than the other rows.
 
 > _Placeholder — the tasks with the lowest solve rate across the board, and what
 > that says about the platform's rough edges rather than about the agents._
+
+---
+
+## Reading the table
+
+`avg@3` is the share of all trials solved, with a 95% Wilson interval. `pass^3`
+is the share of tasks solved in **every** one of three trials. Capability versus
+reliability — the gap between them is the interesting part.
+
+**One caveat.** OpenCode × Kimi K3 ran **one trial per task, not three**: the
+account hit a weekly usage limit partway through the grid, and the remaining
+trials would have taken roughly a month of reset windows. Its `avg@1` covers all
+38 tasks and is a valid estimate, but a noisier one — its confidence interval is
+correspondingly wider — and its `pass^k` is blank, because reliability cannot be
+measured from a single trial. Its total-token and total-time figures are marked
+as covering less work than the other rows.
 
 ---
 
