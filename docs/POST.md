@@ -1,35 +1,40 @@
 # How well do coding agents build on Notion's developer platform?
 
-*Draft — numbers are from the run in progress and will be regenerated when it lands.*
-
 Notion shipped a developer platform in May 2026 — the `ntn` CLI, Workers, and
 Notion-as-Code — and said it was built for AI coding agents. We wrote 38 tasks
 across every programmable surface of it and ran eight agent configurations
-through them three times each. Every rollout is graded by a program. No model
+through them, three times each. Every rollout is graded by a program. No model
 judges anything.
 
-The headline: **Codex with GPT-5.6 Luna scored 98.2%, one point behind Opus 5,
-for $2.18 against Opus's $66.01.**
+The short version: **Codex with GPT-5.6 Luna scored 98.2%, one point behind Opus
+5, for $2.18 against Opus's $66.01.**
 
 ---
 
 ## Results
 
-| Config | Solve rate | Reliable (3/3) | Tool calls/trial | Tool error rate | Cost | Median time |
-|---|---:|---:|---:|---:|---:|---:|
-| Claude Code × Opus 5 | **99.1%** | 97.4% | 16.6 | 3.0% | $66.01 | 1m26s |
-| Claude Code × Fable 5 | 98.2% | 97.4% | 12.0 | 4.4% | $99.37 | 1m11s |
-| **Codex × GPT-5.6 Luna (high)** | **98.2%** | 94.7% | 14.4 | 16.9% | **$2.18** | 1m31s |
-| Codex × GPT-5.6 Sol (xhigh) | 95.6% | 94.7% | 14.1 | 15.9% | $57.65 | 1m56s |
-| Claude Code × Sonnet 5 (high) | 94.7% | 89.5% | 16.1 | 5.0% | $50.84 | 1m02s |
-| Codex × GPT-5.6 Sol (medium) | 93.9% | 92.1% | 11.7 | 20.1% | $48.30 | 1m30s |
-| OpenCode × DeepSeek V4 Flash | 85.7% | 69.0% | 20.4 | 0.6% | $0.53 | **54s** |
-| OpenCode × Kimi K3 | — | — | 16.3 | 1.5% | $5.00 | 3m04s |
+| Config | Solve rate | Reliable (3/3) | Calls/trial | Tool error rate | Tokens/trial | Cost | Median time |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Claude Code × Opus 5 | **99.1%** | 97.4% | 16.6 | 3.0% | 539k | $66.01 | 1m25s |
+| Claude Code × Fable 5 | 98.2% | 97.4% | 12.0 | 4.4% | 384k | $99.37 | 1m11s |
+| **Codex × GPT-5.6 Luna (high)** | **98.2%** | 94.7% | 14.4 | 16.9% | 371k | **$2.18** | 1m30s |
+| Codex × GPT-5.6 Sol (xhigh) | 95.6% | 94.7% | 14.1 | 15.9% | 373k | $57.65 | 1m56s |
+| Claude Code × Sonnet 5 (high) | 94.7% | 89.5% | 16.1 | 5.0% | 852k | $50.84 | 1m01s |
+| Codex × GPT-5.6 Sol (medium) | 93.9% | 92.1% | 11.7 | 20.1% | 317k | $48.30 | 1m29s |
+| OpenCode × Kimi K3 † | 81.6% | — | 16.2 | 1.1% | 255k | $5.00 | 3m03s |
+| OpenCode × DeepSeek V4 Flash † | 78.9% | — | 21.4 | **0.6%** | 426k | **$0.19** | **0m58s** |
 
-**Solve rate** is the share of all trials solved, with a 95% Wilson interval.
-**Reliable** is the share of tasks solved in all three trials. Cost is
-API-equivalent — token counts are measured and priced at public list rates,
-while the runs themselves were on subscriptions.
+**Solve rate** is the share of trials solved. **Reliable** is the share of tasks
+solved in all three trials. Cost is API-equivalent: tokens are measured and
+priced at public list rates, while the runs themselves were on subscriptions.
+
+† The two OpenCode rows are scored on one trial per task rather than three. That
+account hit a weekly usage limit twice mid-run, and finishing would have taken a
+month of reset windows. Both completed a full pass over all 38 tasks, so their
+solve rate is a real if noisier estimate, and neither has enough trials for a
+reliability figure. Cells where the limit stopped the agent before it ran are
+excluded rather than counted as zeros — 16 of them, each recorded in
+`results.superseded.jsonl` with its reason.
 
 ---
 
@@ -47,9 +52,11 @@ occasionally, the cheap tier now works.
 
 ### Reliability is a separate axis, and one column shows it
 
-DeepSeek solves 85.7% of trials but only 69.0% of tasks *every* time. It never
-failed a task outright — all 38 were solved at least once — so nothing here is
-beyond it. It does not converge on the same task twice.
+DeepSeek never failed a task outright. Across every trial it ran, all 38 tasks
+were solved at least once, so nothing in the suite is beyond it. On the 29 tasks
+where it completed three trials before the account ran out, it solved 20 of them
+every time — 69%, against 94–97% for the frontier configs. It does not converge
+on the same task twice.
 
 Its failures are also not near-misses. When DeepSeek fails, 23% of the
 verifier's subscores pass. When Sonnet fails, 62% do. DeepSeek either does the
@@ -61,23 +68,23 @@ plan, not the individual action.
 
 ### The cheapest config is also the fastest, by a lot
 
-DeepSeek finished a median task in **54 seconds**. Sol at extra-high reasoning
+DeepSeek finished a median task in **58 seconds**. Sol at extra-high reasoning
 took 116. That gap is not DeepSeek doing less work — it makes more tool calls
 than anything else on the board.
 
 | config | median time | tool calls/trial | **tool calls per minute** |
 |---|---:|---:|---:|
-| OpenCode × DeepSeek V4 Flash | 60s | 20.4 | **17.7** |
-| Claude Code × Sonnet 5 | 62s | 16.1 | 12.6 |
-| Claude Code × Opus 5 | 86s | 16.6 | 10.1 |
-| Claude Code × Fable 5 | 71s | 12.0 | 9.3 |
-| Codex × Luna (high) | 91s | 14.4 | 9.0 |
-| Codex × Sol (medium) | 90s | 11.7 | 7.4 |
-| Codex × Sol (xhigh) | 116s | 14.1 | 7.2 |
-| OpenCode × Kimi K3 | 207s | 16.6 | 4.7 |
+| OpenCode × DeepSeek V4 Flash | 0m58s | 21.4 | **18.1** |
+| Claude Code × Sonnet 5 | 1m01s | 16.1 | 12.6 |
+| Claude Code × Opus 5 | 1m25s | 16.6 | 10.1 |
+| Claude Code × Fable 5 | 1m11s | 12.0 | 9.3 |
+| Codex × Luna (high) | 1m30s | 14.4 | 9.0 |
+| Codex × Sol (medium) | 1m29s | 11.7 | 7.4 |
+| Codex × Sol (xhigh) | 1m56s | 14.1 | 7.2 |
+| OpenCode × Kimi K3 | 3m03s | 16.2 | 5.6 |
 
-DeepSeek takes 2.5 actions in the time Sol xhigh takes one, and gets 0.6% of
-them wrong against Sol's 15.9%. For an interactive loop — where you are watching
+DeepSeek takes two and a half actions in the time Sol xhigh takes one, and
+gets 0.6% of them wrong against Sol's 15.9%. For an interactive loop — where you are watching
 the agent work and the cost of a wrong turn is hitting undo — that combination
 matters more than four points of solve rate.
 
@@ -159,11 +166,11 @@ workspace-search task, including Opus's only miss in 114 trials, are the same
 diagnostic: `could not read answer.json`. The agent searched the workspace,
 found the runbooks, and never wrote the file the task asked for.
 
-**Notion-as-Code has a recurring blind spot.** Across the two as-code tasks that
-discriminate, the same mistakes come back: omitting a database's `name` field,
-adding `limit: 1` to a relation nobody asked to constrain to one item, and
-paraphrasing agent instructions the prompt says to keep exactly. These are
-compile-clean programs that describe a slightly different workspace.
+**Notion-as-Code has a recurring blind spot.** The same three mistakes come back
+across both as-code tasks that discriminate. Agents omit a database's `name`
+field, add `limit: 1` to a relation nobody asked to constrain, and paraphrase
+agent instructions the prompt says to keep exactly. Each one compiles cleanly
+and describes a slightly different workspace.
 
 ---
 
@@ -243,9 +250,9 @@ failed it having done the work correctly.
 CI cannot catch that class, because CI validates against the fake. A second
 check now provisions the real fixture and runs the real oracle against
 `api.notion.com`. Sweeping all 18 live tasks with it also caught a fixture
-describing a workspace Notion will not build: Notion folds every page-level
-comment into a single discussion, so a fixture declaring two threads silently
-got one, and agents were marked wrong for reporting the shape the spec promised.
+describing a workspace Notion will not build. Notion folds every page-level
+comment into one discussion, so a fixture declaring two threads silently got
+one, and agents were marked wrong for reporting the shape the spec promised.
 
 **The environment was wrong.** Codex's sandbox blocks network access by
 default, so every live task failed with "cannot resolve api.notion.com" until we
