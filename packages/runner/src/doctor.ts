@@ -427,6 +427,11 @@ function analyzeTask(args: {
                 .flatMap((r) => r.diagnostics ?? []),
             })),
             settings.crossConfig.minSharedChars,
+            // Lines a PASSING cell also printed are the verifier's context, not
+            // a finding — see the note on TaskTrialState.solvedLines.
+            new Set(
+              solvedHere.flatMap((r) => (r.diagnostics ?? []).map(normalizeDiagnostic)),
+            ),
           )
         : undefined;
     trials.push({

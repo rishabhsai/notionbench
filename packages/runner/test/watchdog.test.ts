@@ -653,3 +653,47 @@ describe('ALERT.json', () => {
     }
   });
 });
+
+describe('context lines are not a shared failure signature', () => {
+  // Verifiers print context as well as findings, and the context is identical
+  // whether the cell passed or failed. Matching on it made every config that
+  // failed a task look like it failed the same way — which is exactly the
+  // signature this signal exists to detect, so it fired on healthy tasks.
+  const CONTEXT = 'fixture holds 3 incident(s): retries, stale index, latency';
+
+  it('ignores a line that a passing cell also printed', () => {
+    const evidence = sharedEvidence(
+      [
+        { configId: 'a', diagnostics: [CONTEXT, 'never registered a handler'] },
+        { configId: 'b', diagnostics: [CONTEXT, 'Status is expected to be select'] },
+      ],
+      12,
+      new Set([normalizeDiagnostic(CONTEXT)]),
+    );
+    expect(evidence).toBeUndefined();
+  });
+
+  it('still catches a genuinely shared failure', () => {
+    const evidence = sharedEvidence(
+      [
+        { configId: 'a', diagnostics: [CONTEXT, 'card configuration mismatch on Escalated'] },
+        { configId: 'b', diagnostics: [CONTEXT, 'card configuration mismatch on Escalated'] },
+      ],
+      12,
+      new Set([normalizeDiagnostic(CONTEXT)]),
+    );
+    expect(evidence?.configIds.sort()).toEqual(['a', 'b']);
+    expect(evidence?.text).toContain('card configuration mismatch');
+  });
+
+  it('without the exclusion, the context line is what it matches on', () => {
+    const evidence = sharedEvidence(
+      [
+        { configId: 'a', diagnostics: [CONTEXT, 'never registered a handler'] },
+        { configId: 'b', diagnostics: [CONTEXT, 'Status is expected to be select'] },
+      ],
+      12,
+    );
+    expect(evidence?.text).toContain('fixture holds');
+  });
+})

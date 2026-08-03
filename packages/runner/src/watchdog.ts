@@ -327,13 +327,17 @@ export interface SharedEvidence {
 export function sharedEvidence(
   perConfig: Array<{ configId: string; diagnostics: string[] }>,
   minSharedChars: number,
+  /** Normalized lines that also appear on a PASSING cell — context, not a finding. */
+  uninformative: ReadonlySet<string> = new Set(),
 ): SharedEvidence | undefined {
   const cleaned = perConfig
     .map((c) => ({
       configId: c.configId,
       lines: [
         ...new Set(
-          c.diagnostics.map(normalizeDiagnostic).filter((d) => d.length >= 4),
+          c.diagnostics
+            .map(normalizeDiagnostic)
+            .filter((d) => d.length >= 4 && !uninformative.has(d)),
         ),
       ],
     }))
@@ -442,6 +446,17 @@ interface TaskTrialState {
   /** configId → diagnostics of its graded failure. */
   failed: Map<string, string[]>;
   solved: Set<string>;
+  /**
+   * Normalized diagnostics seen on cells that PASSED this task/trial.
+   *
+   * Verifiers print context as well as findings — "fixture holds 3 incident(s)",
+   * "ground truth: 6 view(s)" — and that context is identical whether the cell
+   * passed or failed. Matching on it makes every config that fails a task look
+   * like it failed for the same reason, which is the signature this signal is
+   * supposed to be detecting. A line that also appears on a pass carries no
+   * information about the failure, so it is excluded from the comparison.
+   */
+  solvedLines: Set<string>;
 }
 
 export interface WatchdogOptions {
@@ -599,13 +614,19 @@ export class Watchdog {
     const key = `${obs.taskId}::${obs.trial}`;
     let state = this.byTaskTrial.get(key);
     if (!state) {
-      state = { attempted: new Set(), failed: new Map(), solved: new Set() };
+      state = {
+        attempted: new Set(),
+        failed: new Map(),
+        solved: new Set(),
+        solvedLines: new Set(),
+      };
       this.byTaskTrial.set(key, state);
     }
     state.attempted.add(obs.configId);
     if ((obs.score ?? 0) >= 1) {
       state.solved.add(obs.configId);
       state.failed.delete(obs.configId);
+      for (const d of obs.diagnostics ?? []) state.solvedLines.add(normalizeDiagnostic(d));
     } else {
       state.failed.set(obs.configId, obs.diagnostics ?? []);
     }
@@ -627,6 +648,7 @@ export class Watchdog {
     const evidence = sharedEvidence(
       [...state.failed].map(([configId, diagnostics]) => ({ configId, diagnostics })),
       cfg.minSharedChars,
+      state.solvedLines,
     );
     if (!evidence) return;
 
