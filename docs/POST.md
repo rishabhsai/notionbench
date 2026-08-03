@@ -49,7 +49,7 @@ Luna costs $0.20 per million input tokens. Fable costs $10. On this suite they
 score within a rounding error of each other. Per point of solve rate, Luna costs
 $2.22 and Fable costs $101.14.
 
-DeepSeek V4 Flash goes further down: 85.7% for **53 cents**, or $0.61 per point.
+DeepSeek V4 Flash goes further down: 86.0% for **53 cents**, or $0.62 per point.
 If you are wiring up Notion automations and can tolerate retrying a task
 occasionally, the cheap tier now works.
 

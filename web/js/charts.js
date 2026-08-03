@@ -96,6 +96,9 @@
       labelNodes.push(el("text", {
         x: left ? px - 10 : px + 10, y: py + 3.5,
         "text-anchor": left ? "end" : "start", "font-size": 11, fill: "var(--ink-2)",
+        // Halo in the page background so a gridline crossing a label reads as a
+        // gridline behind it rather than as a strikethrough through it.
+        stroke: "var(--bg)", "stroke-width": 3, "paint-order": "stroke fill",
       }, p.label));
       svg.append(labelNodes[labelNodes.length - 1]);
     }
@@ -143,7 +146,10 @@
       panel.append(head);
 
       const rows = fam.rows, rowH = 22, barH = 13;
-      const W = 320, L = 88, R = 30, H = rows.length * rowH + 6;
+      // L is the label gutter. Config names grew when the roster went to eight
+      // ("DeepSeek V4 Flash", "GPT-5.6 Sol xhigh") and were being clipped at the
+      // viewBox edge, so the gutter and the box widen together.
+      const W = 366, L = 124, R = 30, H = rows.length * rowH + 6;
       const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": `avg@3 by agent for ${fam.family} tasks` });
       const X = (v) => L + v * (W - L - R);
       for (const g of [0.25, 0.5, 0.75, 1])

@@ -41,7 +41,7 @@
     <h1>NotionBench Results</h1>
     <p id="run-meta" class="page-meta"></p>
     <p class="lede">How well do AI coding agents build on Notion’s developer platform?
-    Seven agent configs run 38 tasks across the <code>ntn</code> CLI, Workers,
+    Eight agent configs run 38 tasks across the <code>ntn</code> CLI, Workers,
     Notion-as-Code, and operations — three independent trials each, every cell scored
     by deterministic verification. No LLM judges.</p>
   </div>
@@ -91,7 +91,7 @@
     <h2 class="sec" id="five-things-the-numbers-say">Five things the numbers say</h2>
     <h3 id="price-and-capability-have-come-apart">Price and capability have come apart</h3>
     <p>Luna costs $0.20 per million input tokens. Fable costs $10. On this suite they score within a rounding error of each other. Per point of solve rate, Luna costs $2.22 and Fable costs $101.14.</p>
-    <p>DeepSeek V4 Flash goes further down: 85.7% for <strong>53 cents</strong>, or $0.61 per point. If you are wiring up Notion automations and can tolerate retrying a task occasionally, the cheap tier now works.</p>
+    <p>DeepSeek V4 Flash goes further down: 86.0% for <strong>53 cents</strong>, or $0.62 per point. If you are wiring up Notion automations and can tolerate retrying a task occasionally, the cheap tier now works.</p>
     <h3 id="reliability-is-a-separate-axis-and-one-column-shows-it">Reliability is a separate axis, and one column shows it</h3>
     <p>DeepSeek never failed a task outright. Across every trial it ran, all 38 tasks were solved at least once, so nothing in the suite is beyond it. On the 29 tasks where it completed three trials before the account ran out, it solved 20 of them every time — 69%, against 94–97% for the frontier configs. It does not converge on the same task twice.</p>
     <p>Its failures are also not near-misses. When DeepSeek fails, 23% of the verifier's subscores pass. When Sonnet fails, 62% do. DeepSeek either does the task properly or goes substantially off-track.</p>
