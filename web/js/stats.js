@@ -42,13 +42,20 @@
         cfg,
         tasks: rs.length,
         trials: trials.length,
-        avg: mean(trials.map((t) => t.score)),
+        // Macro-average over TASKS, not over trials: a config that finished three
+        // trials on some tasks and one on others would otherwise have the
+        // multi-trial tasks count three times each. Identical to the trial mean
+        // when every task has k trials, which is the case for a complete config.
+        avg: mean(rs.map((r) => mean(r.trials.map((t) => t.score)))),
         ciHalf: wilsonHalf(solved, trials.length),
         solveRate: trials.length ? solved / trials.length : 0,
         // null, not 0, when no cell has k trials yet: mid-run that means "not
         // enough data", and rendering it as 0% reads as "solved nothing".
+        // Only defined for a task with k trials, so on a partial config this
+        // covers a subset — pass3n carries how many, and the column says so.
         pass3: full.length ? full.filter((r) => r.trials.slice(0, k).every((t) => t.solved)).length / full.length : null,
         pass3n: full.length,
+        pass3partial: full.length > 0 && full.length < rs.length,
         k,
         toolErrs: mean(trials.map((t) => t.toolErrors)),
         // Errors need their denominator: 2.4 errors on 14 calls and 0.1 on 20

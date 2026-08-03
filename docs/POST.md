@@ -21,20 +21,23 @@ The short version: **Codex with GPT-5.6 Luna scored 98.2%, one point behind Opus
 | Codex × GPT-5.6 Sol (xhigh) | 95.6% | 94.7% | 14.1 | 15.9% | 373k | $57.65 | 1m56s |
 | Claude Code × Sonnet 5 (high) | 94.7% | 89.5% | 16.1 | 5.0% | 852k | $50.84 | 1m01s |
 | Codex × GPT-5.6 Sol (medium) | 93.9% | 92.1% | 11.7 | 20.1% | 317k | $48.30 | 1m29s |
-| OpenCode × Kimi K3 † | 81.6% | — | 16.2 | 1.1% | 255k | $5.00 | 3m03s |
-| OpenCode × DeepSeek V4 Flash † | 78.9% | — | 21.4 | **0.6%** | 426k | **$0.19** | **0m58s** |
+| OpenCode × Kimi K3 † | 87.3% | 68% † | 16.6 | 1.7% | 271k | $13.81 | 3m27s |
+| OpenCode × DeepSeek V4 Flash † | 86.0% | 69% † | 20.4 | **0.6%** | 404k | **$0.53** | **1m00s** |
 
 **Solve rate** is the share of trials solved. **Reliable** is the share of tasks
 solved in all three trials. Cost is API-equivalent: tokens are measured and
 priced at public list rates, while the runs themselves were on subscriptions.
 
-† The two OpenCode rows are scored on one trial per task rather than three. That
-account hit a weekly usage limit twice mid-run, and finishing would have taken a
-month of reset windows. Both completed a full pass over all 38 tasks, so their
-solve rate is a real if noisier estimate, and neither has enough trials for a
-reliability figure. Cells where the limit stopped the agent before it ran are
-excluded rather than counted as zeros — 16 of them, each recorded in
-`results.superseded.jsonl` with its reason.
+Solve rate is macro-averaged over tasks, so every task counts once no matter how
+many trials it got.
+
+† The two OpenCode rows are incomplete. That account hit a weekly usage limit
+twice mid-run, and finishing would have taken a month of reset windows. Both
+completed a full pass over all 38 tasks, so their solve rate stands, but only 29
+and 25 tasks respectively got all three trials — their reliability figures cover
+those subsets rather than the whole suite. Cells where the limit stopped the
+agent before it ran are excluded rather than counted as zeros: 16 of them, each
+recorded in `results.superseded.jsonl` with its reason.
 
 ---
 
@@ -53,9 +56,9 @@ occasionally, the cheap tier now works.
 ### Reliability is a separate axis, and one column shows it
 
 DeepSeek never failed a task outright. Across every trial it ran, all 38 tasks
-were solved at least once, so nothing in the suite is beyond it. On the 29 tasks
-where it completed three trials before the account ran out, it solved 20 of them
-every time — 69%, against 94–97% for the frontier configs. It does not converge
+were solved at least once, so nothing in the suite is beyond it. On the 29 tasks where it
+completed three trials before the account ran out, it solved 20 of them every
+time — 69%, against 94–97% for the frontier configs. It does not converge
 on the same task twice.
 
 Its failures are also not near-misses. When DeepSeek fails, 23% of the
@@ -68,20 +71,20 @@ plan, not the individual action.
 
 ### The cheapest config is also the fastest, by a lot
 
-DeepSeek finished a median task in **58 seconds**. Sol at extra-high reasoning
+DeepSeek finished a median task in **60 seconds**. Sol at extra-high reasoning
 took 116. That gap is not DeepSeek doing less work — it makes more tool calls
 than anything else on the board.
 
 | config | median time | tool calls/trial | **tool calls per minute** |
 |---|---:|---:|---:|
-| OpenCode × DeepSeek V4 Flash | 0m58s | 21.4 | **18.1** |
+| OpenCode × DeepSeek V4 Flash | 1m00s | 20.4 | **17.7** |
 | Claude Code × Sonnet 5 | 1m01s | 16.1 | 12.6 |
 | Claude Code × Opus 5 | 1m25s | 16.6 | 10.1 |
 | Claude Code × Fable 5 | 1m11s | 12.0 | 9.3 |
 | Codex × Luna (high) | 1m30s | 14.4 | 9.0 |
 | Codex × Sol (medium) | 1m29s | 11.7 | 7.4 |
 | Codex × Sol (xhigh) | 1m56s | 14.1 | 7.2 |
-| OpenCode × Kimi K3 | 3m03s | 16.2 | 5.6 |
+| OpenCode × Kimi K3 | 3m27s | 16.6 | 4.7 |
 
 DeepSeek takes two and a half actions in the time Sol xhigh takes one, and
 gets 0.6% of them wrong against Sol's 15.9%. For an interactive loop — where you are watching

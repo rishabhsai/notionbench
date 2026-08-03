@@ -162,7 +162,7 @@
         <td class="rank">${i + 1}</td>
         <td><div class="cfg-cell"><span class="dot" style="background:${slotVar(r.cfg.slot)}"></span><span>${esc(r.cfg.label)}${running ? ` <span class="sub">(${r.cfg.progress.done}/${r.cfg.progress.total} cells)</span>` : ""}</span></div></td>
         <td class="num"><span class="score-cell">${meterHtml(r.avg, "var(--seq)", "thin")}<span>${fmt.score(r.avg)}<span class="ci">±${r.ciHalf.toFixed(2)}</span></span></span></td>
-        <td class="num" title="${r.pass3 === null ? `no cell has ${r.k} trials yet` : `over ${r.pass3n} task(s) with all ${r.k} trials complete`}">${fmt.pct(r.pass3)}${r.pass3 !== null && r.pass3n < 5 ? `<span class="muted"> (${r.pass3n})</span>` : ""}</td>
+        <td class="num" title="${r.pass3 === null ? `no task has ${r.k} trials yet` : `over ${r.pass3n} of ${r.tasks} task(s) with all ${r.k} trials complete`}">${fmt.pct(r.pass3)}${r.pass3 !== null && r.pass3partial ? `<span class="muted"> (${r.pass3n}/${r.tasks})</span>` : ""}</td>
                 <td class="num">${r.toolCalls.toFixed(1)}</td>
         <td class="num">${fmt.pct(r.toolErrRate, 1)}</td>
         <td class="num" title="mean over ${r.trials} completed trial${r.trials === 1 ? "" : "s"}">${fmt.tokens(Math.round(r.tokPerTrial))}</td>
