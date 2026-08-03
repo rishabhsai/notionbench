@@ -33,7 +33,7 @@ while the runs themselves were on subscriptions.
 
 ---
 
-## Four things the numbers say
+## Five things the numbers say
 
 ### Price and capability have come apart
 
@@ -55,9 +55,34 @@ Its failures are also not near-misses. When DeepSeek fails, 23% of the
 verifier's subscores pass. When Sonnet fails, 62% do. DeepSeek either does the
 task properly or goes substantially off-track.
 
-Meanwhile it makes more tool calls than any other config, 20.4 per trial against
-Opus's 16.6, with the fewest errors at 0.6%, in the least time. Fast, busy,
-accurate per action, unreliable per task. One score column hides all of that.
+It is not being careless, either: it makes more tool calls than any other config
+and gets fewer of them wrong. Whatever goes wrong happens at the level of the
+plan, not the individual action.
+
+### The cheapest config is also the fastest, by a lot
+
+DeepSeek finished a median task in **54 seconds**. Sol at extra-high reasoning
+took 116. That gap is not DeepSeek doing less work — it makes more tool calls
+than anything else on the board.
+
+| config | median time | tool calls/trial | **tool calls per minute** |
+|---|---:|---:|---:|
+| OpenCode × DeepSeek V4 Flash | 60s | 20.4 | **17.7** |
+| Claude Code × Sonnet 5 | 62s | 16.1 | 12.6 |
+| Claude Code × Opus 5 | 86s | 16.6 | 10.1 |
+| Claude Code × Fable 5 | 71s | 12.0 | 9.3 |
+| Codex × Luna (high) | 91s | 14.4 | 9.0 |
+| Codex × Sol (medium) | 90s | 11.7 | 7.4 |
+| Codex × Sol (xhigh) | 116s | 14.1 | 7.2 |
+| OpenCode × Kimi K3 | 207s | 16.6 | 4.7 |
+
+DeepSeek takes 2.5 actions in the time Sol xhigh takes one, and gets 0.6% of
+them wrong against Sol's 15.9%. For an interactive loop — where you are watching
+the agent work and the cost of a wrong turn is hitting undo — that combination
+matters more than four points of solve rate.
+
+The catch is the reliability column. Fast, cheap, accurate per action, and it
+still only lands 69% of tasks three times out of three.
 
 ### Tool errors belong to the harness, not the model
 
@@ -98,6 +123,47 @@ gap. Workers have a lifecycle — register a capability, name it, wire it to a
 trigger — and the agents that failed usually skipped a step rather than getting
 one wrong. Three configurations left the template's default `sayHello` tool
 registered and never added the handler the task asked for.
+
+---
+
+## Where the agents actually broke
+
+The two hardest tasks are both about following a specification precisely rather
+than about knowing the API.
+
+**A tool that must answer with zeros — 57% solved.** The prompt says a category
+nobody has expensed answers with zeros rather than an error. Five of eight
+configurations pinned the tool's input schema to an enum of the known
+categories, so the SDK rejected the unknown value before their handler ever ran.
+The code is arguably better engineering. It fails the spec, and the failure
+spans both Claude Code and Codex, so it is a reading of the task rather than a
+property of one scaffold.
+
+**A webhook handler nobody registered — 58% solved.** Seven trials left the
+worker template's default `sayHello` tool in place and never added the
+`onIncidentAlert` handler the task asks for, so the webhook fired into nothing.
+The rest got the handler right and then wrote the wrong property type
+(`Status is expected to be select`). Every Claude Code configuration passed this
+task on every trial; every failure came from Codex or OpenCode.
+
+**An agent that load-tested the production database — 88% solved.** The task
+seeds 50 contacts and asks for them to be imported without tripping Notion's
+rate limit. DeepSeek wrote 87 rows. The extra 37 were named `BurstTest 001`
+through `BurstTest 060` — it had probed the rate limit by writing its own junk
+rows into the target database, then left them there. A different trial imported
+zero. The task is checking pacing discipline, and it caught something better
+than slow writes.
+
+**Doing the work and forgetting to write it down.** All three failures on the
+workspace-search task, including Opus's only miss in 114 trials, are the same
+diagnostic: `could not read answer.json`. The agent searched the workspace,
+found the runbooks, and never wrote the file the task asked for.
+
+**Notion-as-Code has a recurring blind spot.** Across the two as-code tasks that
+discriminate, the same mistakes come back: omitting a database's `name` field,
+adding `limit: 1` to a relation nobody asked to constrain to one item, and
+paraphrasing agent instructions the prompt says to keep exactly. These are
+compile-clean programs that describe a slightly different workspace.
 
 ---
 
@@ -163,9 +229,9 @@ and the run halts on that signature automatically.
 ## What a failure actually means
 
 "Config X failed task Y" was at least five different claims in this run, and
-only one of them is about the agent.
+only the last one is about the agent.
 
-**1. Our verifier was wrong.** The four spellings above, plus three cases where
+**Our verifier was wrong.** The four spellings above, plus three cases where
 an assertion encoded a wrong belief about Notion that our fake server happened
 to satisfy. Views report a filter property as an opaque ID rather than a name.
 The schema percent-encodes those IDs (`"C~m%7C"`) while views reference them raw
@@ -181,13 +247,13 @@ describing a workspace Notion will not build: Notion folds every page-level
 comment into a single discussion, so a fixture declaring two threads silently
 got one, and agents were marked wrong for reporting the shape the spec promised.
 
-**2. The environment was wrong.** Codex's sandbox blocks network access by
+**The environment was wrong.** Codex's sandbox blocks network access by
 default, so every live task failed with "cannot resolve api.notion.com" until we
 set `network_access=true`. Claude Code refuses to run as root. Ubuntu's
 restriction on unprivileged user namespaces broke Codex's sandbox outright. None
 of these are facts about a model.
 
-**3. The provider stopped answering.** One account hit a weekly usage limit
+**The provider stopped answering.** One account hit a weekly usage limit
 mid-run. Its CLI hangs on exhaustion, with no error and nothing on stdout or
 stderr, so the harness cannot tell it apart from a slow agent and records a
 900-second timeout. Later the same CLI ran out of balance and failed properly in
@@ -196,7 +262,7 @@ behaviours, and the silent one costs a day. Cells where the agent never ran
 carry 0 tool calls and 0 tokens, so they are identifiable afterwards and get
 re-run rather than published as zeros.
 
-**4. The agent could do it and did not follow the instruction.** One task says
+**The agent could do it and did not follow the instruction.** One task says
 *"Keep that wording exactly."* A configuration paraphrased it, built everything
 else correctly, and failed on wording it was told not to change. Re-run on fresh
 rollouts it got it right three times out of three, which makes it a property of
@@ -206,13 +272,12 @@ configurations pinned the tool's input schema to an enum, so the SDK rejected
 the value before their handler ran. Arguably better engineering, and not what
 the task specified.
 
-**5. The agent could not do it.** Missed pagination, wrong property type, never
+**The agent could not do it.** Missed pagination, wrong property type, never
 registered the webhook handler. This is the category the benchmark is for, and
 the one people assume every failure belongs to.
 
-A benchmark reporting only category 5 while quietly containing 1 through 4
-publishes a number that means less than it looks like. Ours are separated
-because we had to find each one to trust the rest.
+We had to find every one of these to trust the rest of the numbers, so they are
+reported separately rather than added together.
 
 ---
 
