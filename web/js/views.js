@@ -176,7 +176,7 @@
     $("board").innerHTML = `<table class="db">
       <thead><tr><th></th>${head}</tr></thead><tbody>${body}</tbody></table>` +
       (partial ? `<p class="chart-note">Configs still running are scored on completed cells only — ± is the 95% Wilson interval on the solve rate.</p>`
-               : `<p class="chart-note">± is the 95% Wilson interval on the solve rate. pass^k = solved in all k trials (k = ${NB.stats.observedK(data)} in this run). Tokens/trial is the mean per completed trial; median time the per-trial median; the total columns are sums over the run.</p>`) +
+               : `<p class="chart-note"><b>Solve rate</b> is the share of all trials solved; ± is its 95% Wilson interval. <b>Reliable</b> is the share of tasks solved in every one of k trials (k = ${NB.stats.observedK(data)} here) — capability and dependability are different questions. <b>Tool error rate</b> is errors as a share of tool calls, because a raw error count hides its denominator. Tokens/trial is the mean per completed trial, median time the per-trial median, and the total columns are sums over the run.</p>`) +
       (starred ? `<p class="chart-note">* Total tokens and total time are sums over completed cells only — this config has completed fewer cells than the fullest one, so its totals cover less work and aren't comparable across rows. Per-trial means and medians are.</p>` : "");
 
     for (const th of $("board").querySelectorAll("th.sortable"))
