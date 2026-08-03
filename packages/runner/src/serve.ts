@@ -71,6 +71,7 @@ export interface StatusTrial {
   score: number;
   wallTimeS: number;
   tokens: { input: number; output: number };
+  toolCalls: number;
   toolErrors: number;
 }
 
@@ -328,6 +329,7 @@ function buildResults(records: readonly TrialRecord[], trialsPerCondition: numbe
       score: r.scored === true ? clamp01(r.score) : 0,
       wallTimeS: round((r.wallTimeMs ?? 0) / 1000, 1),
       tokens: { input: t.input, output: t.output },
+      toolCalls: r.toolCalls ?? 0,
       toolErrors: r.toolErrors ?? 0,
     });
   }

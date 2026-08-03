@@ -32,7 +32,7 @@
  *       trials: Array<{
  *         trial: number; solved: boolean; score: number;   // score in [0,1]
  *         wallTimeS: number; tokens: { input: number; output: number };
- *         toolErrors: number;
+ *         toolCalls: number; toolErrors: number;
  *       }>;
  *     }>;
  *     failures: Array<{ at: string; taskId: string; config: string;
@@ -111,6 +111,7 @@
           score: Math.max(0, Math.min(1, Number(t.score ?? 0))),
           wallTimeS: Number(t.wallTimeS ?? 0),
           tokens: { input: t.tokens?.input ?? 0, output: t.tokens?.output ?? 0 },
+          toolCalls: Number(t.toolCalls ?? 0),
           toolErrors: Number(t.toolErrors ?? 0),
         })),
       }));
