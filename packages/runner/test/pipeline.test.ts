@@ -243,7 +243,9 @@ describe('score', () => {
     expect(code).toBe(0);
 
     const printed = out.join('');
-    expect(printed).toContain('| Config | avg@2 (95% CI) | pass^2 | Tool errors |');
+    expect(printed).toContain(
+      '| Config | Solve rate (95% CI) | Reliable (2/2) | Tool calls/trial | Tool error rate |',
+    );
     expect(printed).toContain('Fake Agent');
     // One task always solved, one never: avg@2 = 50%, pass^2 = 50%.
     expect(printed).toMatch(/\|\s*50\.0%\s*\[/);
