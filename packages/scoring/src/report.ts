@@ -328,8 +328,8 @@ export function renderReport(report: Report): string {
   )
   out.push("")
   out.push(
-    "avg@k is macro-averaged over cells (each weighs the same); the interval is a 95% " +
-      "Wilson score interval on the underlying solve rate. pass^k is the probability that " +
+    "Solve rate (avg@k) is macro-averaged over cells (each weighs the same); the interval " +
+      "is a 95% Wilson score interval on it. Reliable (pass^k) is the probability that " +
       "k trials drawn from the observed ones all succeeded — discovery and reliability are " +
       "different questions and are reported separately.",
   )
@@ -385,16 +385,23 @@ export function mainTable(report: Report): string {
   const k = report.k
   const header = [
     "Config",
-    `avg@${k} (95% CI)`,
-    `pass^${k}`,
-    "Tool errors",
+    // Plain English over notation: the two columns answer different questions and
+    // readers were decoding `avg@k` vs `pass^k` instead of reading the gap.
+    `Solve rate (95% CI)`,
+    `Reliable (${k}/${k})`,
+    "Tool calls/trial",
+    // A raw error count is a rate with the denominator missing: 2.4 errors on 14
+    // calls and 0.1 on 20 are opposite findings that look similar in a count.
+    "Tool error rate",
     "Tokens/trial",
     "Total tokens",
     "API-equiv cost",
     "Median time",
     "Total time",
   ]
-  const align = ["---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:"]
+  const align = [
+    "---", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:", "---:",
+  ]
   // A total is only comparable across configs that completed the same number of
   // cells; on a partial run the short rows' totals get an asterisk and a footnote.
   const maxCells = report.overall.reduce((a, r) => Math.max(a, r.cells), 0)
@@ -407,7 +414,10 @@ export function mainTable(report: Report): string {
       r.label,
       `${pct(r.avgScore)} [${pct(r.ci.low)}–${pct(r.ci.high)}]`,
       r.tasks === 0 ? "—" : pct(r.passHatK),
-      String(r.toolErrors) + (r.unscored > 0 ? ` (${r.unscored} unverified)` : ""),
+      r.trials === 0 ? "–" : (r.toolCalls / r.trials).toFixed(1),
+      r.toolCalls === 0
+        ? "–"
+        : `${pct(r.toolErrors / r.toolCalls)}${r.unscored > 0 ? ` (${r.unscored} unverified)` : ""}`,
       compactNumber(r.meanTokens),
       compactNumber(r.totalTokens) + star,
       r.costKnown ? usd(r.costUsd) : "–",

@@ -257,7 +257,7 @@ describe("renderReport", () => {
   it("renders the README-style config table with both aggregations of tokens and time", () => {
     const md = mainTable(report)
     expect(md).toContain(
-      "| Config | avg@3 (95% CI) | pass^3 | Tool errors | Tokens/trial | Total tokens | API-equiv cost | Median time | Total time |",
+      "| Config | Solve rate (95% CI) | Reliable (3/3) | Tool calls/trial | Tool error rate | Tokens/trial | Total tokens | API-equiv cost | Median time | Total time |",
     )
     expect(md).toContain("Claude Code × Opus 5")
     expect(md).toContain("$0.12")

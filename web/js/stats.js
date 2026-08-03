@@ -51,6 +51,13 @@
         pass3n: full.length,
         k,
         toolErrs: mean(trials.map((t) => t.toolErrors)),
+        // Errors need their denominator: 2.4 errors on 14 calls and 0.1 on 20
+        // are opposite findings that look similar as raw counts.
+        toolCalls: mean(trials.map((t) => t.toolCalls)),
+        toolErrRate: (() => {
+          const calls = trials.reduce((a, t) => a + (t.toolCalls || 0), 0);
+          return calls ? trials.reduce((a, t) => a + (t.toolErrors || 0), 0) / calls : null;
+        })(),
         tokensIn: tokIn,
         tokensOut: tokOut,
         tokTotal: tokIn + tokOut,

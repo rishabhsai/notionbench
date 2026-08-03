@@ -117,9 +117,10 @@
 
   const LB_COLS = [
     { key: "label", label: "Agent config", num: false },
-    { key: "avg", label: "avg@k", num: true },
-    { key: "pass3", label: "pass^k", num: true },
-    { key: "toolErrs", label: "Tool errors", num: true, title: "mean per trial" },
+    { key: "avg", label: "Solve rate", num: true, title: "share of all trials solved (avg@k)" },
+    { key: "pass3", label: "Reliable", num: true, title: "share of tasks solved in every one of k trials (pass^k)" },
+    { key: "toolCalls", label: "Tool calls", num: true, title: "mean tool calls per trial" },
+    { key: "toolErrRate", label: "Tool error rate", num: true, title: "tool errors as a share of tool calls — a raw count hides the denominator" },
     { key: "tokPerTrial", label: "Tokens/trial", num: true, title: "mean tokens per completed trial" },
     { key: "tokTotal", label: "Total tokens", num: true, cls: "col-total", title: "summed over completed trials" },
     { key: "cost", label: "API-equiv cost", num: true },
@@ -162,7 +163,8 @@
         <td><div class="cfg-cell"><span class="dot" style="background:${slotVar(r.cfg.slot)}"></span><span>${esc(r.cfg.label)}${running ? ` <span class="sub">(${r.cfg.progress.done}/${r.cfg.progress.total} cells)</span>` : ""}</span></div></td>
         <td class="num"><span class="score-cell">${meterHtml(r.avg, "var(--seq)", "thin")}<span>${fmt.score(r.avg)}<span class="ci">±${r.ciHalf.toFixed(2)}</span></span></span></td>
         <td class="num" title="${r.pass3 === null ? `no cell has ${r.k} trials yet` : `over ${r.pass3n} task(s) with all ${r.k} trials complete`}">${fmt.pct(r.pass3)}${r.pass3 !== null && r.pass3n < 5 ? `<span class="muted"> (${r.pass3n})</span>` : ""}</td>
-        <td class="num">${r.toolErrs.toFixed(1)}</td>
+                <td class="num">${r.toolCalls.toFixed(1)}</td>
+        <td class="num">${fmt.pct(r.toolErrRate, 1)}</td>
         <td class="num" title="mean over ${r.trials} completed trial${r.trials === 1 ? "" : "s"}">${fmt.tokens(Math.round(r.tokPerTrial))}</td>
         <td class="${totCls}" title="${inOut}">${fmt.tokens(r.tokTotal)}${star}</td>
         <td class="num">${fmt.money(r.cost)}</td>
