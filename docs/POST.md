@@ -135,6 +135,45 @@ every runbook, worked out which ones had no owner, and never wrote the file.
 
 ---
 
+### The same brief, six very different answers
+
+Solve rates measure whether an agent can follow a spec. They say nothing about
+what it builds when the shape is left to it.
+
+So I gave all six the same open brief — *build a system for a mobile dog-grooming
+business with two vans* — and measured what came out. No score, no right answer.
+
+| config | databases | rows seeded | views | relations | tool calls | time |
+|---|---:|---:|---:|---:|---:|---:|
+| **Opus 5** | 11 | **1,633** | 14 | 18 | 99 | 29.5 min |
+| Sol (xhigh) | 10 | 18 | 14 | 18 | 58 | 20.4 min |
+| Fable 5 | 9 | 103 | 9 | 11 | 40 | 14.7 min |
+| Sonnet 5 | 9 | 47 | 9 | 11 | **131** | 18.9 min |
+| Sol (medium) | 6 | 10 | 6 | 12 | 38 | 10.9 min |
+| Luna (high) | 5 | 5 | 12 | 1 | 34 | 7.2 min |
+
+Three of them are worth describing, because the numbers undersell how different
+they are.
+
+**Opus** built a working diary. Named dogs — Maple, Bruno, Rufus, Ziggy —
+assigned to vans and groomers with real dates, and a page that opens *"Bookings
+land as texts. Put them straight into the diary below — everything else on this
+page works itself out from there."* Then a section called **Ring these before
+they drift**. It designed an operating rhythm and seeded a year of it.
+
+**Sol at extra-high** built ten databases with rows reading `Conditioner — Van 1
+/ COUNT / 1 / 3`. Stock status, restock thresholds, van attention. All the
+scaffolding of a business, with the contents left as placeholders.
+
+**Sol at medium** wrote a *"First setup — about 20 minutes"* checklist over six
+linked databases, with a rule of thumb: *one appointment row per visit, one cost
+row per receipt.* It built the instructions for you to fill it in yourself.
+
+All three are defensible readings of the same sentence. On the scored suite
+these configs land within four points of each other.
+
+---
+
 ## Try it
 
 ```bash
@@ -147,11 +186,6 @@ npx notionbench score results/latest
 ## What is next
 
 **A Workers skill, then a re-run.** The hypothesis above deserves a number.
-
-**A gallery.** Three open-ended prompts — a study system, a small business, a
-Twitch creator's pipeline — handed to every config, unscored, screenshotted side
-by side. Solve rates say whether an agent can follow a spec. They say nothing
-about what it builds when you leave the shape up to it.
 
 **More configs.** Grok 4, Composer, and DeepSeek Pro.
 

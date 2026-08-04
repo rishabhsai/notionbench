@@ -131,6 +131,16 @@
     <p>All three failures on the workspace-search task are the same line: <code>could not read answer.json</code>.</p>
     <p>One of them is Opus's only miss in 114 trials. It searched the workspace, found every runbook, worked out which ones had no owner, and never wrote the file.</p>
     <hr class="post-rule">
+    <h3 id="the-same-brief-six-very-different-answers">The same brief, six very different answers</h3>
+    <p>Solve rates measure whether an agent can follow a spec. They say nothing about what it builds when the shape is left to it.</p>
+    <p>So I gave all six the same open brief — <em>build a system for a mobile dog-grooming business with two vans</em> — and measured what came out. No score, no right answer.</p>
+    <div class="post-table"><table><thead><tr><th>config</th><th>databases</th><th>rows seeded</th><th>views</th><th>relations</th><th>tool calls</th><th>time</th></tr></thead><tbody><tr><td><strong>Opus 5</strong></td><td>11</td><td><strong>1,633</strong></td><td>14</td><td>18</td><td>99</td><td>29.5 min</td></tr><tr><td>Sol (xhigh)</td><td>10</td><td>18</td><td>14</td><td>18</td><td>58</td><td>20.4 min</td></tr><tr><td>Fable 5</td><td>9</td><td>103</td><td>9</td><td>11</td><td>40</td><td>14.7 min</td></tr><tr><td>Sonnet 5</td><td>9</td><td>47</td><td>9</td><td>11</td><td><strong>131</strong></td><td>18.9 min</td></tr><tr><td>Sol (medium)</td><td>6</td><td>10</td><td>6</td><td>12</td><td>38</td><td>10.9 min</td></tr><tr><td>Luna (high)</td><td>5</td><td>5</td><td>12</td><td>1</td><td>34</td><td>7.2 min</td></tr></tbody></table></div>
+    <p>Three of them are worth describing, because the numbers undersell how different they are.</p>
+    <p><strong>Opus</strong> built a working diary. Named dogs — Maple, Bruno, Rufus, Ziggy — assigned to vans and groomers with real dates, and a page that opens <em>&quot;Bookings land as texts. Put them straight into the diary below — everything else on this page works itself out from there.&quot;</em> Then a section called <strong>Ring these before they drift</strong>. It designed an operating rhythm and seeded a year of it.</p>
+    <p><strong>Sol at extra-high</strong> built ten databases with rows reading <code>Conditioner — Van 1 / COUNT / 1 / 3</code>. Stock status, restock thresholds, van attention. All the scaffolding of a business, with the contents left as placeholders.</p>
+    <p><strong>Sol at medium</strong> wrote a <em>&quot;First setup — about 20 minutes&quot;</em> checklist over six linked databases, with a rule of thumb: <em>one appointment row per visit, one cost row per receipt.</em> It built the instructions for you to fill it in yourself.</p>
+    <p>All three are defensible readings of the same sentence. On the scored suite these configs land within four points of each other.</p>
+    <hr class="post-rule">
     <h2 class="sec" id="try-it">Try it</h2>
     <pre class="post-code" data-lang="bash"><code>npx notionbench tasks          # the 38 tasks
     npx notionbench run --dry-run  # the grid, argv, and child env, without spending anything
@@ -138,7 +148,6 @@
     npx notionbench score results/latest</code></pre>
     <h2 class="sec" id="what-is-next">What is next</h2>
     <p><strong>A Workers skill, then a re-run.</strong> The hypothesis above deserves a number.</p>
-    <p><strong>A gallery.</strong> Three open-ended prompts — a study system, a small business, a Twitch creator's pipeline — handed to every config, unscored, screenshotted side by side. Solve rates say whether an agent can follow a spec. They say nothing about what it builds when you leave the shape up to it.</p>
     <p><strong>More configs.</strong> Grok 4, Composer, and DeepSeek Pro.</p>
     <p><strong>A docs-withheld arm.</strong> Every agent here got the <code>AGENTS.md</code> and skills Notion ships. Running it both ways separates knowing the platform from being able to read its documentation.</p>
     <p><strong>Harder tasks.</strong> Twenty-one of 38 are free points now.</p>
