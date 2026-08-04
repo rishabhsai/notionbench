@@ -71,10 +71,19 @@ web/                   results site + live run dashboard (static, Cloudflare Pag
 
 ## Run it yourself
 
-Run it from the repo. The `notionbench` name on npm is a placeholder and is
-**not** a working CLI: the binary needs the `evals/` task suite, which is the
-repository rather than a package, so `npx notionbench` would install a runner
-with nothing to run.
+The CLI ships the task suite with it, so nothing needs cloning to look around:
+
+```bash
+npx notionbench tasks              # the 41 tasks, with their axes and limits
+npx notionbench run --dry-run      # the full grid, argv per config, child env
+```
+
+The bundled suite is extracted once to `~/.cache/notionbench/evals-<version>/`
+(Node cannot run TypeScript verifiers from inside `node_modules`). Override the
+location with `NOTIONBENCH_CACHE`, or point at your own tasks with `--evals`.
+
+Work on the benchmark itself from the repo — a checkout's own `evals/` always
+wins over the bundled copy, so task edits take effect immediately:
 
 ```bash
 pnpm install && pnpm -r build

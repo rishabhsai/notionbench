@@ -8,8 +8,21 @@
  * deliberately pins itself to one condition via `docsCondition`.
  */
 
+import {
+  cpSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import { createRequire } from 'node:module';
+import { homedir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   DEFAULT_WATCHDOG_SETTINGS,
   resolveWatchdogSettings,
@@ -259,6 +272,118 @@ export const V1_ROSTER: AgentConfig[] = [
   },
 ];
 
+/**
+ * Where to look for tasks when nothing said otherwise.
+ *
+ * Installed from npm there is no `./evals` to find, so the CLI would report
+ * "no tasks found" out of the box; the suite is vendored into the package at
+ * prepack (see scripts/bundle-evals.mjs) and this is what locates it.
+ *
+ * A checkout's own `./evals` is preferred over the bundled copy so that editing
+ * a task and re-running is still immediate — otherwise a developer with the repo
+ * open would silently score the packaged snapshot instead of their edits.
+ */
+export function defaultEvalsRoot(): string {
+  const override = process.env.NOTIONBENCH_EVALS;
+  if (override) return override;
+
+  const cwdEvals = path.resolve('evals');
+  if (existsSync(cwdEvals)) return cwdEvals;
+
+  // dist/config.js -> <package>/evals. Probed via _lib rather than the directory
+  // itself: an interrupted pack (or a sync client racing postpack) can leave an
+  // empty evals/ behind, and extracting that would report zero tasks rather than
+  // falling through to the error that names the directory to create.
+  const bundled = fileURLToPath(new URL('../evals', import.meta.url));
+  if (existsSync(path.join(bundled, '_lib'))) return materializeBundledEvals(bundled);
+
+  // Nothing found: keep the historical relative default so the error message
+  // points at the directory the user most likely meant to create.
+  return cwdEvals;
+}
+
+/**
+ * Copy the bundled suite out of `node_modules` and return the copy's path.
+ *
+ * Node refuses to strip types from any file under `node_modules` — not even with
+ * `--experimental-strip-types` — and every verifier is a TypeScript `EVAL.ts`
+ * that the harness imports in place. Left where npm installs it the suite lists
+ * and plans fine but fails to score, so the tasks have to live somewhere else.
+ *
+ * They are copied rather than compiled to JS at publish time on purpose: a
+ * published score only means the same thing as a local one if the exact same
+ * verifier bytes produced it, and a build step between the two is a place for
+ * them to diverge silently.
+ *
+ * Falls back to the in-package path if the cache cannot be written — `tasks` and
+ * `run --dry-run` only read PROMPT.md and still work from there.
+ */
+function materializeBundledEvals(bundled: string): string {
+  const version = bundledVersion(bundled);
+  const cacheHome =
+    process.env.NOTIONBENCH_CACHE ??
+    process.env.XDG_CACHE_HOME ??
+    path.join(homedir(), '.cache');
+  const dest = path.join(cacheHome, 'notionbench', `evals-${version}`);
+
+  // The stamp is written last and only on a fully populated copy, so a run
+  // interrupted mid-copy re-does it instead of scoring a half-present suite.
+  const stamp = path.join(dest, '.notionbench-complete');
+  if (existsSync(stamp)) return dest;
+
+  try {
+    mkdirSync(path.dirname(dest), { recursive: true });
+    // Stage then rename: two concurrent runs must never observe a partial tree.
+    const staged = mkdtempSync(`${dest}.tmp-`);
+    cpSync(bundled, staged, { recursive: true });
+    vendorScoringInto(staged);
+    writeFileSync(path.join(staged, '.notionbench-complete'), version);
+    rmSync(dest, { recursive: true, force: true });
+    renameSync(staged, dest);
+    return dest;
+  } catch {
+    return bundled;
+  }
+}
+
+/**
+ * Give the extracted suite its own `node_modules/@notionbench/scoring`.
+ *
+ * Every verifier imports the scoring helpers by name, and Node resolves that by
+ * walking up from the task directory. In the workspace that lands on
+ * `evals/node_modules` (a pnpm symlink); once the suite is copied to the cache
+ * it would walk up into the user's home directory and find nothing, so the same
+ * layout is reproduced here.
+ *
+ * Copied, not symlinked: the cache outlives any single `npx` invocation, and a
+ * link into a temporary install tree would dangle the moment npm cleaned it up.
+ */
+function vendorScoringInto(evalsDir: string): void {
+  const entry = createRequire(import.meta.url).resolve('@notionbench/scoring');
+  let root = path.dirname(entry);
+  while (!existsSync(path.join(root, 'package.json'))) {
+    const parent = path.dirname(root);
+    if (parent === root) return;
+    root = parent;
+  }
+  const dest = path.join(evalsDir, 'node_modules', '@notionbench', 'scoring');
+  mkdirSync(path.dirname(dest), { recursive: true });
+  cpSync(root, dest, { recursive: true, dereference: true });
+}
+
+/** Version of the installed package, used to invalidate the extracted copy. */
+function bundledVersion(bundled: string): string {
+  try {
+    const manifest = path.resolve(bundled, '../package.json');
+    const parsed: unknown = JSON.parse(readFileSync(manifest, 'utf8'));
+    const version = (parsed as { version?: unknown }).version;
+    if (typeof version === 'string' && version.length > 0) return version;
+  } catch {
+    // fall through
+  }
+  return 'unknown';
+}
+
 export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow' | 'watchdog'>> & {
   rateWindow: RateWindowConfig;
   watchdog: WatchdogSettings;
@@ -272,7 +397,7 @@ export function defaultRunConfig(): Required<Omit<RunConfigFile, 'rateWindow' | 
     killGraceMs: DEFAULT_KILL_GRACE_MS,
     maxAttempts: DEFAULT_MAX_ATTEMPTS,
     resultsRoot: 'results',
-    evalsRoot: 'evals',
+    evalsRoot: defaultEvalsRoot(),
     // Empty by default: an offline grid needs no Notion workspace at all, and a
     // live grid is expected to configure this via the environment.
     notion: {},

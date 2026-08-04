@@ -1,7 +1,6 @@
 {
-  "name": "@notionbench/runner",
+  "name": "notionbench",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Headless agent-CLI runner for NotionBench: spawns commercial agent CLIs (claude, codex) per trial, checkpoints, and schedules around subscription rate windows.",
   "license": "MIT",
@@ -18,9 +17,12 @@
   },
   "files": [
     "dist",
+    "evals",
     "runconfig.example.json"
   ],
   "scripts": {
+    "prepack": "node scripts/bundle-evals.mjs",
+    "postpack": "node scripts/bundle-evals.mjs --clean",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"

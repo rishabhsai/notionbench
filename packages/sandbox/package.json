@@ -1,7 +1,6 @@
 {
   "name": "@notionbench/sandbox",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Trial workspace preparation and the (v2) container image for NotionBench.",
   "license": "MIT",
@@ -28,5 +27,8 @@
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

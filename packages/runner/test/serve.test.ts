@@ -624,7 +624,7 @@ describe('static dashboard + routing', () => {
     const base = await start();
     const res = await fetch(`${base}/..%2f..%2fpackage.json`);
     expect([403, 404]).toContain(res.status);
-    expect(await res.text()).not.toContain('"@notionbench/runner"');
+    expect(await res.text()).not.toContain('"notionbench"');
   });
 
   it('404s unknown api routes as JSON', async () => {

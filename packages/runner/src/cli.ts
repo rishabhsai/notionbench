@@ -15,8 +15,10 @@
  */
 
 import { parseArgs } from 'node:util';
+import { realpathSync } from 'node:fs';
 import { readFile, readdir, stat, symlink, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { snapshotWorkspace } from './artifacts.js';
 import process from 'node:process';
 import { DEFAULT_TEMPLATES_DIR, prepareWorkspace, type DocsBundle } from '@notionbench/sandbox';
@@ -198,7 +200,9 @@ run options:
                         and its justification.
   --runconfig <path>    runconfig.json. Default: ./runconfig.json if present.
   --results <dir>       Results root. Default: results/
-  --evals <dir>         Task root. Default: evals/
+  --evals <dir>         Task root. Default: ./evals if present, else the task
+                        suite bundled with this package ($NOTIONBENCH_EVALS
+                        overrides both).
   --concurrency <n>     Global in-flight trials (serial per config). Default 2.
   --cooldown-min <n>    Rate-window pause per config, minutes. Default 30.
   --timeout <sec>       Per-trial wall clock; task frontmatter limits.time wins.
@@ -1981,10 +1985,19 @@ function pad(s: string, n: number): string {
   return s.length >= n ? s : s + ' '.repeat(n - s.length);
 }
 
-// Only run when invoked as a program, not when imported by tests.
-const invokedDirectly =
-  process.argv[1] !== undefined &&
-  (process.argv[1].endsWith('cli.js') || process.argv[1].endsWith('cli.ts'));
+// Only run when invoked as a program, not when imported by tests. Compared by
+// realpath rather than filename: npm installs the `notionbench` bin as a symlink
+// to this file, so an `endsWith('cli.js')` check makes the published CLI exit 0
+// and print nothing — it never reaches main().
+const invokedDirectly = (() => {
+  const entry = process.argv[1];
+  if (entry === undefined) return false;
+  try {
+    return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+})();
 if (invokedDirectly) {
   main().then(
     (code) => {

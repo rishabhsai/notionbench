@@ -1,4 +1,4 @@
-# @notionbench/runner
+# notionbench
 
 Runs the benchmark: launches commercial agent CLIs headlessly, one process per
 trial, checkpoints every cell, and paces the grid around subscription rate windows.

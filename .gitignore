@@ -1,6 +1,12 @@
 node_modules/
 dist/
 results/
+
+# Vendored into the published tarball by packages/runner prepack; evals/ at the
+# repo root is the source of truth. postpack removes it again — this is a
+# backstop for an interrupted pack.
+packages/runner/evals/
+*.tgz
 .env
 *.local
 .DS_Store

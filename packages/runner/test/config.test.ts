@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +9,7 @@ import {
   DEFAULT_TRIALS,
   V1_ROSTER,
   apiEquivalentCostUsd,
+  defaultEvalsRoot,
   loadRunConfig,
   resolveRunConfig,
   selectConfigs,
@@ -18,6 +19,7 @@ import { hasAdapter } from '../src/parsers/index.js';
 import { TokenPool } from '../src/token-pool.js';
 
 let scratch: string;
+const repoCwd = process.cwd();
 
 beforeEach(async () => {
   scratch = await mkdtemp(path.join(os.tmpdir(), 'nb-config-'));
@@ -291,5 +293,39 @@ describe('TokenPool', () => {
     expect(TokenPool.fromEnv({ NOTIONBENCH_NOTION_TOKENS: 'a, b ,c' }).size).toBe(3);
     expect(TokenPool.fromEnv({ NOTION_API_TOKEN: 'solo' }).size).toBe(1);
     expect(TokenPool.fromEnv({}).isEmpty).toBe(true);
+  });
+});
+
+describe('defaultEvalsRoot', () => {
+  const saved = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...saved };
+    process.chdir(repoCwd);
+  });
+
+  it('prefers an explicit NOTIONBENCH_EVALS over everything else', () => {
+    process.env.NOTIONBENCH_EVALS = '/somewhere/else';
+    expect(defaultEvalsRoot()).toBe('/somewhere/else');
+  });
+
+  it("prefers a checkout's own evals/ so task edits take effect immediately", async () => {
+    delete process.env.NOTIONBENCH_EVALS;
+    await mkdir(path.join(scratch, 'evals'), { recursive: true });
+    process.chdir(scratch);
+    // realpath: macOS resolves /var -> /private/var under the hood.
+    expect(await realpath(defaultEvalsRoot())).toBe(await realpath(path.join(scratch, 'evals')));
+  });
+
+  it('never returns a path under node_modules — Node cannot strip types there', () => {
+    delete process.env.NOTIONBENCH_EVALS;
+    process.env.NOTIONBENCH_CACHE = path.join(scratch, 'cache');
+    process.chdir(scratch);
+    expect(defaultEvalsRoot()).not.toContain('node_modules');
+  });
+
+  it('resolves the run config to that same root', () => {
+    process.env.NOTIONBENCH_EVALS = '/tasks/elsewhere';
+    expect(resolveRunConfig().evalsRoot).toBe('/tasks/elsewhere');
   });
 });

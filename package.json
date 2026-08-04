@@ -1,5 +1,6 @@
 {
-  "name": "notionbench",
+  "_comment": "Workspace root only — never published. The published CLI is packages/runner, which owns the `notionbench` name so `npx notionbench` resolves to it.",
+  "name": "notionbench-monorepo",
   "private": true,
   "version": "0.1.0",
   "packageManager": "pnpm@9.15.0",
