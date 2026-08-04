@@ -144,39 +144,6 @@ npx notionbench run --trials 3
 npx notionbench score results/latest
 ```
 
-## What the tasks actually look like
-
-The suite is not 38 variations on "make a page". Most of the interesting ones
-are traps — a plausible, confident approach walks straight into a wrong answer,
-and the verifier catches the difference.
-
-**The endpoint that answers with nothing.** `GET /v1/views` returns
-`{object, id}` and no more. No name, no type, no configuration. An agent that
-reads that as "here are the views" reports one view out of six. Everything the
-task asks for lives behind a second call per view.
-
-**The query that lies by 150 rows.** A data source with 250 entries paginates
-silently at 100. Sum the first page and you get a confident, wrong total with no
-error anywhere. The verifier knows the real number.
-
-**The append that deletes the page.** `PATCH /pages/{id}/markdown` replaces the
-whole document. Add a section by sending just the new section and you have
-removed everything else. The task asks for an appendix on a runbook and checks
-that the original three sections survived byte-identical.
-
-**The relation that stops at 25.** Relation properties cap at 25 linked items
-per read. A rollup over 40 linked rows quietly under-counts.
-
-**The instruction you have to actually follow.** One task specifies that a tool
-asked about an unknown expense category answers with zeros rather than an error.
-Five of eight configs pinned the input schema to an enum of known categories, so
-the SDK rejected the value before their handler ran. Better engineering, wrong
-answer.
-
-Each one ships with a reference solution and a plausibly-wrong solution, and CI
-runs both on every commit. If the wrong one ever starts passing, the task has
-stopped measuring anything.
-
 ## What is next
 
 **A Workers skill, then a re-run.** The hypothesis above deserves a number.

@@ -136,14 +136,6 @@
     npx notionbench run --dry-run  # the grid, argv, and child env, without spending anything
     npx notionbench run --trials 3
     npx notionbench score results/latest</code></pre>
-    <h2 class="sec" id="what-the-tasks-actually-look-like">What the tasks actually look like</h2>
-    <p>The suite is not 38 variations on &quot;make a page&quot;. Most of the interesting ones are traps — a plausible, confident approach walks straight into a wrong answer, and the verifier catches the difference.</p>
-    <p><strong>The endpoint that answers with nothing.</strong> <code>GET /v1/views</code> returns <code>{object, id}</code> and no more. No name, no type, no configuration. An agent that reads that as &quot;here are the views&quot; reports one view out of six. Everything the task asks for lives behind a second call per view.</p>
-    <p><strong>The query that lies by 150 rows.</strong> A data source with 250 entries paginates silently at 100. Sum the first page and you get a confident, wrong total with no error anywhere. The verifier knows the real number.</p>
-    <p><strong>The append that deletes the page.</strong> <code>PATCH /pages/{id}/markdown</code> replaces the whole document. Add a section by sending just the new section and you have removed everything else. The task asks for an appendix on a runbook and checks that the original three sections survived byte-identical.</p>
-    <p><strong>The relation that stops at 25.</strong> Relation properties cap at 25 linked items per read. A rollup over 40 linked rows quietly under-counts.</p>
-    <p><strong>The instruction you have to actually follow.</strong> One task specifies that a tool asked about an unknown expense category answers with zeros rather than an error. Five of eight configs pinned the input schema to an enum of known categories, so the SDK rejected the value before their handler ran. Better engineering, wrong answer.</p>
-    <p>Each one ships with a reference solution and a plausibly-wrong solution, and CI runs both on every commit. If the wrong one ever starts passing, the task has stopped measuring anything.</p>
     <h2 class="sec" id="what-is-next">What is next</h2>
     <p><strong>A Workers skill, then a re-run.</strong> The hypothesis above deserves a number.</p>
     <p><strong>A gallery.</strong> Three open-ended prompts — a study system, a small business, a Twitch creator's pipeline — handed to every config, unscored, screenshotted side by side. Solve rates say whether an agent can follow a spec. They say nothing about what it builds when you leave the shape up to it.</p>
