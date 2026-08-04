@@ -6,6 +6,8 @@ results/
 # repo root is the source of truth. postpack removes it again — this is a
 # backstop for an interrupted pack.
 packages/runner/evals/
+packages/runner/dist/node_modules/
+packages/runner/package.json.prepack-backup
 *.tgz
 .env
 *.local

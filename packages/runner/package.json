@@ -21,17 +21,15 @@
     "runconfig.example.json"
   ],
   "scripts": {
-    "prepack": "node scripts/bundle-evals.mjs",
-    "postpack": "node scripts/bundle-evals.mjs --clean",
+    "prepack": "node scripts/bundle.mjs",
+    "postpack": "node scripts/bundle.mjs --clean",
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {
-    "@notionbench/sandbox": "workspace:*",
-    "@notionbench/scoring": "workspace:*"
-  },
   "devDependencies": {
+    "@notionbench/sandbox": "workspace:*",
+    "@notionbench/scoring": "workspace:*",
     "@types/node": "^22.10.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"

@@ -71,7 +71,8 @@ web/                   results site + live run dashboard (static, Cloudflare Pag
 
 ## Run it yourself
 
-The CLI ships the task suite with it, so nothing needs cloning to look around:
+`notionbench` is a single self-contained package — one install, no plugins, and
+the task suite ships inside it, so nothing needs cloning to look around:
 
 ```bash
 npx notionbench tasks              # the 41 tasks, with their axes and limits

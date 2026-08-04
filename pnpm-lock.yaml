@@ -34,14 +34,13 @@ importers:
         version: 2.1.9(@types/node@22.20.1)
 
   packages/runner:
-    dependencies:
+    devDependencies:
       '@notionbench/sandbox':
         specifier: workspace:*
         version: link:../sandbox
       '@notionbench/scoring':
         specifier: workspace:*
         version: link:../scoring
-    devDependencies:
       '@types/node':
         specifier: ^22.10.2
         version: 22.20.1
