@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1200" viewBox="0 0 1200 1200">
+  <rect width="1200" height="1200" fill="#ffffff"/>
+  <g>
+    <rect x="0" y="285" width="1200" height="630" fill="#f4efe6"/>
+    <rect x="10" y="295" width="1180" height="610" fill="none" stroke="#e4dccc" stroke-width="2"/>
+
+    <text x="68" y="372" font-family="Helvetica,Arial" font-size="25" letter-spacing="1.6" fill="#8b95a7">NOTIONBENCH.RISHABHSAI.COM</text>
+    <text x="1132" y="372" text-anchor="end" font-family="Helvetica,Arial" font-size="25" letter-spacing="1.6" fill="#8b95a7">BENCHMARK / 2026</text>
+
+    <text x="68" y="522" font-family="Helvetica,Arial" font-size="86" fill="#0f1115">can agents build on <tspan fill="#1a56ff">notion</tspan>?</text>
+    <rect x="838" y="538" width="244" height="5" fill="#1a56ff"/>
+
+    <text x="68" y="622" font-family="Helvetica,Arial" font-size="32" fill="#2f3a45">38 tasks · 8 coding agents · 912 rollouts,</text>
+    <text x="68" y="670" font-family="Helvetica,Arial" font-size="32" fill="#2f3a45">every one graded by a program, never a model.</text>
+
+    <line x1="68" y1="724" x2="1132" y2="724" stroke="#e4dccc" stroke-width="2"/>
+
+    <text x="68" y="786" font-family="Helvetica,Arial" font-size="30" fill="#2f3a45">Opus 5 scored 99.1% for $66.</text>
+    <text x="68" y="836" font-family="Helvetica,Arial" font-size="30" fill="#2f3a45">GPT-5.6 Luna scored 98.2% for <tspan fill="#1a56ff" font-weight="bold">$2.18</tspan>.</text>
+  </g>
+</svg>
