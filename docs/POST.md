@@ -135,44 +135,64 @@ every runbook, worked out which ones had no owner, and never wrote the file.
 
 ---
 
-### The same brief, six very different answers
+### Some agents furnish the house. Others hand you the blueprints.
 
 Solve rates measure whether an agent can follow a spec. They say nothing about
 what it builds when the shape is left to it.
 
 So I gave all six the same open brief — *build a system for a mobile dog-grooming
-business with two vans* — and measured what came out. No score, no right answer.
+business with two vans* — plus two more like it. No score, no right answer.
 
-| config | databases | rows seeded | views | relations | tool calls | time |
-|---|---:|---:|---:|---:|---:|---:|
-| **Opus 5** | 11 | **1,633** | 14 | 18 | 99 | 29.5 min |
-| Sol (xhigh) | 10 | 18 | 14 | 18 | 58 | 20.4 min |
-| Fable 5 | 9 | 103 | 9 | 11 | 40 | 14.7 min |
-| Sonnet 5 | 9 | 47 | 9 | 11 | **131** | 18.9 min |
-| Sol (medium) | 6 | 10 | 6 | 12 | 38 | 10.9 min |
-| Luna (high) | 5 | 5 | 12 | 1 | 34 | 7.2 min |
+The clearest split was whether they put anything in the databases they made.
 
-Three of them are worth describing, because the numbers undersell how different
-they are.
+| | study | grooming | twitch | **rows seeded** |
+|---|---:|---:|---:|---:|
+| **Opus 5** | 46 | 1,633 | 236 | **1,915** |
+| Fable 5 | 88 | 103 | 69 | 260 |
+| Sonnet 5 | 0 | 47 | 63 | 110 |
+| Sol (xhigh) | 21 | 18 | 0 | 39 |
+| Sol (medium) | 5 | 10 | 0 | 15 |
+| Luna (high) | 5 | 5 | 0 | 10 |
 
-**Opus** built a working diary. Named dogs — Maple, Bruno, Rufus, Ziggy —
-assigned to vans and groomers with real dates, and a page that opens *"Bookings
-land as texts. Put them straight into the diary below — everything else on this
-page works itself out from there."* Then a section called **Ring these before
-they drift**. It designed an operating rhythm and seeded a year of it.
+Claude Code seeded 2,285 rows across the three briefs. Codex seeded 64. All
+three Codex configs handed back the Twitch pipeline completely empty.
 
-**Sol at extra-high** built ten databases with rows reading `Conditioner — Van 1
-/ COUNT / 1 / 3`. Stock status, restock thresholds, van attention. All the
-scaffolding of a business, with the contents left as placeholders.
+This is not a structure gap. On the grooming brief Sol at extra-high built **ten**
+databases with 14 views and 18 relations — near-identical scaffolding to Opus's
+eleven. It just left them unfurnished, with rows reading `Conditioner — Van 1 /
+COUNT / 1 / 3`.
 
-**Sol at medium** wrote a *"First setup — about 20 minutes"* checklist over six
-linked databases, with a rule of thumb: *one appointment row per visit, one cost
-row per receipt.* It built the instructions for you to fill it in yourself.
+Opus built a working diary instead. Named dogs — Maple, Bruno, Rufus, Ziggy —
+assigned to vans and groomers with real dates, under a line that reads
+*"Bookings land as texts. Put them straight into the diary below — everything
+else on this page works itself out from there."* Then a section called **Ring
+these before they drift**.
 
-All three are defensible readings of the same sentence. On the scored suite
-these configs land within four points of each other.
+Sol at medium did a third thing: a *"First setup — about 20 minutes"* checklist
+over six databases, with a rule of thumb — *one appointment row per visit, one
+cost row per receipt* — and left the filling-in to you.
 
----
+All three are defensible readings of the same sentence, and which one you want
+depends entirely on whether you intend to demo the thing or run it. On the
+scored suite these configs land within four points of each other.
+
+They disagreed about shape, too. Sol at medium never created a single sub-page
+across all three briefs — everything went flat onto one root page. Luna made the
+most sub-pages of anyone, seven, but never nested them. Opus was the only one to
+go two levels deep, and the only one to reach for the full view vocabulary:
+board, calendar, chart, table *and* timeline, where Sonnet and Fable stuck to
+tables and lists throughout.
+
+Nobody asked for any of that. Given "build me a system", one agent hands you a
+single dense page, another hands you seven flat ones, and a third builds a
+hierarchy with a timeline in it.
+
+One more number worth holding next to this: Sonnet made **131 tool calls** on the
+grooming brief, more than Opus's 99, and produced 47 rows against Opus's 1,633.
+Effort and output are not the same axis.
+
+Every workspace below is the real thing, still live in Notion — open one and
+poke at it.
 
 ## Try it
 
