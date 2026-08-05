@@ -3,10 +3,12 @@ dist/
 # results/* not results/ — git will not descend into an ignored directory, so a
 # negation inside one never applies.
 results/*
-# …except the archived run data behind the published numbers. Everything else
-# under results/ is regenerable; this is not, and the VPS it lived on is billed.
+# …except the small archive of the run data behind the published numbers. Named
+# explicitly, not globbed: results/archive/ also holds a 36 MB tree of agent
+# transcripts and artifacts that stays local.
 !results/archive/
-!results/archive/*.tar.gz
+results/archive/*
+!results/archive/run-*.tar.gz
 
 # Vendored into the published tarball by packages/runner prepack; evals/ at the
 # repo root is the source of truth. postpack removes it again — this is a
@@ -26,3 +28,7 @@ docs/PLAN.md
 private/
 notes/
 runconfig.local.*
+# Drafts, launch copy, outreach notes. These live in private/ and belong to the
+# author, not the project.
+*-THREAD.md
+*-DRAFT.md
