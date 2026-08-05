@@ -1,6 +1,10 @@
 node_modules/
 dist/
 results/
+# …except the archived run data behind the published numbers. Everything else
+# under results/ is regenerable; this is not, and the VPS it lived on is billed.
+!results/archive/
+!results/archive/*.tar.gz
 
 # Vendored into the published tarball by packages/runner prepack; evals/ at the
 # repo root is the source of truth. postpack removes it again — this is a
