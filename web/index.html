@@ -131,25 +131,16 @@
     <p>All three failures on the workspace-search task are the same line: <code>could not read answer.json</code>.</p>
     <p>One of them is Opus's only miss in 114 trials. It searched the workspace, found every runbook, worked out which ones had no owner, and never wrote the file.</p>
     <hr class="post-rule">
-    <h3 id="some-agents-furnish-the-house-others-hand-you-the-blueprints">Some agents furnish the house. Others hand you the blueprints.</h3>
-    <p>Solve rates measure whether an agent can follow a spec. They say nothing about what it builds when the shape is left to it.</p>
-    <p>So I gave all six the same open brief — <em>build a system for a mobile dog-grooming business with two vans</em> — plus two more like it. No score, no right answer.</p>
-    <p>The clearest split was whether they put anything in the databases they made.</p>
-    <div class="post-table"><table><thead><tr><th></th><th>study</th><th>grooming</th><th>twitch</th><th><strong>rows seeded</strong></th></tr></thead><tbody><tr><td><strong>Opus 5</strong></td><td>46</td><td>1,633</td><td>236</td><td><strong>1,915</strong></td></tr><tr><td>Fable 5</td><td>88</td><td>103</td><td>69</td><td>260</td></tr><tr><td>Sonnet 5</td><td>0</td><td>47</td><td>63</td><td>110</td></tr><tr><td>Sol (xhigh)</td><td>21</td><td>18</td><td>0</td><td>39</td></tr><tr><td>Sol (medium)</td><td>5</td><td>10</td><td>0</td><td>15</td></tr><tr><td>Luna (high)</td><td>5</td><td>5</td><td>0</td><td>10</td></tr></tbody></table></div>
-    <p>Claude Code seeded 2,285 rows across the three briefs. Codex seeded 64. All three Codex configs handed back the Twitch pipeline completely empty.</p>
-    <p>This is not a structure gap. On the grooming brief Sol at extra-high built <strong>ten</strong> databases with 14 views and 18 relations — near-identical scaffolding to Opus's eleven. It just left them unfurnished, with rows reading <code>Conditioner — Van 1 / COUNT / 1 / 3</code>.</p>
-    <p>Opus built a working diary instead. Named dogs — Maple, Bruno, Rufus, Ziggy — assigned to vans and groomers with real dates, under a line that reads <em>&quot;Bookings land as texts. Put them straight into the diary below — everything else on this page works itself out from there.&quot;</em> Then a section called <strong>Ring these before they drift</strong>.</p>
-    <p>Sol at medium did a third thing: a <em>&quot;First setup — about 20 minutes&quot;</em> checklist over six databases, with a rule of thumb — <em>one appointment row per visit, one cost row per receipt</em> — and left the filling-in to you.</p>
-    <p>All three are defensible readings of the same sentence, and which one you want depends entirely on whether you intend to demo the thing or run it. On the scored suite these configs land within four points of each other.</p>
-    <p>They disagreed about shape, too. Sol at medium never created a single sub-page across all three briefs — everything went flat onto one root page. Luna made the most sub-pages of anyone, seven, but never nested them. Opus was the only one to go two levels deep, and the only one to reach for the full view vocabulary: board, calendar, chart, table <em>and</em> timeline, where Sonnet and Fable stuck to tables and lists throughout.</p>
-    <p>Nobody asked for any of that. Given &quot;build me a system&quot;, one agent hands you a single dense page, another hands you seven flat ones, and a third builds a hierarchy with a timeline in it.</p>
-    <p>One more number worth holding next to this: Sonnet made <strong>131 tool calls</strong> on the grooming brief, more than Opus's 99, and produced 47 rows against Opus's 1,633. Effort and output are not the same axis.</p>
-    <p>Every workspace below is the real thing, still live in Notion — open one and poke at it.</p>
     <h2 class="sec" id="try-it">Try it</h2>
     <pre class="post-code" data-lang="bash"><code>npx notionbench tasks          # the 38 tasks
     npx notionbench run --dry-run  # the grid, argv, and child env, without spending anything
     npx notionbench run --trials 3
     npx notionbench score results/latest</code></pre>
+    <h2 class="sec" id="what-they-build-when-you-don-t-tell-them">What they build when you don't tell them</h2>
+    <p>Everything above measures whether an agent can follow a spec. It says nothing about what it makes when the shape is left open, so I gave all six the same loose brief three times — a study system, a grooming business with two vans, a Twitch creator's pipeline — and just looked at what came back.</p>
+    <p>They disagreed most about whether to put anything in the databases they built. <strong>Claude Code seeded 2,285 rows across the three briefs. Codex seeded 64</strong>, and all three Codex configs handed back the Twitch pipeline empty. Not a structure gap — on the grooming brief Sol at extra-high built ten databases with 14 views, near-identical scaffolding to Opus's eleven, with rows reading <code>Conditioner — Van 1 / COUNT / 1 / 3</code>. Opus filled its version with named dogs booked to vans across a year.</p>
+    <p>Shape varied too. Sol at medium never made a single sub-page across all three briefs; Luna made seven and nested none; Opus was alone in going two levels deep and in using timelines and charts at all.</p>
+    <p>All eighteen workspaces are live in Notion — open one and poke at it.</p>
     <h2 class="sec" id="what-is-next">What is next</h2>
     <p><strong>A Workers skill, then a re-run.</strong> The hypothesis above deserves a number.</p>
     <p><strong>More configs.</strong> Grok 4, Composer, and DeepSeek Pro.</p>

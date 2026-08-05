@@ -135,65 +135,6 @@ every runbook, worked out which ones had no owner, and never wrote the file.
 
 ---
 
-### Some agents furnish the house. Others hand you the blueprints.
-
-Solve rates measure whether an agent can follow a spec. They say nothing about
-what it builds when the shape is left to it.
-
-So I gave all six the same open brief — *build a system for a mobile dog-grooming
-business with two vans* — plus two more like it. No score, no right answer.
-
-The clearest split was whether they put anything in the databases they made.
-
-| | study | grooming | twitch | **rows seeded** |
-|---|---:|---:|---:|---:|
-| **Opus 5** | 46 | 1,633 | 236 | **1,915** |
-| Fable 5 | 88 | 103 | 69 | 260 |
-| Sonnet 5 | 0 | 47 | 63 | 110 |
-| Sol (xhigh) | 21 | 18 | 0 | 39 |
-| Sol (medium) | 5 | 10 | 0 | 15 |
-| Luna (high) | 5 | 5 | 0 | 10 |
-
-Claude Code seeded 2,285 rows across the three briefs. Codex seeded 64. All
-three Codex configs handed back the Twitch pipeline completely empty.
-
-This is not a structure gap. On the grooming brief Sol at extra-high built **ten**
-databases with 14 views and 18 relations — near-identical scaffolding to Opus's
-eleven. It just left them unfurnished, with rows reading `Conditioner — Van 1 /
-COUNT / 1 / 3`.
-
-Opus built a working diary instead. Named dogs — Maple, Bruno, Rufus, Ziggy —
-assigned to vans and groomers with real dates, under a line that reads
-*"Bookings land as texts. Put them straight into the diary below — everything
-else on this page works itself out from there."* Then a section called **Ring
-these before they drift**.
-
-Sol at medium did a third thing: a *"First setup — about 20 minutes"* checklist
-over six databases, with a rule of thumb — *one appointment row per visit, one
-cost row per receipt* — and left the filling-in to you.
-
-All three are defensible readings of the same sentence, and which one you want
-depends entirely on whether you intend to demo the thing or run it. On the
-scored suite these configs land within four points of each other.
-
-They disagreed about shape, too. Sol at medium never created a single sub-page
-across all three briefs — everything went flat onto one root page. Luna made the
-most sub-pages of anyone, seven, but never nested them. Opus was the only one to
-go two levels deep, and the only one to reach for the full view vocabulary:
-board, calendar, chart, table *and* timeline, where Sonnet and Fable stuck to
-tables and lists throughout.
-
-Nobody asked for any of that. Given "build me a system", one agent hands you a
-single dense page, another hands you seven flat ones, and a third builds a
-hierarchy with a timeline in it.
-
-One more number worth holding next to this: Sonnet made **131 tool calls** on the
-grooming brief, more than Opus's 99, and produced 47 rows against Opus's 1,633.
-Effort and output are not the same axis.
-
-Every workspace below is the real thing, still live in Notion — open one and
-poke at it.
-
 ## Try it
 
 ```bash
@@ -202,6 +143,27 @@ npx notionbench run --dry-run  # the grid, argv, and child env, without spending
 npx notionbench run --trials 3
 npx notionbench score results/latest
 ```
+
+## What they build when you don't tell them
+
+Everything above measures whether an agent can follow a spec. It says nothing
+about what it makes when the shape is left open, so I gave all six the same
+loose brief three times — a study system, a grooming business with two vans, a
+Twitch creator's pipeline — and just looked at what came back.
+
+They disagreed most about whether to put anything in the databases they built.
+**Claude Code seeded 2,285 rows across the three briefs. Codex seeded 64**, and
+all three Codex configs handed back the Twitch pipeline empty. Not a structure
+gap — on the grooming brief Sol at extra-high built ten databases with 14 views,
+near-identical scaffolding to Opus's eleven, with rows reading
+`Conditioner — Van 1 / COUNT / 1 / 3`. Opus filled its version with named dogs
+booked to vans across a year.
+
+Shape varied too. Sol at medium never made a single sub-page across all three
+briefs; Luna made seven and nested none; Opus was alone in going two levels deep
+and in using timelines and charts at all.
+
+All eighteen workspaces are live in Notion — open one and poke at it.
 
 ## What is next
 
