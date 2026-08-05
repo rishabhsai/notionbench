@@ -1,6 +1,8 @@
 node_modules/
 dist/
-results/
+# results/* not results/ — git will not descend into an ignored directory, so a
+# negation inside one never applies.
+results/*
 # …except the archived run data behind the published numbers. Everything else
 # under results/ is regenerable; this is not, and the VPS it lived on is billed.
 !results/archive/
