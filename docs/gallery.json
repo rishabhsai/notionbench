@@ -3,7 +3,7 @@
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "claude-code-opus-5",
-    "configLabel": "Claude Code \u00d7 Opus 5",
+    "configLabel": "Claude Code × Opus 5",
     "pageId": "3b26ab85-753b-8121-9f64-d59fbe0d8a6e",
     "url": "https://www.notion.so/3b26ab85753b81219f64d59fbe0d8a6e",
     "slug": "001-claude-code-opus-5",
@@ -15,13 +15,14 @@
     "relations": 12,
     "rollups": 12,
     "toolCalls": 65,
-    "wallMin": 11.8
+    "wallMin": 11.8,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Claude-Code-Opus-5-3b26ab85753b81219f64d59fbe0d8a6e"
   },
   {
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "claude-code-sonnet-5",
-    "configLabel": "Claude Code \u00d7 Sonnet 5",
+    "configLabel": "Claude Code × Sonnet 5",
     "pageId": "3b26ab85-753b-817c-81f2-fd59093be20f",
     "url": "https://www.notion.so/3b26ab85753b817c81f2fd59093be20f",
     "slug": "001-claude-code-sonnet-5",
@@ -33,13 +34,14 @@
     "relations": 2,
     "rollups": 1,
     "toolCalls": 64,
-    "wallMin": 40.0
+    "wallMin": 40,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Claude-Code-Sonnet-5-3b26ab85753b817c81f2fd59093be20f"
   },
   {
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "claude-code-fable-5",
-    "configLabel": "Claude Code \u00d7 Fable 5",
+    "configLabel": "Claude Code × Fable 5",
     "pageId": "3b26ab85-753b-8199-9748-e69674cb3f90",
     "url": "https://www.notion.so/3b26ab85753b81999748e69674cb3f90",
     "slug": "001-claude-code-fable-5",
@@ -51,13 +53,14 @@
     "relations": 8,
     "rollups": 6,
     "toolCalls": 78,
-    "wallMin": 15.5
+    "wallMin": 15.5,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Claude-Code-Fable-5-3b26ab85753b81999748e69674cb3f90"
   },
   {
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "codex-gpt-5.6-sol-medium",
-    "configLabel": "Codex \u00d7 Sol (medium)",
+    "configLabel": "Codex × Sol (medium)",
     "pageId": "3b26ab85-753b-819a-9bbf-ea944218bde5",
     "url": "https://www.notion.so/3b26ab85753b819a9bbfea944218bde5",
     "slug": "001-codex-gpt-5.6-sol-medium",
@@ -69,13 +72,14 @@
     "relations": 3,
     "rollups": 0,
     "toolCalls": 51,
-    "wallMin": 5.8
+    "wallMin": 5.8,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Codex-Sol-medium-3b26ab85753b819a9bbfea944218bde5"
   },
   {
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "codex-gpt-5.6-sol-xhigh",
-    "configLabel": "Codex \u00d7 Sol (xhigh)",
+    "configLabel": "Codex × Sol (xhigh)",
     "pageId": "3b26ab85-753b-8155-9890-ee6727ab1097",
     "url": "https://www.notion.so/3b26ab85753b81559890ee6727ab1097",
     "slug": "001-codex-gpt-5.6-sol-xhigh",
@@ -87,13 +91,14 @@
     "relations": 8,
     "rollups": 0,
     "toolCalls": 51,
-    "wallMin": 13.2
+    "wallMin": 13.2,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Codex-Sol-xhigh-3b26ab85753b81559890ee6727ab1097"
   },
   {
     "task": "showcase-001-student-studying",
     "taskLabel": "Study system",
     "config": "codex-gpt-5.6-luna-high",
-    "configLabel": "Codex \u00d7 Luna (high)",
+    "configLabel": "Codex × Luna (high)",
     "pageId": "3b26ab85-753b-81b2-aa8d-cfc9afb42640",
     "url": "https://www.notion.so/3b26ab85753b81b2aa8dcfc9afb42640",
     "slug": "001-codex-gpt-5.6-luna-high",
@@ -105,13 +110,14 @@
     "relations": 0,
     "rollups": 0,
     "toolCalls": 45,
-    "wallMin": 5.9
+    "wallMin": 5.9,
+    "canonicalUrl": "https://app.notion.com/p/Study-system-Codex-Luna-high-3b26ab85753b81b2aa8dcfc9afb42640"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "claude-code-opus-5",
-    "configLabel": "Claude Code \u00d7 Opus 5",
+    "configLabel": "Claude Code × Opus 5",
     "pageId": "3b26ab85-753b-81db-b164-e6f25f4836c8",
     "url": "https://www.notion.so/3b26ab85753b81dbb164e6f25f4836c8",
     "slug": "002-claude-code-opus-5",
@@ -123,13 +129,14 @@
     "relations": 18,
     "rollups": 16,
     "toolCalls": 99,
-    "wallMin": 29.5
+    "wallMin": 29.5,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Claude-Code-Opus-5-3b26ab85753b81dbb164e6f25f4836c8"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "claude-code-sonnet-5",
-    "configLabel": "Claude Code \u00d7 Sonnet 5",
+    "configLabel": "Claude Code × Sonnet 5",
     "pageId": "3b26ab85-753b-8160-a7a5-ede1a6ec0fbb",
     "url": "https://www.notion.so/3b26ab85753b8160a7a5ede1a6ec0fbb",
     "slug": "002-claude-code-sonnet-5",
@@ -141,13 +148,14 @@
     "relations": 11,
     "rollups": 8,
     "toolCalls": 131,
-    "wallMin": 18.9
+    "wallMin": 18.9,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Claude-Code-Sonnet-5-3b26ab85753b8160a7a5ede1a6ec0fbb"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "claude-code-fable-5",
-    "configLabel": "Claude Code \u00d7 Fable 5",
+    "configLabel": "Claude Code × Fable 5",
     "pageId": "3b26ab85-753b-8133-b2eb-db7a59fc23c1",
     "url": "https://www.notion.so/3b26ab85753b8133b2ebdb7a59fc23c1",
     "slug": "002-claude-code-fable-5",
@@ -159,13 +167,14 @@
     "relations": 11,
     "rollups": 12,
     "toolCalls": 40,
-    "wallMin": 14.7
+    "wallMin": 14.7,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Claude-Code-Fable-5-3b26ab85753b8133b2ebdb7a59fc23c1"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "codex-gpt-5.6-sol-medium",
-    "configLabel": "Codex \u00d7 Sol (medium)",
+    "configLabel": "Codex × Sol (medium)",
     "pageId": "3b26ab85-753b-81a2-8e1e-e5cb0279c2a1",
     "url": "https://www.notion.so/3b26ab85753b81a28e1ee5cb0279c2a1",
     "slug": "002-codex-gpt-5.6-sol-medium",
@@ -177,13 +186,14 @@
     "relations": 12,
     "rollups": 2,
     "toolCalls": 38,
-    "wallMin": 10.9
+    "wallMin": 10.9,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Codex-Sol-medium-3b26ab85753b81a28e1ee5cb0279c2a1"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "codex-gpt-5.6-sol-xhigh",
-    "configLabel": "Codex \u00d7 Sol (xhigh)",
+    "configLabel": "Codex × Sol (xhigh)",
     "pageId": "3b26ab85-753b-819a-805b-d3b682769955",
     "url": "https://www.notion.so/3b26ab85753b819a805bd3b682769955",
     "slug": "002-codex-gpt-5.6-sol-xhigh",
@@ -195,13 +205,14 @@
     "relations": 18,
     "rollups": 8,
     "toolCalls": 58,
-    "wallMin": 20.4
+    "wallMin": 20.4,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Codex-Sol-xhigh-3b26ab85753b819a805bd3b682769955"
   },
   {
     "task": "showcase-002-mobile-grooming-business",
     "taskLabel": "Mobile grooming business",
     "config": "codex-gpt-5.6-luna-high",
-    "configLabel": "Codex \u00d7 Luna (high)",
+    "configLabel": "Codex × Luna (high)",
     "pageId": "3b26ab85-753b-8103-a9f1-cec442f31f7a",
     "url": "https://www.notion.so/3b26ab85753b8103a9f1cec442f31f7a",
     "slug": "002-codex-gpt-5.6-luna-high",
@@ -213,13 +224,14 @@
     "relations": 1,
     "rollups": 0,
     "toolCalls": 34,
-    "wallMin": 7.2
+    "wallMin": 7.2,
+    "canonicalUrl": "https://app.notion.com/p/Mobile-grooming-business-Codex-Luna-high-3b26ab85753b8103a9f1cec442f31f7a"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "claude-code-opus-5",
-    "configLabel": "Claude Code \u00d7 Opus 5",
+    "configLabel": "Claude Code × Opus 5",
     "pageId": "3b26ab85-753b-8144-b83d-ed25bce37616",
     "url": "https://www.notion.so/3b26ab85753b8144b83ded25bce37616",
     "slug": "003-claude-code-opus-5",
@@ -231,13 +243,14 @@
     "relations": 52,
     "rollups": 64,
     "toolCalls": 57,
-    "wallMin": 23.2
+    "wallMin": 23.2,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Claude-Code-Opus-5-3b26ab85753b8144b83ded25bce37616"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "claude-code-sonnet-5",
-    "configLabel": "Claude Code \u00d7 Sonnet 5",
+    "configLabel": "Claude Code × Sonnet 5",
     "pageId": "3b26ab85-753b-811a-b62b-f348f20ed92a",
     "url": "https://www.notion.so/3b26ab85753b811ab62bf348f20ed92a",
     "slug": "003-claude-code-sonnet-5",
@@ -249,13 +262,14 @@
     "relations": 33,
     "rollups": 10,
     "toolCalls": 99,
-    "wallMin": 19.9
+    "wallMin": 19.9,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Claude-Code-Sonnet-5-3b26ab85753b811ab62bf348f20ed92a"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "claude-code-fable-5",
-    "configLabel": "Claude Code \u00d7 Fable 5",
+    "configLabel": "Claude Code × Fable 5",
     "pageId": "3b26ab85-753b-81ad-b6ab-fad245d062b6",
     "url": "https://www.notion.so/3b26ab85753b81adb6abfad245d062b6",
     "slug": "003-claude-code-fable-5",
@@ -267,13 +281,14 @@
     "relations": 33,
     "rollups": 6,
     "toolCalls": 18,
-    "wallMin": 10.8
+    "wallMin": 10.8,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Claude-Code-Fable-5-3b26ab85753b81adb6abfad245d062b6"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "codex-gpt-5.6-sol-medium",
-    "configLabel": "Codex \u00d7 Sol (medium)",
+    "configLabel": "Codex × Sol (medium)",
     "pageId": "3b26ab85-753b-81a5-a218-ebf2a33c59b0",
     "url": "https://www.notion.so/3b26ab85753b81a5a218ebf2a33c59b0",
     "slug": "003-codex-gpt-5.6-sol-medium",
@@ -285,13 +300,14 @@
     "relations": 12,
     "rollups": 4,
     "toolCalls": 29,
-    "wallMin": 6.6
+    "wallMin": 6.6,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Codex-Sol-medium-3b26ab85753b81a5a218ebf2a33c59b0"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "codex-gpt-5.6-sol-xhigh",
-    "configLabel": "Codex \u00d7 Sol (xhigh)",
+    "configLabel": "Codex × Sol (xhigh)",
     "pageId": "3b26ab85-753b-81ff-a4d2-ce0679619fbe",
     "url": "https://www.notion.so/3b26ab85753b81ffa4d2ce0679619fbe",
     "slug": "003-codex-gpt-5.6-sol-xhigh",
@@ -303,13 +319,14 @@
     "relations": 23,
     "rollups": 4,
     "toolCalls": 75,
-    "wallMin": 9.5
+    "wallMin": 9.5,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Codex-Sol-xhigh-3b26ab85753b81ffa4d2ce0679619fbe"
   },
   {
     "task": "showcase-003-twitch-creator",
     "taskLabel": "Twitch creator pipeline",
     "config": "codex-gpt-5.6-luna-high",
-    "configLabel": "Codex \u00d7 Luna (high)",
+    "configLabel": "Codex × Luna (high)",
     "pageId": "3b26ab85-753b-8103-ba15-fee5b5371a02",
     "url": "https://www.notion.so/3b26ab85753b8103ba15fee5b5371a02",
     "slug": "003-codex-gpt-5.6-luna-high",
@@ -321,6 +338,7 @@
     "relations": 7,
     "rollups": 0,
     "toolCalls": 66,
-    "wallMin": 5.5
+    "wallMin": 5.5,
+    "canonicalUrl": "https://app.notion.com/p/Twitch-creator-pipeline-Codex-Luna-high-3b26ab85753b8103ba15fee5b5371a02"
   }
 ]
