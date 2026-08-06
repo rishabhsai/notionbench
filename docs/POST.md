@@ -3,8 +3,8 @@
 Notion shipped a developer platform in May: the `ntn` CLI, Workers, and
 Notion-as-Code. They said it was built for AI coding agents. I wanted to know if
 that was true, so I wrote 38 tasks covering every programmable part of it, ran
-eight agent setups through each task three times, and had a program grade all
-912 runs.
+eight agent setups through each task three times, and had a program grade the
+lot. 890 runs finished and were scored.
 
 The scores came out almost identical. Twenty-one of the 38 tasks were solved by
 every setup on every trial, and the top six finished between 93.9% and 99.1%.
@@ -12,6 +12,29 @@ Ranking them by score tells you very little.
 
 The differences showed up in cost, consistency, and which parts of the platform
 they got stuck on.
+
+| | solve rate | reliable (3/3) | tool error rate | cost | median time |
+|---|---:|---:|---:|---:|---:|
+| Claude Code × Opus 5 | 99.1% | 97.4% | 3.0% | $66.01 | 1m26s |
+| Claude Code × Fable 5 | 98.2% | 97.4% | 4.4% | $99.37 | 1m11s |
+| Codex × GPT-5.6 Luna | 98.2% | 94.7% | 16.9% | $2.18 | 1m31s |
+| Codex × GPT-5.6 Sol (xhigh) | 95.6% | 94.7% | 15.9% | $57.65 | 1m56s |
+| Claude Code × Sonnet 5 | 94.7% | 89.5% | 5.0% | $50.84 | 1m02s |
+| Codex × GPT-5.6 Sol (medium) | 93.9% | 92.1% | 20.1% | $48.30 | 1m30s |
+| OpenCode × Kimi K3 * | 87.3% | 68% (25/38) | 1.7% | $13.81 | 3m27s |
+| OpenCode × DeepSeek V4 Flash * | 86.0% | 69% (29/38) | 0.6% | $0.53 | 1m00s |
+
+Solve rate is the share of trials solved, averaged per task so every task counts
+once. Reliable is the share of tasks solved in all three trials. Cost is
+API-equivalent: the token counts are real, priced at list rates, but the runs
+themselves went through subscriptions.
+
+\* The two OpenCode rows are short. That account hit a weekly usage limit twice
+mid-run, so Kimi and DeepSeek completed 101 and 105 of their 114 cells. Both
+covered all 38 tasks at least once, so the solve rates hold, but only 25 and 29
+tasks got all three trials and their reliability numbers cover those subsets.
+The 225 cells I threw out are in `results.superseded.jsonl` with a reason
+attached to each.
 
 ---
 
@@ -162,6 +185,19 @@ all.
 
 All eighteen workspaces are public. [Open them and poke
 around](https://app.notion.com/p/rishabhsai/NotionBench-Runs-3af6ab85753b808daa60d1dd1b0c40a0).
+
+## What this doesn't tell you
+
+Three trials is enough to see that DeepSeek is inconsistent and not enough to
+put a tight number on it. Every task has exactly one wording, and I have no idea
+how much the scores move if you phrase them differently. Workers deployment is
+untested because it needs a Business plan, so I check behaviour offline with
+`exec --local` instead. Nothing here runs longer than a single session with a
+15-minute ceiling, so this says nothing about an agent working for an hour.
+
+And the suite is getting easy. Twenty-one of the 38 tasks are now solved by
+everyone on every trial, which means most of the signal comes from about 17
+tasks.
 
 ## What is next
 
